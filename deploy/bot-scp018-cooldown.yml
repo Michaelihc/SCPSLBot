@@ -1,0 +1,10 @@
+# Bot 7777: merge these values into the existing controls.items entry.
+# This is a partial patch, not a replacement plugin config.
+controls:
+  items:
+  - id: native.scp018
+    cooldown_seconds: 60
+    shared_cooldown_group: high-impact
+    shared_cooldown_seconds: 60
+    per_life_limit: 1
+    per_round_limit: 999

@@ -176,7 +176,7 @@ public static class WarmupPlayerCatalogDefaults
         var entries = new List<ItemCatalogEntryConfig>(NativeItems.Length);
         foreach (string itemId in NativeItems)
         {
-            bool highImpact = itemId is "GrenadeHE" or "GrenadeFlash" or "MicroHID" or "ParticleDisruptor" or "Jailbird";
+            bool highImpact = itemId is "GrenadeHE" or "GrenadeFlash" or "MicroHID" or "ParticleDisruptor" or "Jailbird" or "SCP018";
             string stableId = itemId switch
             {
                 "Medkit" => "medical.medkit",
