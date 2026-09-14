@@ -53,7 +53,9 @@ public sealed class SurfaceManagedChaosSpawnScenario : Scenario
         {
             WarmupPopulationRecoveryScenario.RequireCommand(ctx,
                 NativeCommandAdapter.RemoteAdmin("bot_warmup standard"), "enable Standard warmup");
-            ThrottledCondition readyPopulation = new(IsExactSurfaceChaosPopulation);
+            ThrottledCondition readyPopulation = new(() =>
+                IsExactSurfaceChaosPopulation()
+                && HasNoSpawnProtection(WarmupBotWorld.Snapshot()));
             yield return ctx.WaitUntil(readyPopulation.Check, 12f,
                 "Surface acceptance population is entirely initialized as Chaos Rifleman");
 
@@ -65,7 +67,8 @@ public sealed class SurfaceManagedChaosSpawnScenario : Scenario
                 "kill one maintained CI bot through native RA damage");
             yield return ctx.WaitUntil(
                 () => observations.Any(entry => entry.PlayerId == selected.PlayerId)
-                      && IsAliveChaos(selected.PlayerId),
+                      && IsAliveChaos(selected.PlayerId)
+                      && IsSpawnProtectionCleared(selected.PlayerId),
                 12f,
                 "death repair emitted and completed a CI bot spawn transaction");
 
@@ -85,7 +88,8 @@ public sealed class SurfaceManagedChaosSpawnScenario : Scenario
             yield return ctx.WaitUntil(
                 () => freshPopulation.Check()
                       && observations.Select(entry => entry.PlayerId).Distinct().Count()
-                         == WarmupBotWorld.Snapshot().Length,
+                         == WarmupBotWorld.Snapshot().Length
+                      && HasNoSpawnProtection(WarmupBotWorld.Snapshot()),
                 12f,
                 "off/on creation captured a final spawning coordinate for every maintained CI bot");
 
@@ -147,6 +151,15 @@ public sealed class SurfaceManagedChaosSpawnScenario : Scenario
         Player? player = WarmupBotWorld.FindById(playerId);
         return player != null && !player.IsDestroyed && player.IsAlive && player.Role == ChaosRole;
     }
+
+    private static bool IsSpawnProtectionCleared(int playerId)
+    {
+        Player? player = WarmupBotWorld.FindById(playerId);
+        return player != null && player.GetEffect<SpawnProtected>()?.IsEnabled != true;
+    }
+
+    private static bool HasNoSpawnProtection(IEnumerable<Player> bots) =>
+        bots.All(bot => bot.GetEffect<SpawnProtected>()?.IsEnabled != true);
 
     private static void AssertCiPad(
         ScenarioContext ctx,

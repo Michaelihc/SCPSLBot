@@ -167,5 +167,6 @@ internal sealed class SafezoneVolumeService
         && !player.IsDestroyed
         && !player.IsHost
         && player.IsAlive
-        && player.ReferenceHub != null;
+        && player.ReferenceHub != null
+        && WarmupShared.WarmupParticipationPolicy.IsManagedRole(player.Role.ToString());
 }

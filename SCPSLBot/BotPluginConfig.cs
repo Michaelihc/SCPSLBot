@@ -1,4 +1,5 @@
 using PlayerRoles;
+using SCPSLBot.Navigation;
 using SCPSLBot.Presentation;
 using SCPSLBot.Warmup.Controls;
 using SCPSLBot.Warmup.Controls.Panel;
@@ -21,6 +22,9 @@ namespace SCPSLBot
 
         [Description("Personalized Server-Specific Settings presentation. / 个性化服务器专属设置界面。")]
         public WarmupPanelConfig Panel { get; set; } = WarmupPanelConfig.CreateDefault();
+
+        [Description("Bot navigation backend and runtime navmesh settings. / 机器人导航后端与运行时导航网格设置。")]
+        public NavigationConfig Navigation { get; set; } = new();
 
         [Description("Fallback used only when WarmupMode contains an invalid value; WarmupMode itself is persisted across reloads.")]
         public WarmupMode DefaultWarmupMode { get; set; } = WarmupMode.Standard;
@@ -47,6 +51,7 @@ namespace SCPSLBot
         [Description("Default physical arena for players who have not selected one. / 尚未选择竞技场的玩家默认区域。")]
         public WarmupArena DefaultWarmupArena { get; set; } = WarmupArena.SurfacePve;
 
+        [Description("Deprecated compatibility value. Use panel.arena_switch_cooldown_seconds. / 已弃用的兼容值，请使用 panel.arena_switch_cooldown_seconds。")]
         public float WarmupArenaSwitchCooldownSeconds { get; set; } = 5f;
 
         public float SurfacePveBotFactor { get; set; } = 1.2f;
@@ -87,6 +92,8 @@ namespace SCPSLBot
             HintDisplay ??= new HintDisplayConfig();
             Controls ??= WarmupControlsConfig.CreateDefault();
             Panel ??= WarmupPanelConfig.CreateDefault();
+            Navigation ??= new NavigationConfig();
+            Navigation.Normalize(changes);
             Controls.Language = Language ?? string.Empty;
             foreach (string restoredOption in Controls.RestoreClassicPlayerOptions())
             {
@@ -103,6 +110,43 @@ namespace SCPSLBot
                 250,
                 10000,
                 changes);
+            Panel.RoleChangeCooldownSeconds = NormalizeRange(
+                "Panel.RoleChangeCooldownSeconds",
+                Panel.RoleChangeCooldownSeconds,
+                0f,
+                300f,
+                changes);
+            Panel.ItemGrantCooldownSeconds = NormalizeRange(
+                "Panel.ItemGrantCooldownSeconds",
+                Panel.ItemGrantCooldownSeconds,
+                0f,
+                300f,
+                changes);
+            Panel.TeleportCooldownSeconds = NormalizeRange(
+                "Panel.TeleportCooldownSeconds",
+                Panel.TeleportCooldownSeconds,
+                0f,
+                300f,
+                changes);
+            Panel.ArenaSwitchCooldownSeconds = NormalizeRange(
+                "Panel.ArenaSwitchCooldownSeconds",
+                Panel.ArenaSwitchCooldownSeconds,
+                0f,
+                300f,
+                changes);
+            float legacyArenaCooldown = NormalizeRange(
+                nameof(WarmupArenaSwitchCooldownSeconds),
+                WarmupArenaSwitchCooldownSeconds,
+                0f,
+                300f,
+                changes);
+            if (Math.Abs(Panel.ArenaSwitchCooldownSeconds - 5f) < 0.0001f
+                && Math.Abs(legacyArenaCooldown - 5f) >= 0.0001f)
+            {
+                Panel.ArenaSwitchCooldownSeconds = legacyArenaCooldown;
+                changes.Add("migrated WarmupArenaSwitchCooldownSeconds to Panel.ArenaSwitchCooldownSeconds");
+            }
+            WarmupArenaSwitchCooldownSeconds = Panel.ArenaSwitchCooldownSeconds;
             HumanRespawnDelayMs = NormalizeRange(nameof(HumanRespawnDelayMs), HumanRespawnDelayMs, 50, 300000, changes);
             BotRespawnDelayMs = NormalizeRange(nameof(BotRespawnDelayMs), BotRespawnDelayMs, 50, 300000, changes);
             SpectatorRespawnDelayMs = NormalizeRange(nameof(SpectatorRespawnDelayMs), SpectatorRespawnDelayMs, 50, 300000, changes);
@@ -112,7 +156,6 @@ namespace SCPSLBot
             HeavyEntrancePvpveBotCount = NormalizeRange(nameof(HeavyEntrancePvpveBotCount), HeavyEntrancePvpveBotCount, 2, 5, changes);
             LightContainmentScpBotCount = NormalizeRange(nameof(LightContainmentScpBotCount), LightContainmentScpBotCount, 1, 1, changes);
             SurfacePveBotFactor = Math.Max(1f, Math.Min(2f, SurfacePveBotFactor));
-            WarmupArenaSwitchCooldownSeconds = Math.Max(0f, Math.Min(300f, WarmupArenaSwitchCooldownSeconds));
             return changes;
         }
 

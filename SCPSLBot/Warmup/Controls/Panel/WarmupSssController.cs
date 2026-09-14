@@ -18,7 +18,7 @@ namespace SCPSLBot.Warmup.Controls.Panel;
 
 /// <summary>
 /// Lifecycle owner for SCPSLBot's personalized warmup and Tools SSS blocks. Candidate builders are
-/// side-effect free. Role, item, and arena dropdowns only stage a choice; explicit native buttons
+/// side-effect free. Role, item, teleport, and arena dropdowns only stage a choice; explicit native buttons
 /// execute it, and every mutation revalidates its live player, full UserId, option, and permission.
 /// </summary>
 public sealed class WarmupSssController
@@ -32,6 +32,7 @@ public sealed class WarmupSssController
     private const int ArenaPresetLocalId = 5;
     private const int GrantItemLocalId = 6;
     private const int ApplyArenaLocalId = 7;
+    private const int ApplyTeleportLocalId = 8;
 
     private const int ForceRoleLocalId = 1;
     private const int BotDiagnosticsLocalId = 2;
@@ -43,6 +44,7 @@ public sealed class WarmupSssController
     private readonly LabApiItemGrantService? items;
     private readonly IWarmupPanelActions actions;
     private readonly PerUserActionRateLimiter actionRateLimiter;
+    private readonly PanelActionCooldowns actionCooldowns;
     private readonly PendingPanelSelectionStore pendingSelections = new();
     private readonly KeybindBlock warmupBlock;
     private readonly KeybindBlock toolsBlock;
@@ -63,6 +65,7 @@ public sealed class WarmupSssController
         this.items = items;
         this.actions = actions ?? throw new ArgumentNullException(nameof(actions));
         actionRateLimiter = new PerUserActionRateLimiter();
+        actionCooldowns = new PanelActionCooldowns();
 
         warmupBlock = KeybindRegistry
             .ClaimBlock(SssIdBlocks.ScpslBotWarmup, "SCPSLBot.Warmup")
@@ -81,7 +84,12 @@ public sealed class WarmupSssController
                 OnItemChanged,
                 onAcquired: OnItemChanged)
             .AddButtonForPlayer(GrantItemLocalId, BuildGrantItemModel, OnGrantItemPressed)
-            .AddDropdownForPlayer(TeleportToLocalId, BuildTeleportModel, OnTeleportChanged)
+            .AddDropdownForPlayer(
+                TeleportToLocalId,
+                BuildTeleportModel,
+                OnTeleportChanged,
+                onAcquired: OnTeleportChanged)
+            .AddButtonForPlayer(ApplyTeleportLocalId, BuildApplyTeleportModel, OnApplyTeleportPressed)
             .AddDropdownForPlayer(
                 ArenaPresetLocalId,
                 BuildArenaPresetModel,
@@ -142,6 +150,7 @@ public sealed class WarmupSssController
         Unsubscribe();
         CancelCooldownRefreshes();
         actionRateLimiter.Clear();
+        actionCooldowns.Clear();
         pendingSelections.ClearAll();
         realPlayers.Clear();
 
@@ -233,7 +242,7 @@ public sealed class WarmupSssController
 
     private void OnJoined(PlayerJoinedEventArgs ev)
     {
-        if (!enabled || !IsRealPlayer(ev.Player))
+        if (!enabled || !IsRealPlayer(ev.Player) || !WarmupParticipation.IsParticipant(ev.Player))
         {
             return;
         }
@@ -255,6 +264,7 @@ public sealed class WarmupSssController
         try
         {
             actionRateLimiter.Forget(ev.Player.UserId ?? string.Empty);
+            actionCooldowns.Forget(ev.Player.UserId ?? string.Empty);
         }
         catch
         {
@@ -280,6 +290,14 @@ public sealed class WarmupSssController
     {
         // Preserve visible staged choices across role-driven refreshes. Intrinsic role/item/zone
         // authority is rechecked at execution, so retaining intent does not bypass policy.
+        if (!WarmupParticipation.IsParticipant(ev.Player))
+        {
+            pendingSelections.ForgetPlayer(ev.Player.PlayerId);
+        }
+        if (realPlayers.ContainsKey(ev.Player.PlayerId) != WarmupParticipation.IsParticipant(ev.Player))
+        {
+            NotifyPopulationChanged("warmup-participation-changed");
+        }
         InvalidatePersonal(ev.Player, SssInterest.Role | SssInterest.Item | SssInterest.Zone, "role-changed");
     }
 
@@ -423,7 +441,30 @@ public sealed class WarmupSssController
 
         IReadOnlyList<WarmupPanelChoice> choices = SafeChoices(
             () => actions.GetAvailableTeleportDestinations(player, userId));
-        return BuildChoiceModel(player, choices, "Teleport to", "传送到", "Teleport to an available warmup destination.", "传送到当前可用的热身地点。");
+        return BuildChoiceModel(
+            player,
+            choices,
+            "Teleport room",
+            "传送房间",
+            "Select a room resolved by native RA doors, then press Apply.",
+            "选择由原生 RA 门解析的房间后点击应用。");
+    }
+
+    private ButtonModel BuildApplyTeleportModel(Player player)
+    {
+        if (!TryGetIdentity(player, out string userId)
+            || SafeChoices(() => actions.GetAvailableTeleportDestinations(player, userId)).Count == 0)
+        {
+            return ButtonModel.Hidden;
+        }
+
+        return new ButtonModel(
+            Text(player, "Teleport action", "传送操作"),
+            Text(player, "Apply", "应用"),
+            hint: Text(
+                player,
+                "Select a room above, then press Apply.",
+                "先在上方选择房间，再点击应用。"));
     }
 
     private DropdownModel BuildArenaPresetModel(Player player)
@@ -570,7 +611,7 @@ public sealed class WarmupSssController
             return;
         }
 
-        if (!TryAuthorizeCallback(player, NoPermission, out string userId))
+        if (!TryAuthorizeCallback(player, NoPermission, out string userId, PanelActionKind.Role))
         {
             return;
         }
@@ -607,7 +648,7 @@ public sealed class WarmupSssController
             return;
         }
 
-        if (!TryAuthorizeCallback(player, requiredPermission, out string userId))
+        if (!TryAuthorizeCallback(player, requiredPermission, out string userId, PanelActionKind.Role))
         {
             return;
         }
@@ -719,7 +760,7 @@ public sealed class WarmupSssController
             return;
         }
 
-        if (!TryAuthorizeCallback(player, NoPermission, out string userId))
+        if (!TryAuthorizeCallback(player, NoPermission, out string userId, PanelActionKind.Item))
         {
             return;
         }
@@ -745,13 +786,64 @@ public sealed class WarmupSssController
 
     private void OnTeleportChanged(Player player, DropdownSelection selection)
     {
-        if (!TryResolveChoice(
-                player,
+        if (!TryGetIdentity(player, out string userId))
+        {
+            return;
+        }
+
+        if (IsSelectValue(player, selection.Value))
+        {
+            pendingSelections.Clear(player.PlayerId, userId, PendingPanelAction.Teleport);
+            return;
+        }
+
+        WarmupPanelChoice[] matches = SafeChoices(
+                () => actions.GetAvailableTeleportDestinations(player, userId))
+            .Where(choice => string.Equals(
+                ChoiceDisplay(player, choice),
                 selection.Value,
-                userId => actions.GetAvailableTeleportDestinations(player, userId),
-                out string userId,
+                StringComparison.Ordinal))
+            .ToArray();
+        if (matches.Length != 1)
+        {
+            pendingSelections.Clear(player.PlayerId, userId, PendingPanelAction.Teleport);
+            RejectStale(player);
+            return;
+        }
+
+        pendingSelections.Stage(
+            player.PlayerId,
+            userId,
+            PendingPanelAction.Teleport,
+            matches[0].Id);
+    }
+
+    private void OnApplyTeleportPressed(Player player)
+    {
+        if (!TryGetIdentity(player, out string expectedUserId)
+            || !pendingSelections.TryGet(
+                player.PlayerId,
+                expectedUserId,
+                PendingPanelAction.Teleport,
                 out string choiceId))
         {
+            SendFeedback(player, Text(player, "Select a room first.", "请先选择房间。"));
+            return;
+        }
+
+        if (!TryAuthorizeCallback(player, NoPermission, out string userId, PanelActionKind.Teleport))
+        {
+            return;
+        }
+
+        WarmupPanelChoice[] current = SafeChoices(
+                () => actions.GetAvailableTeleportDestinations(player, userId))
+            .Where(choice => string.Equals(choice.Id, choiceId, StringComparison.Ordinal))
+            .ToArray();
+        if (current.Length != 1)
+        {
+            pendingSelections.Clear(player.PlayerId, userId, PendingPanelAction.Teleport);
+            RejectStale(player);
             return;
         }
 
@@ -814,7 +906,7 @@ public sealed class WarmupSssController
             presetId = actions.GetActiveArenaPresetId(player, expectedUserId) ?? string.Empty;
         }
 
-        if (!TryAuthorizeCallback(player, NoPermission, out string userId))
+        if (!TryAuthorizeCallback(player, NoPermission, out string userId, PanelActionKind.Arena))
         {
             return;
         }
@@ -907,39 +999,6 @@ public sealed class WarmupSssController
         }
     }
 
-    private bool TryResolveChoice(
-        Player player,
-        string selectedDisplay,
-        Func<string, IReadOnlyList<WarmupPanelChoice>> getCurrent,
-        out string userId,
-        out string choiceId)
-    {
-        choiceId = string.Empty;
-        if (IsSelectValue(player, selectedDisplay))
-        {
-            userId = string.Empty;
-            return false;
-        }
-
-        if (!TryAuthorizeCallback(player, NoPermission, out userId))
-        {
-            return false;
-        }
-
-        string currentUserId = userId;
-        IReadOnlyList<WarmupPanelChoice> choices = SafeChoices(() => getCurrent(currentUserId));
-        WarmupPanelChoice? selected = choices.SingleOrDefault(
-            choice => string.Equals(ChoiceDisplay(player, choice), selectedDisplay, StringComparison.Ordinal));
-        if (selected == null)
-        {
-            RejectStale(player);
-            return false;
-        }
-
-        choiceId = selected.Id;
-        return true;
-    }
-
     private bool TryResolveToggle(
         Player player,
         string value,
@@ -971,7 +1030,8 @@ public sealed class WarmupSssController
     private bool TryAuthorizeCallback(
         Player player,
         PlayerPermissions requiredPermission,
-        out string fullUserId)
+        out string fullUserId,
+        PanelActionKind? action = null)
     {
         if (!TryGetIdentity(player, out fullUserId))
         {
@@ -991,10 +1051,17 @@ public sealed class WarmupSssController
             return false;
         }
 
-        if (!actionRateLimiter.TryAcquire(
+        bool accepted = action.HasValue
+            ? actionCooldowns.TryAcquire(
+                fullUserId,
+                action.Value,
+                GetActionCooldownMilliseconds(action.Value),
+                out double remainingSeconds)
+            : actionRateLimiter.TryAcquire(
                 fullUserId,
                 Math.Max(250, panelConfig.MinimumActionIntervalMilliseconds),
-                out double remainingSeconds))
+                out remainingSeconds);
+        if (!accepted)
         {
             SendResult(
                 player,
@@ -1003,6 +1070,19 @@ public sealed class WarmupSssController
         }
 
         return true;
+    }
+
+    private int GetActionCooldownMilliseconds(PanelActionKind action)
+    {
+        float seconds = action switch
+        {
+            PanelActionKind.Role => panelConfig.RoleChangeCooldownSeconds,
+            PanelActionKind.Item => panelConfig.ItemGrantCooldownSeconds,
+            PanelActionKind.Teleport => panelConfig.TeleportCooldownSeconds,
+            PanelActionKind.Arena => panelConfig.ArenaSwitchCooldownSeconds,
+            _ => 0f,
+        };
+        return (int)Math.Ceiling(Math.Max(0f, Math.Min(300f, seconds)) * 1000d);
     }
 
     private static bool HasAnyToolPermission(Player player) =>
@@ -1026,7 +1106,7 @@ public sealed class WarmupSssController
     private static bool TryGetIdentity(Player player, out string fullUserId)
     {
         fullUserId = string.Empty;
-        if (!IsRealPlayer(player))
+        if (!IsRealPlayer(player) || !WarmupParticipation.IsParticipant(player))
         {
             return false;
         }
@@ -1066,7 +1146,7 @@ public sealed class WarmupSssController
         }
     }
 
-    private static Player[] CurrentRealPlayers() => Player.ReadyList.Where(IsRealPlayer).ToArray();
+    private static Player[] CurrentRealPlayers() => Player.ReadyList.Where(player => IsRealPlayer(player) && WarmupParticipation.IsParticipant(player)).ToArray();
 
     private IReadOnlyList<WarmupPanelChoice> SafeChoices(
         Func<IReadOnlyList<WarmupPanelChoice>> resolve)

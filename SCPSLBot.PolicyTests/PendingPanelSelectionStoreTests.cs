@@ -53,12 +53,15 @@ public sealed class PendingPanelSelectionStoreTests
         PendingPanelSelectionStore store = new();
         store.Stage(7, "user@steam", PendingPanelAction.Role, "ClassD");
         store.Stage(7, "user@steam", PendingPanelAction.Item, "native.medkit");
+        store.Stage(7, "user@steam", PendingPanelAction.Teleport, "HCZ_ARMORY");
         store.Clear(7, "user@steam", PendingPanelAction.Role);
 
         Assert.False(store.TryGet(7, "user@steam", PendingPanelAction.Role, out _));
         Assert.True(store.TryGet(7, "user@steam", PendingPanelAction.Item, out _));
+        Assert.True(store.TryGet(7, "user@steam", PendingPanelAction.Teleport, out _));
 
         store.ForgetPlayer(7);
         Assert.False(store.TryGet(7, "user@steam", PendingPanelAction.Item, out _));
+        Assert.False(store.TryGet(7, "user@steam", PendingPanelAction.Teleport, out _));
     }
 }

@@ -17,6 +17,7 @@ internal sealed class BotStatusSnapshot
         DesiredRole = GetRole("desired_role");
         Tracked = GetInt("tracked");
         Owned = GetInt("owned");
+        Independent = GetInt("independent");
         Live = GetInt("live");
         NetworkReady = GetBool("network_ready");
         NavReady = GetBool("nav_ready");
@@ -34,6 +35,7 @@ internal sealed class BotStatusSnapshot
     public RoleTypeId DesiredRole { get; }
     public int Tracked { get; }
     public int Owned { get; }
+    public int Independent { get; }
     public int Live { get; }
     public bool NetworkReady { get; }
     public bool NavReady { get; }
@@ -55,7 +57,7 @@ internal sealed class BotStatusSnapshot
         Dictionary<string, string> values = CommandFields.Parse(command.Response, ';');
         string[] required =
         {
-            "mode", "desired", "desired_role", "tracked", "owned", "live", "network_ready",
+            "mode", "desired", "desired_role", "tracked", "owned", "independent", "live", "network_ready",
             "nav_ready", "nav_generation", "nav_ready_generation", "last_reconcile",
             "last_spawn_error", "reconcile_fault", "ai_runner_running", "ai_heartbeat",
             "ai_last_fault", "ai_last_fault_time", "parked", "sight_senses",

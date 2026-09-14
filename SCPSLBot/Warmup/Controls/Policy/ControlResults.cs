@@ -43,6 +43,7 @@ public enum ControlResultCode
     ConcurrentRequest,
     ActionRateLimited,
     ItemGrantFailed,
+    RoomTeleportForbiddenToSurface,
 }
 
 /// <summary>
@@ -129,6 +130,7 @@ public static class ControlResultLocalizer
                 ControlResultCode.ConcurrentRequest => "已有一个请求正在处理，请勿重复操作。",
                 ControlResultCode.ActionRateLimited => $"操作过快，请等待 {seconds.ToString(CultureInfo.InvariantCulture)} 秒。",
                 ControlResultCode.ItemGrantFailed => "服务器未能添加该物品，未消耗冷却。",
+                ControlResultCode.RoomTeleportForbiddenToSurface => "房间传送不能以地表区域为目标。",
                 _ => "请求被服务器拒绝。",
             };
         }
@@ -167,6 +169,7 @@ public static class ControlResultLocalizer
             ControlResultCode.ConcurrentRequest => "Another request is already in progress.",
             ControlResultCode.ActionRateLimited => $"Actions are rate-limited; wait {seconds.ToString(CultureInfo.InvariantCulture)} more seconds.",
             ControlResultCode.ItemGrantFailed => "The server could not add the item; no cooldown was consumed.",
+            ControlResultCode.RoomTeleportForbiddenToSurface => "Room teleport cannot target Surface.",
             _ => "The server rejected the request.",
         };
     }

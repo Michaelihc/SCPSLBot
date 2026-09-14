@@ -25,10 +25,10 @@ namespace SCPSLBot.Warmup
     {
         private readonly Dictionary<int, WarmupArena> playerArenas = new();
         private readonly Dictionary<int, float> lastArenaSwitchTimes = new();
-        private readonly Dictionary<ReferenceHub, WarmupArena> botArenas = new();
-        private readonly Dictionary<ReferenceHub, BotPopulationSpec> botSpecs = new();
-        private readonly Dictionary<ReferenceHub, BotSpawnTransaction> pendingBotSpawns = new();
-        private readonly HashSet<ReferenceHub> botsNeedingAssignmentPlacement = new();
+        private readonly Dictionary<ReferenceHub, WarmupArena> botArenas = new(Infrastructure.ManagedReferenceComparer<ReferenceHub>.Instance);
+        private readonly Dictionary<ReferenceHub, BotPopulationSpec> botSpecs = new(Infrastructure.ManagedReferenceComparer<ReferenceHub>.Instance);
+        private readonly Dictionary<ReferenceHub, BotSpawnTransaction> pendingBotSpawns = new(Infrastructure.ManagedReferenceComparer<ReferenceHub>.Instance);
+        private readonly HashSet<ReferenceHub> botsNeedingAssignmentPlacement = new(Infrastructure.ManagedReferenceComparer<ReferenceHub>.Instance);
         private readonly Dictionary<int, PlayerRoleSpawnOrigin> pendingRoleOrigins = new();
         private readonly Dictionary<int, ArenaSwitchTransaction> pendingArenaSwitches = new();
         private readonly Dictionary<int, WarmupArena> pendingSurfaceEvacuations = new();
@@ -125,6 +125,17 @@ namespace SCPSLBot.Warmup
 
         public bool TrySetPlayerArena(int playerId, string arenaId, out string response)
         {
+            if (!LabPlayer.TryGet(playerId, out LabPlayer player))
+            {
+                response = "The player is no longer available.";
+                return false;
+            }
+
+            return TrySetPlayerArena(player, arenaId, out response);
+        }
+
+        public bool TrySetPlayerArena(LabPlayer player, string arenaId, out string response)
+        {
             if (!IsStandardWarmup() || !TryParse(arenaId, out WarmupArena arena))
             {
                 response = !IsStandardWarmup()
@@ -133,13 +144,13 @@ namespace SCPSLBot.Warmup
                 return false;
             }
 
-            if (!LabPlayer.TryGet(playerId, out LabPlayer player)
-                || !IsRealPlayer(player))
+            if (!WarmupParticipation.IsParticipant(player))
             {
                 response = "The player is no longer available.";
                 return false;
             }
 
+            int playerId = player.PlayerId;
             WarmupArena previous = GetPlayerArena(playerId);
             bool isAlreadyActive = previous == arena;
             bool isExactSpectator = player.Role == RoleTypeId.Spectator;
@@ -152,7 +163,7 @@ namespace SCPSLBot.Warmup
                 return true;
             }
 
-            float cooldown = Mathf.Max(0f, config.WarmupArenaSwitchCooldownSeconds);
+            float cooldown = Mathf.Max(0f, config.Panel.ArenaSwitchCooldownSeconds);
             if (WarmupArenaSelectionPolicy.IsSwitchCooldownApplicable(isAlreadyActive)
                 && lastArenaSwitchTimes.TryGetValue(playerId, out float last)
                 && Time.realtimeSinceStartup - last < cooldown)
@@ -188,7 +199,7 @@ namespace SCPSLBot.Warmup
                 pendingRoleOrigins.Remove(playerId);
             }
 
-            if (!IsRealPlayer(player)
+            if (!WarmupParticipation.IsParticipant(player)
                 || player.Role != defaultRole
                 || !IsPositionInArena(player.Position, arena))
             {
@@ -218,7 +229,7 @@ namespace SCPSLBot.Warmup
             out PlayerRoleArenaTransition transition)
         {
             transition = default;
-            if (!IsStandardWarmup() || !IsRealPlayer(player))
+            if (!IsStandardWarmup() || !WarmupParticipation.IsParticipant(player))
             {
                 return false;
             }
@@ -274,7 +285,7 @@ namespace SCPSLBot.Warmup
             RoleTypeId exactRole,
             PlayerRoleArenaTransition transition)
         {
-            if (!IsStandardWarmup() || !IsRealPlayer(player) || transition.PlayerId != player.PlayerId)
+            if (!IsStandardWarmup() || !WarmupParticipation.IsParticipant(player) || transition.PlayerId != player.PlayerId)
             {
                 return;
             }
@@ -321,7 +332,7 @@ namespace SCPSLBot.Warmup
 
             if (transition.PreviousArena == WarmupArena.SurfacePve
                 && LabPlayer.TryGet(transition.PlayerId, out LabPlayer player)
-                && IsRealPlayer(player)
+                && WarmupParticipation.IsParticipant(player)
                 && !IsSurfaceAllowedRole(player.Role))
             {
                 // If an exact-role rollback itself was substituted, never leave an arbitrary role
@@ -360,7 +371,7 @@ namespace SCPSLBot.Warmup
             int lczPlayers = 0;
             foreach (LabPlayer player in LabPlayer.ReadyList)
             {
-                if (!IsRealPlayer(player))
+                if (!WarmupParticipation.IsParticipant(player))
                 {
                     continue;
                 }
@@ -440,11 +451,30 @@ namespace SCPSLBot.Warmup
             }
         }
 
+        public void OnBotReleased(ReferenceHub hub)
+        {
+            if (ReferenceEquals(hub, null))
+            {
+                return;
+            }
+
+            botArenas.Remove(hub);
+            botSpecs.Remove(hub);
+            pendingBotSpawns.Remove(hub);
+            botsNeedingAssignmentPlacement.Remove(hub);
+        }
+
         public bool CanHubsFight(ReferenceHub left, ReferenceHub right)
         {
             if (!IsStandardWarmup() || left == null || right == null)
             {
                 return true;
+            }
+
+            if (!WarmupParticipation.IsManagedRole(left.GetRoleId())
+                || !WarmupParticipation.IsManagedRole(right.GetRoleId()))
+            {
+                return false;
             }
 
             if (TryGetPhysicalArena(left.transform.position, out WarmupArena leftPhysical)
@@ -458,7 +488,7 @@ namespace SCPSLBot.Warmup
 
         public bool CanPlayersTeleportWithinArena(LabPlayer requester, LabPlayer target)
         {
-            if (!IsStandardWarmup() || !IsRealPlayer(requester) || !IsRealPlayer(target))
+            if (!IsStandardWarmup() || !WarmupParticipation.IsParticipant(requester) || !WarmupParticipation.IsParticipant(target))
             {
                 return false;
             }
@@ -468,38 +498,53 @@ namespace SCPSLBot.Warmup
                 && requesterArena == targetArena;
         }
 
+        public void SynchronizePlayerArena(LabPlayer player)
+        {
+            if (!IsStandardWarmup()
+                || !WarmupParticipation.IsParticipant(player)
+                || !TryGetPhysicalArena(player.Position, out WarmupArena physicalArena))
+            {
+                return;
+            }
+
+            playerArenas[player.PlayerId] = physicalArena;
+            wakePopulation();
+        }
+
         private void OnPlayerJoined(PlayerJoinedEventArgs ev)
         {
-            if (IsRealPlayer(ev.Player))
+            if (WarmupParticipation.IsParticipant(ev.Player))
             {
                 playerArenas[ev.Player.PlayerId] = config.DefaultWarmupArena;
                 wakePopulation();
             }
         }
 
-        private void OnPlayerLeft(PlayerLeftEventArgs ev)
+        private void OnPlayerLeft(PlayerLeftEventArgs ev) => ForgetPlayer(ev.Player);
+
+        internal void ForgetPlayer(LabPlayer player)
         {
-            if (ev.Player == null)
+            if (player == null)
             {
                 return;
             }
 
-            playerArenas.Remove(ev.Player.PlayerId);
-            lastArenaSwitchTimes.Remove(ev.Player.PlayerId);
-            botArenas.Remove(ev.Player.ReferenceHub);
-            botSpecs.Remove(ev.Player.ReferenceHub);
-            pendingBotSpawns.Remove(ev.Player.ReferenceHub);
-            botsNeedingAssignmentPlacement.Remove(ev.Player.ReferenceHub);
-            pendingRoleOrigins.Remove(ev.Player.PlayerId);
-            pendingArenaSwitches.Remove(ev.Player.PlayerId);
-            pendingSurfaceEvacuations.Remove(ev.Player.PlayerId);
-            pendingExplicitEvacuationTargets.Remove(ev.Player.PlayerId);
+            playerArenas.Remove(player.PlayerId);
+            lastArenaSwitchTimes.Remove(player.PlayerId);
+            botArenas.Remove(player.ReferenceHub);
+            botSpecs.Remove(player.ReferenceHub);
+            pendingBotSpawns.Remove(player.ReferenceHub);
+            botsNeedingAssignmentPlacement.Remove(player.ReferenceHub);
+            pendingRoleOrigins.Remove(player.PlayerId);
+            pendingArenaSwitches.Remove(player.PlayerId);
+            pendingSurfaceEvacuations.Remove(player.PlayerId);
+            pendingExplicitEvacuationTargets.Remove(player.PlayerId);
             wakePopulation();
         }
 
         private void OnPlayerChangingRole(PlayerChangingRoleEventArgs ev)
         {
-            if (!IsStandardWarmup() || !IsRealPlayer(ev.Player))
+            if (!IsStandardWarmup() || !WarmupParticipation.IsParticipant(ev.Player, ev.NewRole))
             {
                 return;
             }
@@ -570,7 +615,7 @@ namespace SCPSLBot.Warmup
 
                 return;
             }
-            else if (IsRealPlayer(ev.Player))
+            else if (WarmupParticipation.IsParticipant(ev.Player, ev.Role.RoleTypeId))
             {
                 int playerId = ev.Player.PlayerId;
                 bool hasOrigin = pendingRoleOrigins.TryGetValue(playerId, out PlayerRoleSpawnOrigin origin);
@@ -594,7 +639,7 @@ namespace SCPSLBot.Warmup
                     && origin.OriginArena == WarmupArena.SurfacePve
                     && !IsSurfaceAllowedRole(ev.Role.RoleTypeId))
                 {
-                    // Surface permits Foundation human roles. This covers native item
+                    // Participating Surface players must use Foundation human roles. This covers native item
                     // transformations such as SCP-1507 tape as well as direct role requests.
                     arena = Parse(WarmupRoleArenaRouting.ResolveSurfaceOriginArenaId(
                         isSurfaceAllowedRole: false,
@@ -660,7 +705,7 @@ namespace SCPSLBot.Warmup
                 return;
             }
 
-            if (IsRealPlayer(ev.Player))
+            if (WarmupParticipation.IsParticipant(ev.Player))
             {
                 WarmupArena arena = GetPlayerArena(ev.Player.PlayerId);
                 bool finishedOnSurface = (TryGetPhysicalArena(ev.Player.Position, out WarmupArena physicalArena)
@@ -705,7 +750,8 @@ namespace SCPSLBot.Warmup
             {
                 if (!initialized || generation != currentGeneration() || !IsStandardWarmup()
                     || !LabPlayer.TryGet(playerId, out LabPlayer player)
-                    || !IsRealPlayer(player) || player.Role != role || GetPlayerArena(playerId) != arena)
+                    || !WarmupParticipation.IsParticipant(player)
+                    || player.Role != role || GetPlayerArena(playerId) != arena)
                 {
                     return;
                 }
@@ -724,7 +770,7 @@ namespace SCPSLBot.Warmup
             {
                 if (!initialized || generation != currentGeneration() || !IsStandardWarmup()
                     || !LabPlayer.TryGet(transition.PlayerId, out LabPlayer player)
-                    || !IsRealPlayer(player) || player.Role != role
+                    || !WarmupParticipation.IsParticipant(player) || player.Role != role
                     || GetPlayerArena(transition.PlayerId) != transition.TargetArena)
                 {
                     return;
@@ -814,7 +860,7 @@ namespace SCPSLBot.Warmup
                     || !IsStandardWarmup()
                     || !LabPlayer.TryGet(playerId, out LabPlayer current)
                     || !ReferenceEquals(current.ReferenceHub, expectedHub)
-                    || !IsRealPlayer(current)
+                    || !WarmupParticipation.IsParticipant(current)
                     || GetPlayerArena(playerId) != arena)
                 {
                     return;
@@ -885,10 +931,6 @@ namespace SCPSLBot.Warmup
 
         private bool IsStandardWarmup() => initialized && isStandardWarmup != null && isStandardWarmup();
 
-        private static bool IsRealPlayer(LabPlayer player) =>
-            player != null && !player.IsDestroyed && player.IsReady && player.IsPlayer
-            && !player.IsDummy && !player.IsHost && !string.IsNullOrWhiteSpace(player.UserId);
-
         private static RoleTypeId DefaultPlayerRole(WarmupArena arena) =>
             arena == WarmupArena.LightContainmentScp ? RoleTypeId.ClassD : RoleTypeId.NtfPrivate;
 
@@ -920,7 +962,7 @@ namespace SCPSLBot.Warmup
             Vector2 originalLookRotation,
             WarmupArena previousArena)
         {
-            if (!IsRealPlayer(player))
+            if (!WarmupParticipation.IsParticipant(player))
             {
                 return false;
             }
@@ -948,7 +990,7 @@ namespace SCPSLBot.Warmup
             }
 
             pendingRoleOrigins.Remove(player.PlayerId);
-            if (IsRealPlayer(player)
+            if (WarmupParticipation.IsParticipant(player)
                 && !IsSurfaceAllowedRole(player.Role)
                 && ((TryGetPhysicalArena(player.Position, out WarmupArena physical)
                         && physical == WarmupArena.SurfacePve)

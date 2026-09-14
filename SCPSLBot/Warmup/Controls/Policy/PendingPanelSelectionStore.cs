@@ -9,6 +9,7 @@ public enum PendingPanelAction
 {
     Role,
     Item,
+    Teleport,
     Arena,
 }
 

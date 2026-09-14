@@ -30,7 +30,7 @@ namespace SCPSLBot.Presentation
 
         public void ShowSurfaceEvacuation(Player player, bool toLightContainment)
         {
-            if (player == null)
+            if (!Warmup.WarmupParticipation.IsParticipant(player))
             {
                 return;
             }
@@ -144,11 +144,11 @@ namespace SCPSLBot.Presentation
                 return;
             }
 
-            Player player = Player.Get(hub);
-            if (player != null)
-            {
-                RemoveBotDiagnostics(player);
-            }
+            // ReferenceHub.OnPlayerRemoved runs after LabAPI has removed its Player wrapper.
+            // Calling Player.Get(hub) here would recreate and cache a wrapper for the hub that is
+            // currently being destroyed, eventually colliding with a recycled numeric player ID.
+            // The client is leaving, so only forget our local presentation bookkeeping.
+            sentText.Remove((hub, "admin.bot_diagnostics"));
         }
 
         public void ResetSpectators()
@@ -169,7 +169,7 @@ namespace SCPSLBot.Presentation
 
         private void ShowNotice(Player player, string tag, BotMessage message)
         {
-            if (player == null)
+            if (!Warmup.WarmupParticipation.IsParticipant(player))
             {
                 return;
             }

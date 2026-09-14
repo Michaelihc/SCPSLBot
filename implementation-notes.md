@@ -1,5 +1,25 @@
 # Implementation Notes
 
+## Destroyed bot population recovery (2026-09-08)
+
+Native `dummies destroy` reproduced the production stall using the exact deployed DLL on isolated
+port 8891. `ReferenceHub.GetHashCode()` dereferences its native GameObject (decompiled evidence:
+`../.references/Decompiled/DedicatedServer/Assembly-CSharp/ReferenceHub.cs:412`), so removing a
+destroyed dictionary key threw before each population reconciliation could reach spawning.
+
+Population, AI ownership/orders, and arena lifetime collections now use a plugin-local
+`ManagedReferenceComparer<T>` backed by `ReferenceEquals` and `RuntimeHelpers.GetHashCode`.
+No numeric player ID is used as a replacement identity. Native Unity-null checks remain the
+validity guard for gameplay access; arena release accepts destroyed managed references and only
+removes local collection entries. No wrapper is recreated. The existing 0.25-second retry loop
+remains, with continuous-failure logs throttled to 15 seconds through LabAPI and a recovery marker.
+
+The new external scenario destroys individual and whole populations through real RA dispatch,
+waits for world replacement without querying diagnostics, then checks diagnostics, network
+identity, desired count, same map generation, grounding and settling. It fails on the deployed
+baseline with the production stack. Evidence and final regression results are in
+`tests/playtest/transcripts/20260908-destroyed-bot-recovery.md`. No production activation is included.
+
 ## 2026-08-30 audit rework
 
 This implementation follows `SCPSLBot-Audit-2026-08-30.html`. The lifecycle changes selectively
@@ -46,6 +66,16 @@ idempotent through BotHub, FPC player, mind, beliefs, perception, jobs, pinned h
 global subscriptions, and collision-layer restoration.
 
 ## Navigation persistence and pathing
+
+Navigation load recovery (2026-09-06): a single map-owned coroutine retries failed installation,
+parsing, publication or linking at 1/2/4/8 seconds, then every 15 seconds without an attempt limit.
+Cold map events and mid-round initialization use the same worker. Every wait rechecks generation,
+initialization and native map readiness; restart/disable cancel the worker. Failed attempts clear
+partial mesh topology and keep readiness false. Success clears `nav_error`, publishes the current
+ready generation and lets the existing 250 ms population reconciler resume. No network readiness
+gate is bypassed. Logs retain the first exception stack plus one `NAV_LOAD_RETRY` line per failed
+attempt and one `NAV_LOAD_RECOVERED` on success. Persistent invalid data or inaccessible storage
+still needs operator repair, but fixing it no longer requires a restart to trigger another load.
 
 Navigation load work is generation-owned and canceled on lifecycle changes. A document is fully
 read/validated before publication. Invalid live files are quarantined, backup recovery is attempted,
@@ -134,16 +164,22 @@ a substitution is rolled back instead of accepted as a fallback. Admin Force ret
 boundary but uses the same intrinsic role exclusions.
 
 Item catalog/cooldown identity uses the full authenticated UserId and stable catalog IDs. A shared
-per-user in-flight guard plus a monotonic minimum action interval protects every mutation callback. Item and group cooldowns, per-life limits,
+per-user in-flight guard plus independent role/item/teleport/arena monotonic cooldowns protects every
+gameplay mutation callback. Item and group cooldowns, per-life limits,
 and per-round limits are checked with a monotonic clock. One exact native `AddItem` call is made and
 ledger state commits only after the returned item matches. Death, Spectator, role changes, SSS refresh,
 and reconnect do not reset round state.
 
-Role, item, and arena dropdown callbacks are presentation-only staging operations. Pending choices are
+Default high-impact entries (`GrenadeHE`, `GrenadeFlash`, `MicroHID`, `ParticleDisruptor`, and
+`Jailbird`) retain a one-per-life limit and their shared 60-second cooldown. Their per-round limit is
+999 because Standard warmup rounds are intentionally long-lived. Normalization enforces that ceiling
+for every default high-impact entry while retaining each entry's configured cooldown and life limit.
+
+Role, item, room-teleport, and arena dropdown callbacks are presentation-only staging operations. Pending choices are
 keyed by numeric PlayerId, full UserId, action type, and stable value. Disconnect, a visible placeholder,
 or a value that fails current catalog/authority validation clears them; successful execution, death, and
 role refresh do not silently consume a choice the client still visibly displays. `Apply`/`Grant` consumes
-the mutation rate limit only when pressed and revalidates current authority before executing. Successful
+only its action type's cooldown when pressed and revalidates current authority before executing. Successful
 arena Apply invalidates only that player's role/item/zone view so the menu refreshes without global fanout.
 All deliberate SSS feedback uses a per-player native broadcast with `shouldClearPrevious: true`; evacuation
 is scheduled one tick after a role result so it remains the final visible notice. Legacy loadout config
@@ -178,6 +214,21 @@ native default-role transition for an exact Spectator. Arena-switch cooldown doe
 recovery. SSS action rejections now log the stable result code and detail.
 
 ## Surface bot spawn and sustained ammunition
+
+`ReferenceHub.OnPlayerRemoved` handlers must never call `Player.Get(hub)`. LabAPI initializes its
+wrapper-removal subscriber before enabling plugins, so a later plugin callback would recreate and cache
+the just-removed wrapper. `BotPresentationService.ForgetSpectator` therefore drops only its hub-keyed
+bookkeeping during teardown. The SSS arena action also retains its already-authenticated callback
+`Player` rather than re-resolving the recyclable numeric player ID.
+
+`BotManager` owns the AI/native graph for every SCPSLBot dummy, while `BotPopulationController`
+owns only the maintained warmup subset. `bot_add` creates an unassigned AI bot and performs one initial
+native Chaos Rifleman assignment; it never adds that hub to the population entries, so later RA role
+changes are not reconciled. `bot_manage <playerId>` adopts an independent bot into a desired population
+slot. If every slot is occupied, the adopted bot replaces one existing population-owned bot to keep the
+maintained count bounded. `bot_unmanage <playerId>` releases the hub without despawning it and clears its
+arena/spec transaction state; normal reconciliation then creates a replacement for the vacant slot.
+Independent ownership is process-local and does not alter the persisted configured population count.
 
 Arena membership and spawn faction are separate contracts. A managed CI bot assigned to `surface`
 uses the exact CI role's native reinforcement spawnpoint; it must not inherit the NTF Private anchor
@@ -281,7 +332,7 @@ The player SSS surface now contains no debug/diagnostic/nav-authoring controls. 
 enumerates all currently registered native gameplay roles, and its item catalog restores all 69 safe native items while filtering
 `None` and `DebugRagdollMover`. Exact server-side revalidation, identity checks, cooldowns, and acquisition
 suppression remain in place. The three classic physical arenas are `surface`, `pvpve`, and `lcz`; arena
-selection is per player. Facility Guard and all four NTF ranks may remain on Surface. An exact role change
+selection is per player. Facility Guard and all four NTF ranks may remain on Surface; admin-assigned Tutorial is outside warmup participation. An exact role change
 relocates any other player who is physically there: humans route to HCZ/EZ and SCPs to LCZ. Role changes inside the facility restore
 the exact pre-change position after native assignment. Failed assignments restore the prior arena state.
 
@@ -311,16 +362,21 @@ explicit assumption that old SSS buttons and dropdown indices remain callable. C
 fixed; speculative findings that require a trusted administrator or another plugin to mutate world state
 remain documented below rather than being disguised as player exploits.
 
-Panel mutations now share a full-UserId monotonic rate limiter in addition to the synchronous in-flight
-guard. Role, item, and arena dropdowns stage stable server-owned selections for explicit Apply/Grant
-buttons, while per-requester teleport lists retain unavailable tombstones for departed or cross-arena targets. Execution revalidates the live wrapper, identity, physical
-arena, native role/item authority, limits, and cooldown after resolving the stable slot. Teleport is
-same-physical-arena only. Re-selecting the current arena is a no-op, so alternating stale indices cannot
+Panel mutations use independent full-UserId monotonic cooldowns for role, item, teleport, and arena
+actions in addition to the synchronous in-flight guard. All four dropdowns stage stable server-owned
+selections for explicit Apply/Grant buttons. Room teleport choices snapshot every valid entry in the
+native `DoorNametagExtension.NamedDoors` registry, label the containing room plus exact door tag, and
+re-resolve the tag and `DoorTPCommand.EnsurePositionSafety` destination at Apply time. Execution
+revalidates the live wrapper, identity, native role/item authority, limits, and cooldown after resolving
+the stable slot. Room targets are filtered through `WarmupRoleArenaRouting.CanRoomTeleportEnterZone`;
+Surface doors are absent for every role, and execution repeats that zone-only policy check against
+the re-resolved door to close refresh timing, stale-index, and forged-ID bypasses. Deliberate Surface
+entry remains owned by the arena control. Re-selecting the current arena is a no-op, so alternating stale indices cannot
 reset health/inventory. Arena switches are transactions: logical membership commits
 only after exact-role and native-destination verification, with rollback on cancellation or substitution.
 
 `WarmupArenaService` captures every real player's physical origin for native role changes, not only SSS
-role requests. Facility Guard and the four NTF ranks are valid on Surface. Every other role originating
+role requests. Facility Guard and the four NTF ranks are valid on Surface, and admin-assigned Tutorial is outside warmup participation. Every other role originating
 there is evacuated through a native facility target (SCP to LCZ, other roles to HCZ/EZ) and receives a
 localized per-player native broadcast that flushes that player's stale broadcast queue before display;
 native item/revive/resurrection changes originating inside LCZ/HCZ/EZ retain
@@ -351,3 +407,28 @@ trusted plugin or administrator that later clears/replaces the same native lock 
 recovery loop does not overwrite properties of a still-existing panel toy mutated by another trusted
 admin-toy plugin. Neither path is reachable through ordinary player SSS or safezone actions on the current
 8888 stack.
+
+
+## Tutorial participation boundary
+
+`Shared/WarmupParticipationPolicy.cs` is compiled into SCPSLBot and WarmupSafezone, with no new
+runtime dependency. Tutorial is excluded by one role decision. Native RA permissions and world-wide
+round/hazard/geometry settings are separate from this per-player policy.
+
+`WarmupParticipation` adapts the rule to authenticated real players. Role-event handlers use the
+incoming role; actions, population scans and delayed callbacks use current participation. The manager
+forgets arena/respawn/death state when a completed role change exits participation. SSS hides gameplay
+controls, discards pending selections and rejects stale callbacks. Admin diagnostic tools remain
+independent. Bot targeting excludes nonparticipating roles during warmup. Safezone eligibility consumes
+the same shared source rule and clears private leases on completed exits.
+
+The earlier Surface-only allowance was incomplete: `WarmupArenaService.OnPlayerSpawning` still replaced
+the Tutorial spawn with the arena anchor and `OnPlayerSpawned` still scheduled placement correction.
+Those paths now stop at the participation boundary instead of adding role-specific placement branches.
+Native `PlayerSpawningEventArgs` position, rotation and flags are left intact for Tutorial.
+
+Native protection is neither invented nor removed for Tutorial. The live `spawn_protect_team: [1, 2]`
+configuration remains unchanged at the user's request. The base game's decision is in
+`..\.references\Decompiled\DedicatedServer\Assembly-CSharp\CustomPlayerEffects\SpawnProtected.cs`
+(`TryGiveProtection`); the spawn event contract is in
+`..\.references\LabAPI\LabApi\Events\Arguments\PlayerEvents\PlayerSpawningEventArgs.cs`.

@@ -125,7 +125,9 @@ namespace SCPSLBot.Warmup
 
         private void OnPlayerCuffing(PlayerCuffingEventArgs ev)
         {
-            if (!ShouldBlockDisarming())
+            if (!ShouldBlockDisarming()
+                || !WarmupParticipation.IsManagedRole(ev.Player.Role)
+                || !WarmupParticipation.IsManagedRole(ev.Target.Role))
             {
                 return;
             }
@@ -136,7 +138,7 @@ namespace SCPSLBot.Warmup
 
         private void OnPlayerUnlockingWarheadButton(PlayerUnlockingWarheadButtonEventArgs ev)
         {
-            if (!ShouldBlockWarhead())
+            if (!ShouldBlockWarhead() || !WarmupParticipation.IsManagedRole(ev.Player.Role))
             {
                 return;
             }
@@ -148,7 +150,7 @@ namespace SCPSLBot.Warmup
 
         private void OnPlayerInteractingWarheadLever(PlayerInteractingWarheadLeverEventArgs ev)
         {
-            if (!ShouldBlockWarhead())
+            if (!ShouldBlockWarhead() || !WarmupParticipation.IsManagedRole(ev.Player.Role))
             {
                 return;
             }

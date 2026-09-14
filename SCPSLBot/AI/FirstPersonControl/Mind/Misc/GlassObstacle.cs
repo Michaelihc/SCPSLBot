@@ -5,13 +5,15 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+using SCPSLBot.Navigation;
+
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Misc
 {
     internal class GlassObstacle : Belief<bool>
     {
-        private readonly FpcBotNavigator navigator;
+        private readonly IBotNavigator navigator;
 
-        public GlassObstacle(GlassSightSense glassSight, FpcBotNavigator navigator)
+        public GlassObstacle(GlassSightSense glassSight, IBotNavigator navigator)
         {
             this.navigator = navigator;
             glassSight.OnSensedWindowsWithinSight += OnSensedWindowsWithinSight;

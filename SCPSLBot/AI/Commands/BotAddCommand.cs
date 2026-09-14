@@ -11,7 +11,7 @@ namespace SCPSLBot.AI.Commands
 
         public string[] Aliases => new string[] { };
 
-        public string Description => "Bot add";
+        public string Description => "Spawn an independent SCPSLBot dummy whose RA role is not reconciled.";
 
         public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
         {
@@ -20,7 +20,7 @@ namespace SCPSLBot.AI.Commands
                 return false;
             }
 
-            return WarmupManager.Instance.TryAddMaintainedBot(out response);
+            return WarmupManager.Instance.TryAddIndependentBot(out response);
         }
     }
 }

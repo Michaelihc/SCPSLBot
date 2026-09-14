@@ -14,6 +14,7 @@ using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
 using SCPSLBot.AI.FirstPersonControl.Roaming;
 using SCPSLBot.Components;
+using SCPSLBot.Navigation;
 using SCPSLBot.Presentation;
 using System;
 using System.Collections.Generic;
@@ -39,7 +40,7 @@ namespace SCPSLBot.AI.FirstPersonControl
 
         public FpcBotCombat Combat { get; }
         public FpcZoneRoam ZoneRoam { get; }
-        public FpcBotNavigator Navigator { get; }
+        public IBotNavigator Navigator { get; }
 
         public FpcLook Look { get; }
         public FpcMove Move { get; }
@@ -50,13 +51,9 @@ namespace SCPSLBot.AI.FirstPersonControl
         public Vector3 CameraPosition { get; private set; }
         public Vector3 CameraForward { get; private set; }
 
-        private Vector3 stuckAnchorPosition;
-        private float stuckAnchorTime;
-        private float nextStuckJumpTime;
-        private int stuckNudgeDirection = 1;
-        private float nextStuckNudgeFlipTime;
-        private float nextStuckDoorTime;
-        private float nextStuckReplanTime;
+        public FpcStuckRecovery StuckRecovery { get; }
+        public FpcObstacleAvoidance ObstacleAvoidance { get; }
+
         private float nextPerceptionUpdateTime;
 
         public FpcBotPlayer(BotHub botHub)
@@ -69,9 +66,11 @@ namespace SCPSLBot.AI.FirstPersonControl
 
                 Combat = new(this);
                 ZoneRoam = new(this);
-                Navigator = new(this);
+                Navigator = NavigationSystem.Instance.CreateNavigator(this);
                 Look = new(this);
                 Move = new(this);
+                StuckRecovery = new(this);
+                ObstacleAvoidance = new(this);
 
                 FpcMindFactory.BuildMind(MindRunner, this, Perception);
 
@@ -124,14 +123,16 @@ namespace SCPSLBot.AI.FirstPersonControl
                 MoveToPosition(orderedTargetPosition, out var waypoint);
                 BotManager.Instance.ObserveOrderTick(this, waypoint);
                 DisplaySpectatorDiagnostics("ordered", "order target");
-                JumpIfForwardMovementBlocked();
+                StuckRecovery.Tick(waypoint);
+                // Orders own their own failure semantics (stall telemetry / timeouts).
+                StuckRecovery.ConsumeAbandonRequest();
                 yield break;
             }
 
             if (BotManager.Instance.ShouldHoldPosition(BotHub.PlayerHub))
             {
                 Move.DesiredLocalDirection = Vector3.zero;
-                ResetStuckJumpTracking();
+                StuckRecovery.Reset();
                 DisplaySpectatorDiagnostics("held", "none");
                 yield break;
             }
@@ -139,14 +140,16 @@ namespace SCPSLBot.AI.FirstPersonControl
             if (Combat.Tick())
             {
                 DisplaySpectatorDiagnostics();
-                JumpIfForwardMovementBlocked();
+                StuckRecovery.Tick(Navigator.CurrentWaypoint);
+                StuckRecovery.ConsumeAbandonRequest();
                 yield break;
             }
 
             if (BotManager.Instance.TryGetPathTargetPosition(out var pathTargetPosition))
             {
                 MoveToPosition(pathTargetPosition);
-                JumpIfForwardMovementBlocked();
+                StuckRecovery.Tick(Navigator.CurrentWaypoint);
+                StuckRecovery.ConsumeAbandonRequest();
                 yield break;
             }
 
@@ -165,7 +168,7 @@ namespace SCPSLBot.AI.FirstPersonControl
             if (ShouldIdleOnSurfaceWithoutTarget())
             {
                 Move.DesiredLocalDirection = Vector3.zero;
-                ResetStuckJumpTracking();
+                StuckRecovery.Reset();
                 DisplaySpectatorDiagnostics("surface idle", "none");
                 yield break;
             }
@@ -178,7 +181,7 @@ namespace SCPSLBot.AI.FirstPersonControl
                     DisplaySpectatorDiagnostics();
                 }
 
-                JumpIfForwardMovementBlocked();
+                StuckRecovery.Tick(Navigator.CurrentWaypoint);
                 yield break;
             }
 
@@ -190,9 +193,15 @@ namespace SCPSLBot.AI.FirstPersonControl
             {
                 ZoneRoam.Tick();
             }
+            else
+            {
+                // Goal-driven actions re-plan through beliefs; a stuck ladder abandon only matters
+                // to the roam fallback, so keep the flag from lingering into a later roam tick.
+                StuckRecovery.ConsumeAbandonRequest();
+            }
 
             DisplaySpectatorDiagnostics();
-            JumpIfForwardMovementBlocked();
+            StuckRecovery.Tick(Navigator.CurrentWaypoint);
 
             yield break;
         }
@@ -222,7 +231,7 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             nextPerceptionUpdateTime = Time.time;
             MindRunner.EvaluateGoalsToActions();
-            ResetStuckJumpTracking();
+            StuckRecovery.Reset();
         }
 
         #region Moving
@@ -233,6 +242,27 @@ namespace SCPSLBot.AI.FirstPersonControl
             positionTowardsGoal = Navigator.GetPositionTowards(goalPosition);
             SteerToPosition(positionTowardsGoal);
             SteerAwayFromObstacles();
+            SteerAroundAhead(positionTowardsGoal);
+        }
+
+        // Generic local avoidance for whatever collider is directly ahead (spawned clutter, props,
+        // other players). Runs after the structure-specific steering so its result is included.
+        private void SteerAroundAhead(Vector3 positionTowardsGoal)
+        {
+            var desired = Move.DesiredLocalDirection;
+            if (desired.sqrMagnitude < 1e-4f)
+            {
+                return;
+            }
+
+            var moveDirection = Vector3.ProjectOnPlane(FpcRole.FpcModule.transform.TransformDirection(desired), Vector3.up);
+            if (moveDirection.sqrMagnitude < 1e-4f)
+            {
+                return;
+            }
+
+            var adjusted = ObstacleAvoidance.Adjust(moveDirection.normalized, positionTowardsGoal);
+            Move.DesiredLocalDirection = FpcRole.FpcModule.transform.InverseTransformDirection(adjusted);
         }
 
         private void SteerToPosition(Vector3 positionTowardsGoal)
@@ -342,80 +372,6 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             moveDirection = Vector3.Normalize(moveDirection + obstructingForward * obstructingDepth);
             this.Move.DesiredLocalDirection = FpcRole.FpcModule.transform.InverseTransformDirection(moveDirection);
-        }
-
-        private void JumpIfForwardMovementBlocked()
-        {
-            var desired = Move.DesiredLocalDirection;
-            var intendedWorldMove = Vector3.ProjectOnPlane(
-                FpcRole.FpcModule.transform.TransformDirection(desired),
-                Vector3.up);
-
-            if (intendedWorldMove.sqrMagnitude < 0.1f)
-            {
-                ResetStuckJumpTracking();
-                return;
-            }
-
-            var horizontalPosition = Vector3.ProjectOnPlane(PlayerPosition, Vector3.up);
-            var horizontalAnchor = Vector3.ProjectOnPlane(stuckAnchorPosition, Vector3.up);
-            if (stuckAnchorTime <= 0f || Vector3.Distance(horizontalPosition, horizontalAnchor) > 0.35f)
-            {
-                stuckAnchorPosition = PlayerPosition;
-                stuckAnchorTime = Time.time;
-                return;
-            }
-
-            var stuckDuration = Time.time - stuckAnchorTime;
-            if (stuckDuration < 0.7f)
-            {
-                return;
-            }
-
-            // Escalating unstick (cheap -> disruptive): open a door ahead, then a lateral nudge to
-            // slip around corners, then a hop, then force the navigator to re-plan. This recovers
-            // from the brief corner/doorway snags fast instead of standing still for 3 seconds.
-            var moveDir = intendedWorldMove.normalized;
-
-            if (Time.time >= nextStuckDoorTime
-                && Physics.Raycast(CameraPosition, CameraForward, out var doorHit, 2.5f, DoorMask)
-                && doorHit.collider.GetComponentInParent<DoorVariant>() is DoorVariant blockingDoor
-                && blockingDoor is not ElevatorDoor
-                && !blockingDoor.IsConsideredOpen())
-            {
-                nextStuckDoorTime = Time.time + 0.6f;
-                OpenDoor(blockingDoor, 2.5f);
-            }
-
-            if (Time.time >= nextStuckNudgeFlipTime)
-            {
-                stuckNudgeDirection = -stuckNudgeDirection;
-                nextStuckNudgeFlipTime = Time.time + 0.8f;
-            }
-
-            var side = Vector3.Cross(Vector3.up, moveDir).normalized * stuckNudgeDirection;
-            var nudgedWorld = Vector3.Normalize(moveDir + side);
-            Move.DesiredLocalDirection = FpcRole.FpcModule.transform.InverseTransformDirection(nudgedWorld);
-
-            if (stuckDuration >= 1.5f && Time.time >= nextStuckJumpTime)
-            {
-                FpcRole.FpcModule.Motor.JumpController.ForceJump(FpcRole.FpcModule.JumpSpeed);
-                nextStuckJumpTime = Time.time + 1f;
-            }
-
-            if (stuckDuration >= 2.5f && Time.time >= nextStuckReplanTime)
-            {
-                Navigator.ForceReplan();
-                nextStuckReplanTime = Time.time + 2f;
-                stuckAnchorPosition = PlayerPosition;
-                stuckAnchorTime = Time.time;
-            }
-        }
-
-        private void ResetStuckJumpTracking()
-        {
-            stuckAnchorPosition = PlayerPosition;
-            stuckAnchorTime = 0f;
         }
 
         #endregion
@@ -592,8 +548,14 @@ namespace SCPSLBot.AI.FirstPersonControl
                     ? $"{Combat.DiagnosticTarget} · {Combat.DiagnosticTargetRole} · {(Combat.DiagnosticHasLineOfSight ? "visible" : "remembered")}"
                     : "none");
             string navigation = Navigator.HasPath
-                ? $"path {Navigator.CellsPath.Count} cells"
-                : "no path";
+                ? $"path {Navigator.PathNodeCount} nodes"
+                : Navigator.HasPartialPath
+                    ? $"partial path {Navigator.PathNodeCount} nodes"
+                    : "no path";
+            if (StuckRecovery.StuckSeconds > 0.5f)
+            {
+                navigation += $" · stuck {StuckRecovery.StuckSeconds:F1}s";
+            }
             var view = new BotDiagnosticView(
                 $"{botName} · {role}",
                 $"{state} · runner {(BotManager.Instance.RunnerIsRunning ? "healthy" : "stopped")}",

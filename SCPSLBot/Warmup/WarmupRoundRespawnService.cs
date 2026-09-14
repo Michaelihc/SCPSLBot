@@ -279,21 +279,21 @@ namespace SCPSLBot.Warmup
 
         private static bool IsEligibleRealPlayer(Player player)
         {
-            return player != null
-                && !player.IsDestroyed
-                && !player.IsHost
-                && !player.IsDummy;
+            return WarmupParticipation.IsParticipant(player);
         }
 
         private static bool IsRespawnRole(RoleTypeId role)
         {
-            return role is not RoleTypeId.None
+            return WarmupParticipation.IsManagedRole(role)
+                && role is not RoleTypeId.None
                 and not RoleTypeId.Spectator
                 and not RoleTypeId.Overwatch
                 and not RoleTypeId.Destroyed
                 and not RoleTypeId.Filmmaker
                 and not RoleTypeId.CustomRole;
         }
+
+        internal void ForgetPlayer(Player player) => observations.Remove(player.PlayerId);
 
         private sealed class PlayerObservation
         {

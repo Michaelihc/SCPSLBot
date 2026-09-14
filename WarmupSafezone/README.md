@@ -11,6 +11,8 @@
 
 The plugin never enables native godmode and never writes the process-wide `SpawnProtected` settings. Protection is decided synchronously in LabAPI damage/action events. After a player leaves either safezone, a private monotonic per-player expiry temporarily blocks both incoming and outgoing damage.
 
+Tutorial is outside safezone participation. It receives no safezone protection, blocker drain, or action restrictions; native game behavior is preserved.
+
 ## Protection and action policy
 
 | Case | Result |
@@ -140,6 +142,8 @@ The playtests check the four-way SCP-914 damage policy, immediate-egress protect
 - LabAPI damage cancellation: `../../.references/LabAPI/LabApi/Events/Arguments/PlayerEvents/PlayerHurtingEventArgs.cs`.
 
 # 中文
+
+Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡区域扣血，也不受安全区操作限制；保留原生游戏行为。
 
 ## WarmupSafezone
 

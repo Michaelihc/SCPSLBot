@@ -180,7 +180,7 @@ internal sealed class LabApiItemGrantContext : IItemGrantContext
         !player.IsDestroyed && player.IsReady && !string.IsNullOrWhiteSpace(player.UserId);
 
     public bool IsRealPlayer =>
-        !player.IsDestroyed && player.IsPlayer && !player.IsDummy && !player.IsHost;
+        WarmupParticipation.IsParticipant(player);
 
     public bool IsPlayerAvailable => !player.IsDestroyed;
 

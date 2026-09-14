@@ -13,7 +13,8 @@ using RoundRestarting;
 using SCPSLBot.AI.FirstPersonControl;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
 using SCPSLBot.Components;
-using SCPSLBot.Navigation.Mesh;
+using SCPSLBot.Infrastructure;
+using SCPSLBot.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,10 +33,10 @@ namespace SCPSLBot.AI
 
         public static BotManager Instance { get; } = new BotManager();
 
-        public Dictionary<ReferenceHub, BotHub> BotPlayers { get; } = new Dictionary<ReferenceHub, BotHub>();
+        public Dictionary<ReferenceHub, BotHub> BotPlayers { get; } = new(ManagedReferenceComparer<ReferenceHub>.Instance);
 
-        private readonly Dictionary<ReferenceHub, BotOrderState> orders = new();
-        private readonly Dictionary<ReferenceHub, RoleTypeId> requestedRoles = new();
+        private readonly Dictionary<ReferenceHub, BotOrderState> orders = new(ManagedReferenceComparer<ReferenceHub>.Instance);
+        private readonly Dictionary<ReferenceHub, RoleTypeId> requestedRoles = new(ManagedReferenceComparer<ReferenceHub>.Instance);
 
         private CoroutineHandle handle;
         private NativeArray<JobHandle> jobHandlesBuffer;
@@ -496,17 +497,20 @@ namespace SCPSLBot.AI
             }
 
             var room = RoomIdentifier.AllRoomIdentifiers.FirstOrDefault(candidate => candidate.Name == roomName);
-            if (room == null || !NavigationMesh.LocalMeshesByRoom.TryGetValue(room.gameObject, out var mesh) || mesh.Cells.Count == 0)
+            var backend = NavigationSystem.Instance.Backend;
+            if (room == null || backend == null || !backend.RoomHasNavigation(room))
             {
                 LabLogger.Error($"[BotOrders] ROOM_UNAVAILABLE bot={BotName(hub)} room={roomName}");
                 return false;
             }
 
             var origin = hub.transform.position;
-            var goal = mesh.Cells
-                .Select(cell => room.transform.TransformPoint(cell.CenterPosition))
-                .OrderBy(position => HorizontalDistance(origin, position))
-                .First();
+            var areaMask = BotPlayers.TryGetValue(hub, out var orderedBot) ? orderedBot.FpcPlayer.Navigator.AreaMask : ~0;
+            if (!backend.TryGetReachableRoomSample(room, origin, areaMask, out var goal))
+            {
+                LabLogger.Error($"[BotOrders] ROOM_UNREACHABLE bot={BotName(hub)} room={roomName} from={Format(origin)}");
+                return false;
+            }
 
             return IssueMoveOrder(hub, goal, BotOrderKind.MoveToRoom, $"room:{roomName}");
         }
@@ -531,14 +535,17 @@ namespace SCPSLBot.AI
                 LastProgressAt = now,
                 LastProgressUtc = DateTime.UtcNow,
                 LastPosition = hub.transform.position,
+                LastProgressPosition = hub.transform.position,
+                BestRemaining = float.PositiveInfinity,
                 LastWaypointDistance = float.PositiveInfinity,
                 NextBreadcrumbAt = now + 2f,
             };
             orders[hub] = state;
 
-            if (NavigationMesh.LocalMeshesByRoom.Count > 0 && NavigationMesh.GetCellWithin(goal) == null)
+            var backend = NavigationSystem.Instance.Backend;
+            if (backend != null && NavigationSystem.Instance.IsReadyForCurrentMap && !backend.IsOnMesh(goal, 0.5f))
             {
-                TryGetNearestMeshPoint(goal, out var nearest, out var nearestDistance);
+                backend.TryGetNearestPoint(goal, 60f, out var nearest, out var nearestDistance);
                 state.Kind = BotOrderKind.FailedOffMesh;
                 state.Active = false;
                 state.FailureReason = "goal is outside the navigation mesh";
@@ -597,6 +604,8 @@ namespace SCPSLBot.AI
             return false;
         }
 
+        private const float NoPathGraceSeconds = 1.5f;
+
         public bool ShouldHoldPosition(ReferenceHub hub)
             => orders.TryGetValue(hub, out var state) && !state.Active;
 
@@ -640,6 +649,12 @@ namespace SCPSLBot.AI
 
             if (!state.HasPath)
             {
+                if (now - state.IssuedAt < NoPathGraceSeconds || player.Navigator.HasPartialPath && now - state.IssuedAt < NoPathGraceSeconds * 2f)
+                {
+                    // The navmesh may be mid-rebuild or the first plan may still be pending.
+                    return;
+                }
+
                 state.Kind = BotOrderKind.FailedNoPath;
                 state.Active = false;
                 state.FailureReason = "navigator found no connected path";
@@ -649,25 +664,49 @@ namespace SCPSLBot.AI
             }
 
             var waypointDistance = HorizontalDistance(position, waypoint);
-            if (Vector3.Distance(waypoint, state.LastWaypoint) > 0.5f)
+            var progressStamp = player.Navigator.ProgressStamp;
+            if (progressStamp != state.LastProgressStamp)
             {
-                state.LastWaypoint = waypoint;
+                // A portal was crossed or a new goal was planned: real progress.
+                state.LastProgressStamp = progressStamp;
                 state.LastWaypointDistance = waypointDistance;
+                state.LastProgressPosition = position;
                 MarkProgress(state, now);
             }
             else if (waypointDistance < state.LastWaypointDistance - ProgressEpsilon)
             {
                 state.LastWaypointDistance = waypointDistance;
+                state.LastProgressPosition = position;
                 MarkProgress(state, now);
             }
+            else if (remaining < state.BestRemaining - 0.5f)
+            {
+                // Net progress toward the goal even without a nearer waypoint (large cells, detours).
+                state.LastProgressPosition = position;
+                MarkProgress(state, now);
+            }
+
+            state.BestRemaining = Mathf.Min(state.BestRemaining, remaining);
+
+            // A waypoint that moved without a path advance is a replan or a flip-flop, never progress.
+            state.LastWaypoint = waypoint;
 
             if (now - state.LastProgressAt >= StallSeconds)
             {
                 state.StallCount++;
                 var blocker = ProbeBlockingCollider(player, waypoint);
+                state.LastBlocker = blocker;
                 LabLogger.Warn($"[BotOrders] STALL bot={BotName(hub)} seconds={now - state.LastProgressAt:F1} pos={Format(position)} room={RoomNameAt(position)} goal={Format(state.Goal)} waypoint={Format(waypoint)} blocker={blocker}");
                 MarkProgress(state, now);
-                player.Navigator.ForceReplan();
+                if (state.StallCount >= 2)
+                {
+                    // A second stall on the same order: the crossing itself is the problem.
+                    player.Navigator.ReportBlockedCrossing();
+                }
+                else
+                {
+                    player.Navigator.ForceReplan();
+                }
             }
 
             if (now >= state.NextBreadcrumbAt)
@@ -684,7 +723,8 @@ namespace SCPSLBot.AI
                     LabLogger.Error($"[BotOrders] GROUND_MISS bot={BotName(hub)} pos={Format(position)} room={RoomNameAt(position)} misses={state.GroundProbeMisses}");
                 }
 
-                LabLogger.Info($"[BotOrders] BREADCRUMB bot={BotName(hub)} t={now - state.IssuedAt:F1} pos={Format(position)} room={RoomNameAt(position)} remaining={remaining:F2} hasPath={state.HasPath} stalls={state.StallCount} doors={state.DoorsTraversed} maxTick={state.MaxTickDistance:F3} ground={(ground ? groundCollider + ":" + groundDistance.ToString("F2") + "m" : "MISS")}");
+                var intent = Vector3.ProjectOnPlane(player.FpcRole.FpcModule.transform.TransformDirection(player.Move.DesiredLocalDirection), Vector3.up).magnitude;
+                LabLogger.Info($"[BotOrders] BREADCRUMB bot={BotName(hub)} t={now - state.IssuedAt:F1} pos={Format(position)} room={RoomNameAt(position)} remaining={remaining:F2} hasPath={state.HasPath} path={player.Navigator.DescribeState()} waypoint={Format(waypoint)} waypointDistance={waypointDistance:F2} intent={intent:F2} stuck={player.StuckRecovery.StuckSeconds:F1} obstacle={player.ObstacleAvoidance.LastObstacle} stalls={state.StallCount} doors={state.DoorsTraversed} maxTick={state.MaxTickDistance:F3} ground={(ground ? groundCollider + ":" + groundDistance.ToString("F2") + "m" : "MISS")}");
             }
         }
 
@@ -717,6 +757,7 @@ namespace SCPSLBot.AI
                 MaxGroundDistance = state.MaxGroundDistance,
                 FailureReason = state.FailureReason ?? string.Empty,
                 Room = RoomNameAt(position),
+                LastBlocker = string.IsNullOrEmpty(state.LastBlocker) ? "none" : state.LastBlocker,
             };
             return true;
         }
@@ -811,41 +852,6 @@ namespace SCPSLBot.AI
 
             doorName = door.name;
             return true;
-        }
-
-        private static bool TryGetNearestMeshPoint(Vector3 goal, out Vector3 nearest, out float distance)
-        {
-            nearest = Vector3.zero;
-            var bestSqr = float.PositiveInfinity;
-
-            foreach (var pair in NavigationMesh.LocalMeshesByRoom)
-            {
-                var transform = pair.Key.transform;
-                foreach (var cell in pair.Value.Cells)
-                {
-                    var center = transform.TransformPoint(cell.CenterPosition);
-                    var centerSqr = (center - goal).sqrMagnitude;
-                    if (centerSqr < bestSqr)
-                    {
-                        bestSqr = centerSqr;
-                        nearest = center;
-                    }
-
-                    foreach (var vertex in cell.Vertices)
-                    {
-                        var point = transform.TransformPoint(vertex.Position);
-                        var pointSqr = (point - goal).sqrMagnitude;
-                        if (pointSqr < bestSqr)
-                        {
-                            bestSqr = pointSqr;
-                            nearest = point;
-                        }
-                    }
-                }
-            }
-
-            distance = float.IsPositiveInfinity(bestSqr) ? float.PositiveInfinity : Mathf.Sqrt(bestSqr);
-            return !float.IsPositiveInfinity(bestSqr);
         }
 
         private static void LogSummary(ReferenceHub hub, BotOrderState state, string verdict)

@@ -53,4 +53,7 @@
     <_DeployTargetsFile>$([MSBuild]::GetPathOfFileAbove('Deploy.targets', '$(MSBuildProjectDirectory)'))</_DeployTargetsFile>
   </PropertyGroup>
   <Import Project="$(_DeployTargetsFile)" Condition="'$(_DeployTargetsFile)' != ''" />
+  <ItemGroup>
+    <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
+  </ItemGroup>
 </Project>

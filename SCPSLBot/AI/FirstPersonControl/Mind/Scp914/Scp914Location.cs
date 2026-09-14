@@ -1,9 +1,9 @@
-﻿using Interactables;
+using Interactables;
 using MapGeneration;
 using Scp914;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
-using SCPSLBot.Navigation.Mesh;
+using SCPSLBot.Navigation;
 using System.Linq;
 using UnityEngine;
 
@@ -13,13 +13,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
     {
         public Scp914Location(RoomSightSense roomSightSense)
         {
-            roomSightSense.OnSensedForeignRoomCell += OnSensedRoom;
+            roomSightSense.OnSensedForeignRoomEntry += OnSensedRoom;
         }
 
-        private void OnSensedRoom(TransformCell foreignRoomCell)
+        private void OnSensedRoom(RoomEntry entry)
         {
-            var foreignRoom = foreignRoomCell.Transform.GetComponent<RoomIdentifier>();
-            if (foreignRoom.Name != RoomName.Lcz914)
+            if (entry.Room == null || entry.Room.Name != RoomName.Lcz914)
             {
                 return;
             }
@@ -35,6 +34,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 
         private void Update(Scp914Controller controller)
         {
+            if (controller == null)
+            {
+                return;
+            }
+
             var scp914position = controller.transform.position;
             if (!this.Positions.Contains(scp914position))
             {

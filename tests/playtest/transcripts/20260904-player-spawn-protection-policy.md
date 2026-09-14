@@ -17,7 +17,22 @@ Date: 2026-09-04 (Asia/Shanghai)
 - LabAPI successfully enabled SCPSLBot 1.0.0.
 - All three managed bots still logged `SPAWN_PROTECTION_CLEARED`, confirming that the new
   real-player service does not change bot behavior.
-- Port 8888 was stopped after the boot check. Production port 7777 was not modified or restarted.
+- `ptest run bot-ci-spawn standard`: 1/1 passed in 1.15 seconds. It covered initial creation,
+  native RA death/respawn of the same maintained identity, CI spawn-pad routing, Standard off/on
+  recreation, and absence of native `SpawnProtected` after each bot role assignment.
+- The first scenario invocation exposed a pre-existing acceptance race: its alive-role predicate
+  could complete before `BotManager`'s documented next-MEC-tick protection clear. The scenario now
+  includes absence of `SpawnProtected` in each readiness predicate; the rerun passed.
+- Port 8888 was stopped after that boot check.
+
+## Subsequent production deployment
+
+- The death-only player spawn-protection policy was later included in the port 7777 deployment
+  recorded in `20260905-bot-ownership.md`.
+- Production startup confirmed that managed bots remain unaffected: all three logged
+  `SPAWN_PROTECTION_CLEARED` after their role assignment.
+- Connected-client acceptance for the real-player death/loadout sequence remains required because
+  production was empty after restart and the runtime deliberately ignores hosts and dummies.
 
 ## Remaining connected-client acceptance
 

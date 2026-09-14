@@ -1,8 +1,6 @@
-﻿using MapGeneration;
+using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
-using SCPSLBot.Navigation.Mesh;
-using System;
 using System.Linq;
 using UnityEngine;
 
@@ -27,19 +25,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Room.Beliefs
 
         private void OnAfterSensedForeignRooms()
         {
-            if (this.roomSightSense.RoomWithin.Zone != FromZone)
+            var roomWithin = this.roomSightSense.RoomWithin;
+            if (roomWithin == null || roomWithin.Zone != FromZone)
             {
                 return;
             }
 
-            var foreignRoomCellOfTargetZoneResult = this.roomSightSense.ForeignRoomsCells
-                .Where(r => r.Transform.GetComponent<RoomIdentifier>().Zone == Zone)
-                .Select(r => new TransformCell?(r))
-                .FirstOrDefault();
-            if (foreignRoomCellOfTargetZoneResult != null && foreignRoomCellOfTargetZoneResult.Value.Transform.GetComponent<RoomIdentifier>().Zone != this.roomSightSense.RoomWithin.Zone)
+            foreach (var entry in this.roomSightSense.ForeignRoomEntries)
             {
-                var enterPosition = foreignRoomCellOfTargetZoneResult.Value.CenterPosition;
-                AddPosition(enterPosition);
+                if (entry.Room != null && entry.Room.Zone == Zone && entry.Room.Zone != roomWithin.Zone)
+                {
+                    AddPosition(entry.Position);
+                    return;
+                }
             }
         }
 

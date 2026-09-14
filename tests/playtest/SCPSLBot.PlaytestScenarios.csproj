@@ -28,6 +28,7 @@
     <Reference Include="UnityEngine" HintPath="$(SCP_SL_MANAGED)\UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(SCP_SL_MANAGED)\UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.PhysicsModule" HintPath="$(SCP_SL_MANAGED)\UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AIModule" HintPath="$(SCP_SL_MANAGED)\UnityEngine.AIModule.dll" Private="false" />
     <Reference Include="PlaytestHarness"
                HintPath="..\..\..\.tests\Playtest\bin\Release\PlaytestHarness.dll"
                Private="false" />

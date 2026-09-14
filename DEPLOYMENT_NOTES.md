@@ -32,6 +32,34 @@ SCPSLBot.Components\bin\x64\Release\net48\SCPSLBot.Components.dll
 
 Keep `0Harmony.dll` in the plugin folder.
 
+## Runtime navmesh asset patch (required for `navigation.backend: runtime`)
+
+The dedicated server ships its collider meshes unreadable with streamed vertex data; Unity's runtime
+navmesh builder then sees almost nothing. Patch once per game update and verify before every start:
+
+```powershell
+dotnet build .\tools\NavMeshAssetPatcher\NavMeshAssetPatcher.csproj -c Release
+dotnet .\tools\NavMeshAssetPatcher\bin\Release\net8.0\NavMeshAssetPatcher.dll patch  --server "<server root containing SCPSL_Data>"
+dotnet .\tools\NavMeshAssetPatcher\bin\Release\net8.0\NavMeshAssetPatcher.dll verify --server "<server root containing SCPSL_Data>"
+```
+
+`patch` rewrites `SCPSL_Data/globalgamemanagers.assets`, `resources.assets` and `sharedassets*.assets`
+(all 3167 meshes readable, 84 streamed meshes inlined, about 5 MB larger in total), keeps `.bak`
+originals, and writes `SCPSL_Data/navmesh-asset-patch.json` (tool version, Unity version,
+Assembly-CSharp hash, per-file hashes). `verify` exits 0 when the live files match the manifest, 2 when
+a game update or Steam validation restored the originals (re-run `patch`), 1 on error. `restore`
+puts the originals back. Client installs are never touched.
+
+For the Linux production host publish the self-contained patcher with
+`tools\Publish-NavMeshAssetPatcher.ps1` and ship `tools/NavMeshAssetPatcher/` inside the deployment
+package; `tools/Deploy-BotProduction7777.sh` runs `verify` against `SCPSL_SERVER_ROOT`
+(default `/home/scpsl/scpsl`) and refuses to activate an unpatched server. Apply the patch on the host
+with the service stopped:
+
+```bash
+sudo -u scpsl /path/to/NavMeshAssetPatcher patch --server "$SCPSL_SERVER_ROOT"
+```
+
 ## Local 7790 Paths
 
 Local LabAPI plugin folder:
@@ -173,10 +201,13 @@ README.md
 DEPLOYMENT_NOTES.md
 ```
 
-The default navmesh is embedded in `SCPSLBot.dll`. If an external navmesh is included for convenience, it should be placed as:
+The default authored navmesh is embedded in `SCPSLBot.dll` (used only with `navigation.backend: authored`). If an external navmesh is included for convenience, it should be placed as:
 
 ```text
 SCPSLBot/navmesh.slnmf
 ```
+
+The runtime backend (default) needs no navmesh file but needs the patched server assets; ship the
+published `tools/NavMeshAssetPatcher/` folder with the package so operators can re-apply after game updates.
 
 Companion plugins should be released separately unless the release is explicitly a full warmup-server bundle.

@@ -1,5 +1,6 @@
 ﻿using MapGeneration;
 using SCPSLBot.Collections;
+using SCPSLBot.Navigation.Policy;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,6 +20,12 @@ namespace SCPSLBot.Navigation.Mesh
         public static Dictionary<TransformCell, List<TransformCell>> ForeignConnectedCells = new();
         public static Dictionary<TransformCell, Dictionary<TransformCell, TransformEdge>> ForeignConnectedCellEdges = new();
         public static int TopologyVersion { get; private set; }
+
+        // Crossings that bots recently failed to traverse (clutter, a wedged corner, a sealed
+        // connector). A* treats them as much longer for a while so alternative routes win when
+        // they exist; entries expire so a transient blocker does not poison the map forever.
+        private static readonly Dictionary<(TransformCell From, TransformCell To), (float ExpiresAt, float Penalty)> linkPenalties = new();
+        private static float nextPenaltyPruneAt;
 
         private static readonly List<TransformCell> EmptyForeignCells = new();
         [ThreadStatic]
@@ -42,6 +49,55 @@ namespace SCPSLBot.Navigation.Mesh
         public static bool HasForeignConnectedCell(TransformCell cell, TransformCell nextCell)
         {
             return ForeignConnectedCells.TryGetValue(cell, out var list) && list.Contains(nextCell);
+        }
+
+        public static int PenalizedLinkCount => linkPenalties.Count;
+
+        /// <summary>Makes the crossing from -> to cost <paramref name="penaltyMeters"/> extra for <paramref name="seconds"/>.</summary>
+        public static void PenalizeLink(TransformCell from, TransformCell to, float penaltyMeters, float seconds)
+        {
+            var expiresAt = Time.time + seconds;
+            var key = (from, to);
+            if (linkPenalties.TryGetValue(key, out var existing) && existing.ExpiresAt > expiresAt)
+            {
+                expiresAt = existing.ExpiresAt;
+            }
+
+            linkPenalties[key] = (expiresAt, penaltyMeters);
+        }
+
+        public static float GetLinkPenalty(TransformCell from, TransformCell to)
+        {
+            if (linkPenalties.Count == 0)
+            {
+                return 0f;
+            }
+
+            return linkPenalties.TryGetValue((from, to), out var entry) && entry.ExpiresAt > Time.time ? entry.Penalty : 0f;
+        }
+
+        private static void PruneExpiredPenalties()
+        {
+            if (linkPenalties.Count == 0 || Time.time < nextPenaltyPruneAt)
+            {
+                return;
+            }
+
+            nextPenaltyPruneAt = Time.time + 5f;
+            var now = Time.time;
+            var expired = new List<(TransformCell, TransformCell)>();
+            foreach (var pair in linkPenalties)
+            {
+                if (pair.Value.ExpiresAt <= now)
+                {
+                    expired.Add(pair.Key);
+                }
+            }
+
+            foreach (var key in expired)
+            {
+                linkPenalties.Remove(key);
+            }
         }
 
         public static NavigationMesh CreateMesh(string form)
@@ -112,13 +168,62 @@ namespace SCPSLBot.Navigation.Mesh
             }
 
             var localPosition = room.transform.InverseTransformPoint(position);
-            var cellWithin = roomMesh.Cells
-                .Where(lc => IsLocalPointWithinCell(lc, localPosition))
-                .Select(lc => new TransformCell(lc, room.transform))
-                .Select(c => new TransformCell?(c))
-                .FirstOrDefault();
 
-            return cellWithin;
+            // Rooms with stacked levels (ramps, platforms) can have several cells covering the
+            // same floor footprint. Prefer the one whose height is closest to the position instead
+            // of the first authored match, which flip-flopped bots between levels while replanning.
+            Cell best = null;
+            var bestHeightDelta = float.PositiveInfinity;
+            foreach (var localCell in roomMesh.Cells)
+            {
+                if (!IsLocalPointWithinCell(localCell, localPosition))
+                {
+                    continue;
+                }
+
+                var heightDelta = Mathf.Abs(localCell.CenterPosition.y - localPosition.y);
+                if (heightDelta < bestHeightDelta)
+                {
+                    bestHeightDelta = heightDelta;
+                    best = localCell;
+                }
+            }
+
+            return best == null ? null : new TransformCell(best, room.transform);
+        }
+
+        /// <summary>
+        /// Nearest cell of the room by center distance, for bots that slipped off the mesh (pushed
+        /// into a corner, standing on clutter, mid-ramp). Returns false beyond <paramref name="maxDistance"/>.
+        /// </summary>
+        public static bool TryGetNearestCell(Vector3 position, RoomIdentifier room, float maxDistance, out TransformCell cell)
+        {
+            cell = default;
+            if (!room || !LocalMeshesByRoom.TryGetValue(room.gameObject, out var roomMesh))
+            {
+                return false;
+            }
+
+            var localPosition = room.transform.InverseTransformPoint(position);
+            Cell best = null;
+            var bestSqr = maxDistance * maxDistance;
+            foreach (var localCell in roomMesh.Cells)
+            {
+                var sqr = (localCell.CenterPosition - localPosition).sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    best = localCell;
+                }
+            }
+
+            if (best == null)
+            {
+                return false;
+            }
+
+            cell = new TransformCell(best, room.transform);
+            return true;
         }
 
         public static bool IsAtPositiveEdgeSide(Vector3 position, TransformEdge transformEdge)
@@ -187,14 +292,29 @@ namespace SCPSLBot.Navigation.Mesh
             return (roomFormEdge.From, roomFormEdge.To);
         }
 
+        public enum PathOutcome
+        {
+            None,
+            Complete,
+            /// <summary>The goal cell is unreachable; the result leads to the reachable cell closest to it.</summary>
+            Partial,
+        }
+
         public static void FindShortestPath(TransformCell startingCell, TransformCell endCell, List<TransformCell> results)
+        {
+            FindShortestPath(startingCell, endCell, results, allowPartial: false);
+        }
+
+        public static PathOutcome FindShortestPath(TransformCell startingCell, TransformCell endCell, List<TransformCell> results, bool allowPartial)
         {
             results.Clear();
             if (startingCell == endCell)
             {
                 results.Add(startingCell);
-                return;
+                return PathOutcome.Complete;
             }
+
+            PruneExpiredPenalties();
 
             var workspace = currentThreadPathSearch ??= new PathSearchWorkspace();
             workspace.Reset();
@@ -202,6 +322,10 @@ namespace SCPSLBot.Navigation.Mesh
             var heuristic = Vector3.Distance(endCell.CenterPosition, startingCell.CenterPosition);
             workspace.Open.Enqueue(startingCell, cost + heuristic);
             workspace.Costs.Add(startingCell, cost);
+
+            var closestCell = startingCell;
+            var closestHeuristic = heuristic;
+            var reached = false;
 
             var cell = startingCell;
             while (workspace.Open.TryDequeue(out cell, out _))
@@ -213,17 +337,19 @@ namespace SCPSLBot.Navigation.Mesh
                     continue;
                 }
 
-                //var cellIdx = CellsByRoom[cell.Room].IndexOf(cell);
-                //Log.Debug($"Evaluating connections for cell #{cellIdx} {cell.FormCell.RoomForm}");
-
                 if (cell == endCell)
                 {
+                    reached = true;
                     break;
                 }
 
                 cost = workspace.Costs[cell];
-
-                //Log.Debug($"Cell evaluating connections #{cellIdx} cost so far {cost}");
+                var cellHeuristic = Vector3.Distance(endCell.CenterPosition, cell.CenterPosition);
+                if (cellHeuristic < closestHeuristic)
+                {
+                    closestHeuristic = cellHeuristic;
+                    closestCell = cell;
+                }
 
                 foreach (var connectedCell in cell.AdjacentCells)
                 {
@@ -237,17 +363,21 @@ namespace SCPSLBot.Navigation.Mesh
             }
 
             results.Clear();
-            if (workspace.CameFrom.ContainsKey(endCell))
+            var target = reached ? endCell : closestCell;
+            if (!reached && (!allowPartial || closestCell == startingCell))
             {
-                cell = endCell;
-                do
-                {
-                    results.Add(cell);
-                }
-                while (workspace.CameFrom.TryGetValue(cell, out cell));
-
-                results.Reverse();
+                return PathOutcome.None;
             }
+
+            cell = target;
+            do
+            {
+                results.Add(cell);
+            }
+            while (workspace.CameFrom.TryGetValue(cell, out cell));
+
+            results.Reverse();
+            return reached ? PathOutcome.Complete : PathOutcome.Partial;
         }
 
         private static void QueueIfCheaper(
@@ -262,7 +392,7 @@ namespace SCPSLBot.Navigation.Mesh
                 return;
             }
 
-            var connectedCost = costToFrom + Vector3.Distance(connectedCell.CenterPosition, from.CenterPosition);
+            var connectedCost = costToFrom + Vector3.Distance(connectedCell.CenterPosition, from.CenterPosition) + GetLinkPenalty(from, connectedCell);
             if (workspace.Costs.TryGetValue(connectedCell, out var oldCost) && connectedCost >= oldCost)
             {
                 return;
@@ -390,9 +520,11 @@ namespace SCPSLBot.Navigation.Mesh
             /// Rooms writing
             ///
 
-            binaryWriter.Write(MeshesByRoomForm.Count);
+            // Runtime-generated fills are derived from this round's colliders; only authored meshes persist.
+            var persisted = MeshesByRoomForm.Where(pair => !pair.Value.IsGenerated).ToList();
+            binaryWriter.Write(persisted.Count);
 
-            foreach (var (roomForm, mesh) in MeshesByRoomForm)
+            foreach (var (roomForm, mesh) in persisted)
             {
                 binaryWriter.Write(roomForm);
 
@@ -433,6 +565,7 @@ namespace SCPSLBot.Navigation.Mesh
             LocalMeshesByRoom.Clear();
             ForeignConnectedCells.Clear();
             ForeignConnectedCellEdges.Clear();
+            linkPenalties.Clear();
             MarkTopologyChanged();
         }
 
@@ -488,8 +621,7 @@ namespace SCPSLBot.Navigation.Mesh
 
         public static string GetForm(GameObject gameObject)
         {
-            var gameObjectName = gameObject?.name;
-            return (gameObjectName?.EndsWith("(Clone)") ?? false) ? gameObjectName.Remove(gameObjectName.LastIndexOf("(Clone)")) : gameObjectName;
+            return NavigationForms.Normalize(gameObject?.name);
         }
 
         public static bool StartsWithForm(GameObject gameObject, string comparingForm)

@@ -97,3 +97,12 @@ Still requires an isolated server plus real client for:
 - multiplayer observation of simultaneous independent exit expiries;
 - surface dummy settling/walking at every map/plugin-provided custom escape bound.
 - final HintServiceMeow/TextMeshPro placement on a real 1920x1080 client, including readability during every native overlay state.
+
+
+## Tutorial participation
+
+The explicit request to exclude Tutorial from all warmup player management is implemented using
+`../Shared/WarmupParticipationPolicy.cs`, compiled as shared source with SCPSLBot. No shared runtime
+DLL or dependency is added. `SafezoneVolumeService.IsEligible` is the entry boundary; occupancy,
+blocker, hint and enforcement paths consume that eligibility. Completed transitions out of eligibility
+clear private state, without touching native SpawnProtected settings or adding protection.

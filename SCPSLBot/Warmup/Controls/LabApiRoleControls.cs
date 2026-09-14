@@ -174,7 +174,7 @@ internal sealed class LabApiRoleSnapshotSource : IRoleEligibilitySnapshotSource
         }
 
         string userId = available ? native.UserId ?? string.Empty : string.Empty;
-        bool isRealPlayer = available && native.IsPlayer && !native.IsDummy && !native.IsHost;
+        bool isRealPlayer = available && WarmupParticipation.IsParticipant(native);
         bool authenticated = available && native.IsReady && isRealPlayer && !string.IsNullOrWhiteSpace(userId);
 
         return new RoleEligibilitySnapshot(

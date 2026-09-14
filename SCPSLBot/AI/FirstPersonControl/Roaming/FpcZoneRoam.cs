@@ -2,7 +2,7 @@ using Interactables.Interobjects.DoorUtils;
 using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Mind.Door;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
-using SCPSLBot.Navigation.Mesh;
+using SCPSLBot.Navigation;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -17,6 +17,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Roaming
 
         private readonly FpcBotPlayer botPlayer;
         private readonly System.Random random = new();
+        private readonly List<Vector3> candidates = new();
 
         private Vector3? targetPosition;
         private FacilityZone? targetZone;
@@ -29,6 +30,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Roaming
             this.botPlayer = botPlayer;
         }
 
+        private static INavigationBackend Backend => NavigationSystem.Instance.Backend;
+
         public bool Tick()
         {
             var roomSightSense = botPlayer.Perception.GetSense<RoomSightSense>();
@@ -38,7 +41,16 @@ namespace SCPSLBot.AI.FirstPersonControl.Roaming
                 return TickWithoutRoom();
             }
 
-            if (ShouldPickTarget(roomWithin) || IsRoamStuck())
+            var abandoned = botPlayer.StuckRecovery.ConsumeAbandonRequest();
+            var roamStuck = IsRoamStuck();
+            if (roamStuck || abandoned)
+            {
+                // The crossing we were attempting is what blocks us; make the next plan avoid it
+                // instead of picking a new target that routes through the same obstacle.
+                botPlayer.Navigator.ReportBlockedCrossing();
+            }
+
+            if (ShouldPickTarget(roomWithin) || roamStuck || abandoned)
             {
                 PickTarget(roomSightSense, roomWithin);
                 ResetProgress();
@@ -90,26 +102,31 @@ namespace SCPSLBot.AI.FirstPersonControl.Roaming
 
         private void PickTarget(RoomSightSense roomSightSense, RoomIdentifier roomWithin)
         {
-            var candidates = GetSameZoneForeignCells(roomSightSense, roomWithin).ToList();
-            if (candidates.Count == 0)
+            candidates.Clear();
+            foreach (var entry in roomSightSense.ForeignRoomEntries)
             {
-                candidates = GetSameRoomCells(roomWithin)
-                    .Where(cell => Vector3.Distance(botPlayer.PlayerPosition, cell.CenterPosition) >= SameRoomTargetMinDistance)
-                    .ToList();
+                var room = entry.Room;
+                if (room != null
+                    && room.Zone == roomWithin.Zone
+                    && (room.Name == RoomName.Unnamed || room.Name != roomWithin.Name))
+                {
+                    candidates.Add(entry.Position);
+                }
             }
 
             if (candidates.Count == 0)
             {
-                candidates = GetZoneCells(roomWithin.Zone)
-                    .Where(cell => Vector3.Distance(botPlayer.PlayerPosition, cell.CenterPosition) >= SameRoomTargetMinDistance)
-                    .ToList();
+                AddFarSamples(Backend?.GetRoomSamples(roomWithin));
             }
 
             if (candidates.Count == 0)
             {
-                candidates = GetAllKnownCells()
-                    .Where(cell => Vector3.Distance(botPlayer.PlayerPosition, cell.CenterPosition) >= SameRoomTargetMinDistance)
-                    .ToList();
+                AddZoneSamples(roomWithin.Zone);
+            }
+
+            if (candidates.Count == 0)
+            {
+                AddAllSamples();
             }
 
             if (candidates.Count == 0)
@@ -119,9 +136,27 @@ namespace SCPSLBot.AI.FirstPersonControl.Roaming
                 return;
             }
 
-            var selected = candidates[random.Next(candidates.Count)];
-            targetPosition = selected.CenterPosition;
+            targetPosition = PickReachable();
             targetZone = roomWithin.Zone;
+        }
+
+        // A few random draws, the first one the bot can actually reach wins (a target behind a
+        // keycard door it cannot open would only end in the stuck ladder). Falls back to the last
+        // draw so the bot always has somewhere to go.
+        private Vector3 PickReachable()
+        {
+            var selected = candidates[random.Next(candidates.Count)];
+            for (var attempt = 0; attempt < 4; attempt++)
+            {
+                if (botPlayer.Navigator.CanReach(selected))
+                {
+                    return selected;
+                }
+
+                selected = candidates[random.Next(candidates.Count)];
+            }
+
+            return selected;
         }
 
         private bool TickWithoutRoom()
@@ -150,14 +185,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Roaming
                 return;
             }
 
-            var candidates = GetZoneCells(nearestKnownZone.Value)
-                .Where(cell => Vector3.Distance(botPlayer.PlayerPosition, cell.CenterPosition) >= SameRoomTargetMinDistance)
-                .ToList();
+            candidates.Clear();
+            AddZoneSamples(nearestKnownZone.Value);
             if (candidates.Count == 0)
             {
-                candidates = GetAllKnownCells()
-                    .Where(cell => Vector3.Distance(botPlayer.PlayerPosition, cell.CenterPosition) >= SameRoomTargetMinDistance)
-                    .ToList();
+                AddAllSamples();
             }
 
             if (candidates.Count == 0)
@@ -167,93 +199,83 @@ namespace SCPSLBot.AI.FirstPersonControl.Roaming
                 return;
             }
 
-            var selected = candidates[random.Next(candidates.Count)];
-            targetPosition = selected.CenterPosition;
+            targetPosition = PickReachable();
             targetZone = nearestKnownZone;
         }
 
-        private static IEnumerable<TransformCell> GetSameZoneForeignCells(RoomSightSense roomSightSense, RoomIdentifier roomWithin)
+        private void AddFarSamples(IReadOnlyList<Vector3> samples)
         {
-            return roomSightSense.ForeignRoomsCells
-                .Where(cell => cell.Transform.GetComponent<RoomIdentifier>() is RoomIdentifier room
-                               && room.Zone == roomWithin.Zone
-                               && (room.Name == RoomName.Unnamed || room.Name != roomWithin.Name));
-        }
-
-        private static IEnumerable<TransformCell> GetSameRoomCells(RoomIdentifier roomWithin)
-        {
-            if (!roomWithin || !NavigationMesh.LocalMeshesByRoom.TryGetValue(roomWithin.gameObject, out var mesh))
+            if (samples == null)
             {
-                yield break;
+                return;
             }
 
-            foreach (var cell in mesh.Cells)
+            var position = botPlayer.PlayerPosition;
+            foreach (var sample in samples)
             {
-                yield return new TransformCell(cell, roomWithin.transform);
-            }
-        }
-
-        private static IEnumerable<TransformCell> GetZoneCells(FacilityZone zone)
-        {
-            foreach (var (roomObject, mesh) in NavigationMesh.LocalMeshesByRoom)
-            {
-                var room = roomObject.GetComponent<RoomIdentifier>();
-                if (!room || room.Zone != zone)
+                if (Vector3.Distance(position, sample) >= SameRoomTargetMinDistance)
                 {
-                    continue;
-                }
-
-                foreach (var cell in mesh.Cells)
-                {
-                    yield return new TransformCell(cell, room.transform);
+                    candidates.Add(sample);
                 }
             }
         }
 
-        private static IEnumerable<TransformCell> GetAllKnownCells()
+        private void AddZoneSamples(FacilityZone zone)
         {
-            foreach (var (roomObject, mesh) in NavigationMesh.LocalMeshesByRoom)
+            var backend = Backend;
+            if (backend == null)
             {
-                if (!roomObject.GetComponent<RoomIdentifier>())
-                {
-                    continue;
-                }
+                return;
+            }
 
-                foreach (var cell in mesh.Cells)
+            foreach (var room in backend.GetNavigableRooms())
+            {
+                if (room != null && room.Zone == zone)
                 {
-                    yield return new TransformCell(cell, roomObject.transform);
+                    AddFarSamples(backend.GetRoomSamples(room));
                 }
+            }
+        }
+
+        private void AddAllSamples()
+        {
+            var backend = Backend;
+            if (backend == null)
+            {
+                return;
+            }
+
+            foreach (var room in backend.GetNavigableRooms())
+            {
+                AddFarSamples(backend.GetRoomSamples(room));
             }
         }
 
         private FacilityZone? GetNearestKnownZone()
         {
-            TransformCell? nearest = null;
-            var nearestDistance = float.PositiveInfinity;
-
-            foreach (var (roomObject, mesh) in NavigationMesh.LocalMeshesByRoom)
+            var backend = Backend;
+            if (backend == null)
             {
-                var room = roomObject.GetComponent<RoomIdentifier>();
-                if (!room)
-                {
-                    continue;
-                }
+                return null;
+            }
 
-                foreach (var cell in mesh.Cells)
+            FacilityZone? nearest = null;
+            var nearestDistance = float.PositiveInfinity;
+            var position = botPlayer.PlayerPosition;
+            foreach (var room in backend.GetNavigableRooms())
+            {
+                foreach (var sample in backend.GetRoomSamples(room))
                 {
-                    var transformCell = new TransformCell(cell, room.transform);
-                    var distance = Vector3.SqrMagnitude(transformCell.CenterPosition - botPlayer.PlayerPosition);
-                    if (distance >= nearestDistance)
+                    var distance = Vector3.SqrMagnitude(sample - position);
+                    if (distance < nearestDistance)
                     {
-                        continue;
+                        nearestDistance = distance;
+                        nearest = room.Zone;
                     }
-
-                    nearest = transformCell;
-                    nearestDistance = distance;
                 }
             }
 
-            return nearest?.Transform.GetComponent<RoomIdentifier>()?.Zone;
+            return nearest;
         }
 
         private void OpenBlockingNonKeycardDoor()

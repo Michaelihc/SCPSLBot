@@ -7,12 +7,31 @@ $serverRoot = 'C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laborato
 $localAdmin = Join-Path $serverRoot 'LocalAdmin.exe'
 $stateRoot = Join-Path $env:APPDATA 'SCP Secret Laboratory\LabAPI\state\8888'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$compatKeybinds = Join-Path $repositoryRoot 'ServerKeybinds.Compat\bin\x64\Release\net48\ServerKeybinds.dll'
+# ServerKeybinds.Compat is AnyCPU and ignores the solution's x64 platform folder. Its canonical
+# Release artifact is emitted directly under bin\Release; bin\x64 can retain a stale assembly from
+# older project settings and must never be deployed.
+$compatKeybinds = Join-Path $repositoryRoot 'ServerKeybinds.Compat\bin\Release\net48\ServerKeybinds.dll'
 $portDependencyRoot = Join-Path $env:APPDATA 'SCP Secret Laboratory\LabAPI\dependencies\8888'
 $deployedKeybinds = Join-Path $portDependencyRoot 'ServerKeybinds.dll'
 
 if (-not (Test-Path -LiteralPath $localAdmin -PathType Leaf)) {
     throw "LocalAdmin.exe was not found at '$localAdmin'."
+}
+
+# The runtime navmesh needs readable collider meshes; Steam validation and game updates restore the
+# stock (unreadable, streamed) asset files, so refuse to start an unpatched server.
+$patcherProject = Join-Path $PSScriptRoot 'NavMeshAssetPatcher\NavMeshAssetPatcher.csproj'
+$patcherDll = Join-Path $PSScriptRoot 'NavMeshAssetPatcher\bin\Release\net8.0\NavMeshAssetPatcher.dll'
+if (-not (Test-Path -LiteralPath $patcherDll -PathType Leaf)) {
+    dotnet build $patcherProject -c Release | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Failed to build tools/NavMeshAssetPatcher.'
+    }
+}
+
+& dotnet $patcherDll verify --server $serverRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "The dedicated server assets are not patched for the runtime navmesh. Apply with: dotnet `"$patcherDll`" patch --server `"$serverRoot`""
 }
 
 $dedicatedGame = Join-Path $serverRoot 'SCPSL.exe'

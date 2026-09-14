@@ -27,13 +27,15 @@ namespace SCPSLBot.AI.Commands
             var navigation = NavigationSystem.Instance;
 
             response = $"mode={WarmupManager.Instance.Mode}; desired={state.DesiredCount}; desired_role={state.DesiredRole}; "
-                       + $"tracked={state.TrackedCount}; owned={state.OwnedCount}; live={state.LiveCount}; states={state.States}; arenas={state.Arenas}; "
+                       + $"tracked={state.TrackedCount}; owned={state.OwnedCount}; independent={Math.Max(0, state.TrackedCount - state.OwnedCount)}; live={state.LiveCount}; states={state.States}; arenas={state.Arenas}; "
                        + $"network_ready={state.NetworkReady}; nav_ready={state.NavReady}; nav_generation={state.NavGeneration}; nav_ready_generation={state.NavReadyGeneration}; "
                        + $"last_reconcile={Format(population.LastReconcileUtc)}; last_spawn_error={Value(population.LastSpawnError)}; reconcile_fault={Value(population.LastReconcileFault)}; "
                        + $"ai_runner_running={manager.RunnerIsRunning}; ai_heartbeat={Format(manager.LastRunnerHeartbeatUtc == default ? null : manager.LastRunnerHeartbeatUtc)}; "
                        + $"ai_last_fault={Value(manager.LastRunnerFault)}; ai_last_fault_time={Format(manager.LastRunnerFaultUtc)}; parked={manager.ParkedBotCount}; "
                        + $"sight_senses={sight.ActiveSenseCount}; raycast_capacity={sight.TotalRaycastCapacity}; tracked_colliders={sight.TrackedColliderCount}; "
-                       + $"nav_error={Value(navigation.LastLoadError)}; role_warning={Value(state.RoleWarning)}";
+                       + $"nav_error={Value(navigation.LastLoadError)}; role_warning={Value(state.RoleWarning)}; "
+                       + $"nav_backend={navigation.Backend?.Name ?? "none"}; nav_configured_backend={navigation.Config.Backend.ToString().ToLowerInvariant()}; nav_bake_failures={navigation.RuntimeBakeFailures}; "
+                       + (navigation.Backend?.Diagnostics ?? "nav_diagnostics=none");
             return true;
         }
 

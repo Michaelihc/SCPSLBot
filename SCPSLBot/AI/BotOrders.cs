@@ -36,6 +36,7 @@ namespace SCPSLBot.AI
         public float MaxGroundDistance { get; internal set; }
         public string FailureReason { get; internal set; }
         public string Room { get; internal set; }
+        public string LastBlocker { get; internal set; }
     }
 
     /// <summary>
@@ -89,5 +90,9 @@ namespace SCPSLBot.AI
         public string FailureReason;
         public RoomIdentifier LastRoom;
         public bool SampledPosition;
+        public string LastBlocker;
+        public int LastProgressStamp = int.MinValue;
+        public Vector3 LastProgressPosition;
+        public float BestRemaining = float.PositiveInfinity;
     }
 }

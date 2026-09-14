@@ -28,3 +28,28 @@ dotnet tool. A different Cecil assembly can be supplied with `-CecilPath`.
 `ReferenceDirectory` must contain the matching server assemblies needed to write
 the deployed plugin, including `Assembly-CSharp.dll` and `LabApi.dll`. It can be
 omitted when those assemblies are beside the input DLL.
+
+
+## Runtime navmesh asset patcher
+
+`NavMeshAssetPatcher/` is a .NET 8 console (dependency: `AssetsTools.NET` 3.0.5 plus the vendored
+UABE `classdata.tpk`; the plugin itself gains no dependency). It makes every `Mesh` asset of the
+dedicated server readable and inlines the vertex data that a player build streams from `.resS`
+side files, because Unity's runtime navmesh builder keeps no CPU copy of streamed vertex data even
+when the mesh is flagged readable.
+
+```powershell
+dotnet build .\tools\NavMeshAssetPatcher\NavMeshAssetPatcher.csproj -c Release
+$patcher = '.\tools\NavMeshAssetPatcher\bin\Release\net8.0\NavMeshAssetPatcher.dll'
+dotnet $patcher report  --server "<server root>"   # read-only: meshes / unreadable / streamed per file
+dotnet $patcher patch   --server "<server root>"   # rewrite atomically, keep .bak, write navmesh-asset-patch.json
+dotnet $patcher verify  --server "<server root>"   # exit 0 patched, 2 drifted/unpatched, 1 error
+dotnet $patcher restore --server "<server root>"   # put the .bak originals back
+dotnet $patcher dump    --server "<server root>" --name <mesh name>   # serialized layout of one mesh
+.\tools\Publish-NavMeshAssetPatcher.ps1           # self-contained win-x64 and linux-x64 binaries
+```
+
+The server root is the folder containing `SCPSL_Data` (`SCPSL_SERVER_ROOT` is used when `--server`
+is omitted). `verify` is wired into `Start-BotTestServer8888.ps1`, the isolated 8891 drivers under
+`tests/playtest/tools/` and `Deploy-BotProduction7777.sh`. Re-apply after every game update; the
+manifest records the `Assembly-CSharp.dll` hash it was made for.

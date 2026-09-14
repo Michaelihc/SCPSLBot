@@ -1,7 +1,11 @@
+using LabApi.Events.Arguments.PlayerEvents;
+using LabApi.Events.Handlers;
 using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 using PlayerRoles;
+using SCPSLBot.AI;
 using System;
+using System.Linq;
 
 namespace SCPSLBot.Warmup
 {
@@ -48,7 +52,8 @@ namespace SCPSLBot.Warmup
                 () => modeCoordinator.IsStandardWarmup,
                 arenas.BuildDesiredBotSpecs,
                 arenas.OnBotPreparing,
-                arenas.OnBotReady);
+                arenas.OnBotReady,
+                arenas.OnBotReleased);
             respawns.Init(
                 config,
                 () => modeCoordinator.IsStandardWarmup);
@@ -60,6 +65,7 @@ namespace SCPSLBot.Warmup
                 hazards,
                 () => LabApiPlugin.Instance?.SaveSettings());
             playerSpawnProtection.Init(() => modeCoordinator.IsStandardWarmup);
+            PlayerEvents.ChangedRole += OnPlayerChangedRole;
         }
 
         public void Terminate()
@@ -69,6 +75,7 @@ namespace SCPSLBot.Warmup
                 return;
             }
 
+            PlayerEvents.ChangedRole -= OnPlayerChangedRole;
             playerSpawnProtection.Terminate();
             modeCoordinator.Terminate();
             hazards.Terminate();
@@ -116,33 +123,81 @@ namespace SCPSLBot.Warmup
             return true;
         }
 
-        public bool TryAddMaintainedBot(out string response)
+        public bool TryAddIndependentBot(out string response)
         {
             if (config == null)
             {
-                response = "SCPSLBot warmup config is not loaded.";
+                response = "SCPSLBot is not loaded.";
                 return false;
             }
 
-            if (!IsStandardWarmup)
+            int independentCount = Math.Max(0,
+                BotManager.Instance.BotPlayers.Count - botPopulation.GetDiagnostics().OwnedCount);
+            if (independentCount >= 10)
             {
-                response = "bot_add maintains the Standard warmup population. Enable Standard mode first.";
+                response = "Independent bot cap reached (10).";
                 return false;
             }
 
-            if (config.WarmupBotCount >= 10)
+            ReferenceHub hub = null;
+            try
             {
-                response = "Maintained warmup bot cap reached (10).";
+                hub = BotManager.Instance.AddUnassignedBotPlayer($"SCPSL Manual Bot {independentCount + 1}");
+                if (hub?.roleManager == null)
+                {
+                    if (hub != null)
+                    {
+                        BotManager.Instance.DespawnBot(hub);
+                    }
+
+                    response = "Failed to create an independent bot. Check the server log.";
+                    return false;
+                }
+
+                hub.roleManager.ServerSetRole(RoleTypeId.ChaosRifleman, RoleChangeReason.RemoteAdmin);
+            }
+            catch (Exception exception)
+            {
+                if (hub != null)
+                {
+                    BotManager.Instance.DespawnBot(hub);
+                }
+
+                response = $"Failed to create an independent bot: {exception.GetType().Name}: {exception.Message}";
                 return false;
             }
 
-            return TrySetBotCount(config.WarmupBotCount + 1, 10, out response);
+            response = $"Spawned independent bot player_id={hub.PlayerId} role={hub.roleManager.CurrentRole.RoleTypeId}.";
+            return true;
+        }
+
+        public bool TryManageBot(int playerId, out string response)
+        {
+            if (!TryFindBot(playerId, out ReferenceHub hub, out response))
+            {
+                return false;
+            }
+
+            return botPopulation.TryManageBot(hub, out response);
+        }
+
+        public bool TryUnmanageBot(int playerId, out string response)
+        {
+            if (!TryFindBot(playerId, out ReferenceHub hub, out response))
+            {
+                return false;
+            }
+
+            return botPopulation.TryUnmanageBot(hub, out response);
         }
 
         public string GetPlayerArenaId(int playerId) => arenas.GetPlayerArenaId(playerId);
 
         public bool TrySetPlayerArena(int playerId, string arenaId, out string response) =>
             arenas.TrySetPlayerArena(playerId, arenaId, out response);
+
+        public bool TrySetPlayerArena(Player player, string arenaId, out string response) =>
+            arenas.TrySetPlayerArena(player, arenaId, out response);
 
         public bool TryPreparePlayerRoleChange(
             Player player,
@@ -165,8 +220,37 @@ namespace SCPSLBot.Warmup
         public bool CanPlayersTeleportWithinArena(Player requester, Player target) =>
             arenas.CanPlayersTeleportWithinArena(requester, target);
 
+        public void SynchronizePlayerArena(Player player) =>
+            arenas.SynchronizePlayerArena(player);
+
+        private void OnPlayerChangedRole(PlayerChangedRoleEventArgs ev)
+        {
+            if (!WarmupParticipation.IsRealPlayer(ev.Player) || WarmupParticipation.IsManagedRole(ev.NewRole.RoleTypeId))
+            {
+                return;
+            }
+
+            // Leaving participation relinquishes all player state; returning starts fresh.
+            arenas.ForgetPlayer(ev.Player);
+            respawns.ForgetPlayer(ev.Player);
+            playerSpawnProtection.ForgetPlayer(ev.Player);
+        }
+
         private WarmupManager()
         {
+        }
+
+        private static bool TryFindBot(int playerId, out ReferenceHub hub, out string response)
+        {
+            hub = BotManager.Instance.BotPlayers.Keys.FirstOrDefault(candidate => candidate?.PlayerId == playerId);
+            if (hub != null)
+            {
+                response = string.Empty;
+                return true;
+            }
+
+            response = $"Player {playerId} is not an SCPSLBot dummy.";
+            return false;
         }
 
         private void NotifyModeChanged(WarmupMode before)

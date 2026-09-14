@@ -15,7 +15,8 @@ namespace SCPSLBot.Warmup;
 /// <summary>
 /// Narrows native spawn protection for real players during Standard warmup. A confirmed death
 /// authorizes exactly one later playable respawn; other role/loadout assignments clear the native
-/// effect after the game's completed-role event. Managed dummies remain owned by BotManager.
+/// effect after the game's completed-role event. Admin Tutorial retains native protection.
+/// Managed dummies remain owned by BotManager.
 /// </summary>
 internal sealed class WarmupPlayerSpawnProtectionService
 {
@@ -57,7 +58,7 @@ internal sealed class WarmupPlayerSpawnProtectionService
 
     private void OnPlayerDeath(PlayerDeathEventArgs ev)
     {
-        if (IsRealPlayer(ev.Player))
+        if (WarmupParticipation.IsParticipant(ev.Player))
         {
             pendingDeathRespawns.Add(ev.Player.ReferenceHub);
         }
@@ -66,7 +67,7 @@ internal sealed class WarmupPlayerSpawnProtectionService
     private void OnPlayerChangedRole(PlayerChangedRoleEventArgs ev)
     {
         Player player = ev.Player;
-        bool isRealPlayer = IsRealPlayer(player);
+        bool isRealPlayer = WarmupParticipation.IsParticipant(player, ev.NewRole.RoleTypeId);
         ReferenceHub? hub = isRealPlayer ? player.ReferenceHub : null;
         bool hasPendingDeathRespawn = hub != null && pendingDeathRespawns.Contains(hub);
         WarmupPlayerSpawnProtectionAction action = WarmupPlayerSpawnProtectionPolicy.Evaluate(
@@ -133,9 +134,5 @@ internal sealed class WarmupPlayerSpawnProtectionService
         }
     }
 
-    private static bool IsRealPlayer(Player? player) =>
-        player != null
-        && !player.IsDestroyed
-        && !player.IsHost
-        && !player.IsDummy;
+    internal void ForgetPlayer(Player player) => pendingDeathRespawns.Remove(player.ReferenceHub);
 }

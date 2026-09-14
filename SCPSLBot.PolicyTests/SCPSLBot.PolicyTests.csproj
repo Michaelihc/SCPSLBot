@@ -18,11 +18,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\SCPSLBot\Infrastructure\ManagedReferenceComparer.cs" Link="Infrastructure\ManagedReferenceComparer.cs" />
     <Compile Include="..\SCPSLBot\AI\FirstPersonControl\Combat\HumanWeaponReloadPolicy.cs"
              Link="CombatPolicy\HumanWeaponReloadPolicy.cs" />
+    <Compile Include="..\SCPSLBot\AI\FirstPersonControl\Movement\StuckRecoveryPolicy.cs"
+             Link="MovementPolicy\StuckRecoveryPolicy.cs" />
+    <Compile Include="..\SCPSLBot\Navigation\Policy\*.cs"
+             Link="NavigationPolicy\%(Filename)%(Extension)" />
     <Compile Include="..\SCPSLBot\Warmup\Controls\Policy\*.cs"
              Link="Policy\%(Filename)%(Extension)" />
     <Compile Include="..\SCPSLBot\Warmup\Policy\*.cs"
              Link="WarmupPolicy\%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
   </ItemGroup>
 </Project>

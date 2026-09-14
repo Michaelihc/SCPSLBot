@@ -1,13 +1,15 @@
 ﻿using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
 
+using SCPSLBot.Navigation;
+
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Room.Beliefs
 {
     internal class ZoneWithin : Belief<FacilityZone?>
     {
-        private readonly FpcBotNavigator navigator;
+        private readonly IBotNavigator navigator;
 
-        public ZoneWithin(RoomSightSense roomSightSense, FpcBotNavigator navigator)
+        public ZoneWithin(RoomSightSense roomSightSense, IBotNavigator navigator)
         {
             this.navigator = navigator;
             roomSightSense.OnSensedRoomWithin += OnSensedRoomWithin;
@@ -15,7 +17,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Room.Beliefs
 
         private void OnSensedRoomWithin(RoomIdentifier room)
         {
-            if (navigator.GetCellWithin() != null)
+            if (navigator.IsOnMesh())
             {
                 Update(room.Zone);
             }

@@ -75,6 +75,9 @@
     <Reference Include="UnityEngine.PhysicsModule">
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.AIModule">
+      <Private>false</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="netstandard" />
     <Reference Include="System" />
@@ -108,4 +111,7 @@
     <_DeployTargetsFile>$([MSBuild]::GetPathOfFileAbove('Deploy.targets', '$(MSBuildProjectDirectory)'))</_DeployTargetsFile>
   </PropertyGroup>
   <Import Project="$(_DeployTargetsFile)" Condition="'$(_DeployTargetsFile)' != ''" />
+  <ItemGroup>
+    <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
+  </ItemGroup>
 </Project>

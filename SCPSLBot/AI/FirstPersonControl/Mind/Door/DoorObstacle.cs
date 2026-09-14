@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
+using SCPSLBot.Navigation;
+
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Door
 {
     internal record struct Segment(Vector3 Start, Vector3 End)
@@ -35,10 +37,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Door
 
     internal class DoorObstacle : Belief<DoorEntry?>
     {
-        private readonly FpcBotNavigator navigator;
+        private readonly IBotNavigator navigator;
         private readonly SightSense sightSense;
 
-        public DoorObstacle(SightSense sightSense, FpcBotNavigator navigator)
+        public DoorObstacle(SightSense sightSense, IBotNavigator navigator)
         {
             this.navigator = navigator;
             this.sightSense = sightSense;

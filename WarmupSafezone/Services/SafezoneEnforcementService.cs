@@ -75,6 +75,7 @@ internal sealed class SafezoneEnforcementService
         PlayerEvents.Left += OnLeft;
         PlayerEvents.Dying += OnDying;
         PlayerEvents.ChangingRole += OnChangingRole;
+        PlayerEvents.ChangedRole += OnChangedRole;
         Scp049Events.Attacking += OnScp049Attacking;
         Scp096Events.AddingTarget += OnScp096AddingTarget;
         Scp096Events.Charging += OnScp096Charging;
@@ -106,6 +107,7 @@ internal sealed class SafezoneEnforcementService
         Scp096Events.AddingTarget -= OnScp096AddingTarget;
         Scp049Events.Attacking -= OnScp049Attacking;
         PlayerEvents.ChangingRole -= OnChangingRole;
+        PlayerEvents.ChangedRole -= OnChangedRole;
         PlayerEvents.Dying -= OnDying;
         PlayerEvents.Left -= OnLeft;
         PlayerEvents.ThrowingProjectile -= OnThrowingProjectile;
@@ -302,6 +304,14 @@ internal sealed class SafezoneEnforcementService
     private void OnLeft(PlayerLeftEventArgs ev) => Forget(ev.Player, clearProtection: true);
     private void OnDying(PlayerDyingEventArgs ev) => Forget(ev.Player, clearProtection: true);
     private void OnChangingRole(PlayerChangingRoleEventArgs ev) => Forget(ev.Player, clearProtection: false);
+
+    private void OnChangedRole(PlayerChangedRoleEventArgs ev)
+    {
+        if (!SafezoneVolumeService.IsEligible(ev.Player))
+        {
+            Forget(ev.Player, clearProtection: true);
+        }
+    }
 
     private void Forget(Player player, bool clearProtection)
     {

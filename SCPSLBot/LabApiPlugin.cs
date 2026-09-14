@@ -84,7 +84,7 @@ namespace SCPSLBot
                 }
 
                 navigationSystemStarted = true;
-                NavigationSystem.Instance.Init();
+                NavigationSystem.Instance.Init(Config.Navigation);
                 navigationEditorStarted = true;
                 NavigationMeshEditor.Instance.Init();
 

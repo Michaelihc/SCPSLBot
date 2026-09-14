@@ -1,6 +1,6 @@
 using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
-using SCPSLBot.Navigation.Mesh;
+using SCPSLBot.Navigation;
 using System;
 using System.Collections.Generic;
 using Unity.Jobs;
@@ -10,11 +10,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
 {
     internal class RoomSightSense : SightSense, ISense
     {
-        public List<TransformCell> ForeignRoomsCells { get; } = new();
+        /// <summary>Entry points into the rooms reachable from the current room through one doorway, connector or elevator.</summary>
+        public List<RoomEntry> ForeignRoomEntries { get; } = new();
         public List<RoomIdentifier> ForeignRooms => foreignRooms;
         public RoomIdentifier RoomWithin { get; private set; }
 
-        public event Action<TransformCell> OnSensedForeignRoomCell;
+        public event Action<RoomEntry> OnSensedForeignRoomEntry;
         public event Action OnAfterSensedForeignRooms;
 
         public event Action<RoomIdentifier> OnSensedRoomWithin;
@@ -23,10 +24,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
         private readonly List<RoomIdentifier> foreignRooms = new();
         private readonly HashSet<RoomIdentifier> foreignRoomsSet = new();
         private RoomIdentifier cachedTopologyRoom;
-        private NavigationMesh cachedTopologyMesh;
-        private int cachedTopologyCellCount = -1;
+        private INavigationBackend cachedBackend;
         private int cachedTopologyVersion = -1;
-        private static float nextMissingAdjacencyWarningAt;
 
         public RoomSightSense(FpcBotPlayer botPlayer) : base(botPlayer)
         {
@@ -36,11 +35,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
         public override void ProcessSightSensedItems()
         {
             UpdateRoomWithin();
-            UpdateForeignRoomsCells();
+            UpdateForeignRoomEntries();
 
-            foreach (var sensedForeignRoomCell in ForeignRoomsCells)
+            foreach (var entry in ForeignRoomEntries)
             {
-                OnSensedForeignRoomCell?.Invoke(sensedForeignRoomCell);
+                OnSensedForeignRoomEntry?.Invoke(entry);
             }
             OnAfterSensedForeignRooms?.Invoke();
         }
@@ -59,73 +58,44 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
             RoomWithin = newRoomWithin;
         }
 
-        private void UpdateForeignRoomsCells()
+        private void UpdateForeignRoomEntries()
         {
-            if (!RoomWithin
-                || !NavigationMesh.LocalMeshesByRoom.TryGetValue(RoomWithin.gameObject, out var roomMesh))
+            var backend = NavigationSystem.Instance.Backend;
+            if (!RoomWithin || backend == null || !backend.RoomHasNavigation(RoomWithin))
             {
-                ForeignRoomsCells.Clear();
+                ForeignRoomEntries.Clear();
                 foreignRooms.Clear();
                 foreignRoomsSet.Clear();
                 cachedTopologyRoom = null;
-                cachedTopologyMesh = null;
-                cachedTopologyCellCount = -1;
+                cachedBackend = null;
                 cachedTopologyVersion = -1;
                 return;
             }
 
-            // Room-to-room navmesh links are static during normal play. Rebuilding this topology on
-            // every sight tick made every bot scan every cell in its room each frame. Keep the
-            // existing per-frame sensing event cadence, but rebuild the cached lists only when the
-            // room or its mesh changes (including a navmesh reload or editor cell-count change).
+            // Room-to-room links are static between topology changes. Rebuilding this on every
+            // sight tick made every bot scan its room each frame; keep the per-frame sensing event
+            // cadence but refresh the cached lists only when the room or the topology changed.
             if (RoomWithin == cachedTopologyRoom
-                && ReferenceEquals(roomMesh, cachedTopologyMesh)
-                && roomMesh.Cells.Count == cachedTopologyCellCount
-                && NavigationMesh.TopologyVersion == cachedTopologyVersion)
+                && ReferenceEquals(backend, cachedBackend)
+                && backend.TopologyVersion == cachedTopologyVersion)
             {
                 return;
             }
 
-            ForeignRoomsCells.Clear();
+            backend.GetForeignRoomEntries(RoomWithin, ForeignRoomEntries);
             foreignRooms.Clear();
             foreignRoomsSet.Clear();
-
-            foreach (var localCell in roomMesh.Cells)
+            foreach (var entry in ForeignRoomEntries)
             {
-                var transformCell = new TransformCell(localCell, RoomWithin.transform);
-                foreach (var foreignCell in NavigationMesh.GetForeignConnectedCells(transformCell))
+                if (entry.Room != null && foreignRoomsSet.Add(entry.Room))
                 {
-                    var foreignRoom = foreignCell.Transform.GetComponent<RoomIdentifier>();
-                    if (!foreignRoom)
-                    {
-                        continue;
-                    }
-
-                    if (foreignCell.Local?.AdjacentCells == null || foreignCell.Local.AdjacentCells.Count == 0)
-                    {
-                        if (Time.realtimeSinceStartup >= nextMissingAdjacencyWarningAt)
-                        {
-                            nextMissingAdjacencyWarningAt = Time.realtimeSinceStartup + 30f;
-                            Debug.LogWarning("SCPSLBot skipped a foreign navigation cell with no adjacent local cell.");
-                        }
-
-                        continue;
-                    }
-
-                    var adjacentLocalCell = foreignCell.Local.AdjacentCells[0];
-                    ForeignRoomsCells.Add(new TransformCell(adjacentLocalCell, foreignCell.Transform));
-
-                    if (foreignRoomsSet.Add(foreignRoom))
-                    {
-                        foreignRooms.Add(foreignRoom);
-                    }
+                    foreignRooms.Add(entry.Room);
                 }
             }
 
             cachedTopologyRoom = RoomWithin;
-            cachedTopologyMesh = roomMesh;
-            cachedTopologyCellCount = roomMesh.Cells.Count;
-            cachedTopologyVersion = NavigationMesh.TopologyVersion;
+            cachedBackend = backend;
+            cachedTopologyVersion = backend.TopologyVersion;
         }
 
         public void ProcessEnter(Collider other)

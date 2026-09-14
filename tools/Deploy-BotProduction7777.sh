@@ -95,6 +95,21 @@ unzip -p "$backup_real" rollback.sha256 >"$snapshot_checksums"
 )
 rm -f -- "$snapshot_checksums"
 
+# The runtime navmesh needs the patched dedicated-server assets (readable, inlined collider
+# meshes). The package ships the linux-x64 patcher under tools/; verify before touching anything and
+# refuse to activate an unpatched server (a game update or Steam validation restores the originals).
+server_root=${SCPSL_SERVER_ROOT:-/home/scpsl/scpsl}
+patcher="$stage/tools/NavMeshAssetPatcher/NavMeshAssetPatcher"
+if test -x "$patcher"; then
+  if ! "$patcher" verify --server "$server_root"; then
+    printf 'Refusing deployment: dedicated server assets at %s are not patched for the runtime navmesh. Apply with: %s patch --server "%s"\n' "$server_root" "$patcher" "$server_root" >&2
+    exit 1
+  fi
+else
+  printf 'Package carries no NavMeshAssetPatcher; set SCPSL_SERVER_ROOT and verify the asset patch manually before deploying.\n' >&2
+  exit 1
+fi
+
 systemctl is-active --quiet "$service_name"
 ss -lunp | grep -q ':7777[[:space:]]'
 players_output=$(scpsl-ctl console players)

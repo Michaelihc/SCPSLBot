@@ -93,6 +93,43 @@ public sealed class ItemPolicyTests
     }
 
     [Fact]
+    public void HighImpactDefaultsKeepPerLifeLimitWithPracticalPerRoundCeiling()
+    {
+        WarmupControlsConfig config = WarmupControlsConfig.CreateDefault();
+        string[] highImpact = { "GrenadeHE", "GrenadeFlash", "MicroHID", "ParticleDisruptor", "Jailbird" };
+
+        foreach (string itemId in highImpact)
+        {
+            ItemCatalogEntryConfig entry = Assert.Single(config.Items, entry => entry.ItemId == itemId);
+            Assert.Equal(1, entry.PerLifeLimit);
+            Assert.Equal(999, entry.PerRoundLimit);
+            Assert.Equal(60d, entry.CooldownSeconds);
+            Assert.Equal("high-impact", entry.SharedCooldownGroup);
+        }
+    }
+
+    [Fact]
+    public void LegacyHighImpactRoundLimitsAreMigrated()
+    {
+        WarmupControlsConfig config = WarmupControlsConfig.CreateDefault();
+        ItemCatalogEntryConfig disruptor = Assert.Single(config.Items, entry => entry.ItemId == "ParticleDisruptor");
+        ItemCatalogEntryConfig grenade = Assert.Single(config.Items, entry => entry.ItemId == "GrenadeHE");
+        ItemCatalogEntryConfig microHid = Assert.Single(config.Items, entry => entry.ItemId == "MicroHID");
+        disruptor.PerRoundLimit = 2;
+        grenade.PerRoundLimit = 2;
+        microHid.PerRoundLimit = 1;
+
+        IReadOnlyList<string> changes = config.RestoreClassicPlayerOptions();
+
+        Assert.Equal(999, disruptor.PerRoundLimit);
+        Assert.Equal(999, grenade.PerRoundLimit);
+        Assert.Equal(999, microHid.PerRoundLimit);
+        Assert.Contains(changes, change => change.Contains("ParticleDisruptor", StringComparison.Ordinal));
+        Assert.Contains(changes, change => change.Contains("GrenadeHE", StringComparison.Ordinal));
+        Assert.Contains(changes, change => change.Contains("MicroHID", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ConcurrentRequestsProduceAtMostOneAddAndOneCommit()
     {
         TestFixture fixture = CreateFixture(cooldownSeconds: 30);

@@ -67,6 +67,12 @@ public sealed class WarmupControlsConfig
             ItemCatalogEntryConfig entry = configuredByItem.TryGetValue(fallback.ItemId, out ItemCatalogEntryConfig? existing)
                 ? existing ?? fallback
                 : fallback;
+            if (fallback.PerRoundLimit == 999 && entry.PerRoundLimit != 999)
+            {
+                int previousLimit = entry.PerRoundLimit;
+                entry.PerRoundLimit = 999;
+                changes.Add($"set high-impact item '{entry.ItemId}' per-round limit from {previousLimit} to 999");
+            }
             entry.AllowedRoleIds = new List<string>(safeRoles);
             entry.AllowedZoneIds = new List<string>(WarmupPlayerCatalogDefaults.RequestZones);
             normalizedItems.Add(entry);
@@ -119,8 +125,8 @@ public sealed class RoleControlsConfig
     public List<string> AllowedAdminForceRoleIds { get; set; } = new();
 
     /// <summary>
-    /// Optional explicit role-to-anchor-role mappings. This is useful for Tutorial, whose native
-    /// role template may not expose its own map spawnpoint. It never substitutes the assigned role.
+    /// Optional explicit role-to-anchor-role mappings for selectable gameplay roles.
+    /// It never substitutes the assigned role; excluded roles never reach anchor resolution.
     /// </summary>
     public Dictionary<string, string> SpawnAnchorRoleOverrides { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
@@ -128,11 +134,8 @@ public sealed class RoleControlsConfig
     public static RoleControlsConfig CreateDefault() => new()
     {
         AllowedRegularRoleIds = new List<string>(WarmupPlayerCatalogDefaults.RegularRoles),
-        AllowedAdminForceRoleIds = new List<string>(WarmupPlayerCatalogDefaults.RegularRoles.Concat(new[] { "Tutorial" })),
-        SpawnAnchorRoleOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Tutorial"] = "ClassD",
-        },
+        AllowedAdminForceRoleIds = new List<string>(WarmupPlayerCatalogDefaults.RegularRoles),
+        SpawnAnchorRoleOverrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
     };
 }
 
@@ -194,7 +197,7 @@ public static class WarmupPlayerCatalogDefaults
                 SharedCooldownGroup = highImpact ? "high-impact" : string.Empty,
                 SharedCooldownSeconds = highImpact ? 60 : 0,
                 PerLifeLimit = highImpact ? 1 : 0,
-                PerRoundLimit = highImpact ? 2 : 0,
+                PerRoundLimit = highImpact ? 999 : 0,
                 AllowedRoleIds = new List<string>(RegularRoles),
                 AllowedZoneIds = new List<string>(RequestZones),
             });

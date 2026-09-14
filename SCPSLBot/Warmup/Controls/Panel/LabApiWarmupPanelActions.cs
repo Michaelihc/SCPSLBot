@@ -9,6 +9,7 @@ using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 using MapGeneration;
 using PlayerRoles;
+using PlayerRoles.FirstPersonControl;
 using RemoteAdmin;
 using SCPSLBot.Api;
 using SCPSLBot.Navigation.Mesh;
@@ -28,7 +29,6 @@ internal sealed class LabApiWarmupPanelActions :
     ILabApiRoleControlAuthority,
     ILabApiItemControlAuthority
 {
-    private const int MaximumTeleportDestinationSlots = 254;
     private static readonly ArenaPresetDefinition ClosedPreset = new("unconfigured", false);
 
     private readonly WarmupControlsConfig controlsConfig;
@@ -38,7 +38,7 @@ internal sealed class LabApiWarmupPanelActions :
     private readonly Func<Player, string?> clientLanguage;
     private readonly PerUserRequestGuard requestGuard;
     private readonly Dictionary<string, WarmupLoadoutConfig> loadouts;
-    private readonly Dictionary<string, List<string>> teleportDestinationSlots = new(StringComparer.Ordinal);
+    private readonly NativeDoorTeleportService doorTeleports = new();
 
     public LabApiWarmupPanelActions(
         WarmupControlsConfig controlsConfig,
@@ -179,49 +179,8 @@ internal sealed class LabApiWarmupPanelActions :
             return Array.Empty<WarmupPanelChoice>();
         }
 
-        try
-        {
-            Dictionary<string, Player> liveTargets = Player.ReadyList
-                .Where(candidate => IsTeleportTarget(candidate, player, expectedFullUserId))
-                .GroupBy(candidate => candidate.UserId, StringComparer.Ordinal)
-                .Where(group => group.Count() == 1)
-                .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
-
-            if (!teleportDestinationSlots.TryGetValue(expectedFullUserId, out List<string>? slots))
-            {
-                slots = new List<string>();
-                teleportDestinationSlots[expectedFullUserId] = slots;
-            }
-
-            string[] newlyAvailable = liveTargets.Values
-                .Where(candidate => global::SCPSLBot.Warmup.WarmupManager.Instance
-                    .CanPlayersTeleportWithinArena(player, candidate))
-                .Select(candidate => candidate.UserId)
-                .Where(id => !slots.Contains(id, StringComparer.Ordinal))
-                .OrderBy(id => id, StringComparer.Ordinal)
-                .Take(Math.Max(0, MaximumTeleportDestinationSlots - slots.Count))
-                .ToArray();
-            slots.AddRange(newlyAvailable);
-
-            return slots.Select(id =>
-                {
-                    if (liveTargets.TryGetValue(id, out Player? candidate)
-                        && global::SCPSLBot.Warmup.WarmupManager.Instance
-                            .CanPlayersTeleportWithinArena(player, candidate))
-                    {
-                        return new WarmupPanelChoice(id, candidate.DisplayName, candidate.DisplayName);
-                    }
-
-                    // Tombstones preserve every earlier slot. A stale click resolves to the same
-                    // stable UserId and is rejected by TryTeleport instead of targeting a neighbour.
-                    return new WarmupPanelChoice(id, "Unavailable", "不可用");
-                })
-                .ToArray();
-        }
-        catch
-        {
-            return Array.Empty<WarmupPanelChoice>();
-        }
+        return doorTeleports.GetDestinations(
+            zone => WarmupRoleArenaRouting.CanRoomTeleportEnterZone(zone.ToString()));
     }
 
     public ControlResult TryTeleport(Player player, string expectedFullUserId, string destinationId)
@@ -241,41 +200,47 @@ internal sealed class LabApiWarmupPanelActions :
                     destinationId);
             }
 
-            Player[] matches = Player.ReadyList
-                .Where(candidate => string.Equals(candidate.UserId, destinationId, StringComparison.Ordinal)
-                    && IsTeleportTarget(candidate, player, expectedFullUserId)
-                    && global::SCPSLBot.Warmup.WarmupManager.Instance
-                        .CanPlayersTeleportWithinArena(player, candidate))
-                .ToArray();
-            if (matches.Length != 1)
+            if (!doorTeleports.TryResolve(
+                    destinationId,
+                    out Vector3 targetPosition,
+                    out _,
+                    out FacilityZone targetZone))
             {
                 return ControlResult.Reject(ControlResultCode.InvalidRequest, destinationId);
             }
 
-            Player target = matches[0];
+            if (!WarmupRoleArenaRouting.CanRoomTeleportEnterZone(targetZone.ToString()))
+            {
+                return ControlResult.Reject(ControlResultCode.RoomTeleportForbiddenToSurface, destinationId);
+            }
+
             Vector3 oldPosition = player.Position;
-            Vector3 targetPosition = target.Position;
             try
             {
-                player.Position = targetPosition;
+                if (!player.ReferenceHub.TryOverridePosition(targetPosition))
+                {
+                    return ControlResult.Reject(ControlResultCode.PlayerUnavailable, destinationId);
+                }
+
                 if (!IsCurrentRealPlayer(player, expectedFullUserId)
                     || Vector3.SqrMagnitude(player.Position - targetPosition) > 0.25f)
                 {
                     if (IsCurrentRealPlayer(player, expectedFullUserId))
                     {
-                        player.Position = oldPosition;
+                        player.ReferenceHub.TryOverridePosition(oldPosition);
                     }
 
                     return ControlResult.Reject(ControlResultCode.PlayerUnavailable, destinationId);
                 }
 
+                global::SCPSLBot.Warmup.WarmupManager.Instance.SynchronizePlayerArena(player);
                 return ControlResult.Success(destinationId);
             }
             catch
             {
                 if (IsCurrentRealPlayer(player, expectedFullUserId))
                 {
-                    player.Position = oldPosition;
+                    player.ReferenceHub.TryOverridePosition(oldPosition);
                 }
 
                 return ControlResult.Reject(ControlResultCode.PlayerUnavailable, destinationId);
@@ -316,7 +281,7 @@ internal sealed class LabApiWarmupPanelActions :
             }
 
             return global::SCPSLBot.Warmup.WarmupManager.Instance.TrySetPlayerArena(
-                    player.PlayerId,
+                    player,
                     exactMatches[0].Id,
                     out string response)
                 ? ControlResult.Success(exactMatches[0].Id)
@@ -499,22 +464,6 @@ internal sealed class LabApiWarmupPanelActions :
         return true;
     }
 
-    private static bool IsTeleportTarget(Player candidate, Player requester, string requesterUserId)
-    {
-        try
-        {
-            return IsCurrentRealPlayer(candidate)
-                && candidate.IsAlive
-                && candidate.Role != RoleTypeId.Spectator
-                && !IsSamePlayer(candidate, requester)
-                && !string.Equals(candidate.UserId, requesterUserId, StringComparison.Ordinal);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private static bool IsCurrentRealPlayer(Player? player)
     {
         try
@@ -525,6 +474,7 @@ internal sealed class LabApiWarmupPanelActions :
                 && player.IsPlayer
                 && !player.IsDummy
                 && !player.IsHost
+                && WarmupParticipation.IsParticipant(player)
                 && !ManagedBotIdentity.IsManaged(player)
                 && !string.IsNullOrWhiteSpace(player.UserId);
         }

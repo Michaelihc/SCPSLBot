@@ -31,6 +31,28 @@ public sealed class ActionRateLimiterTests
         Assert.True(limiter.TryAcquire("player@steam", 1000, out _));
     }
 
+    [Fact]
+    public void PanelActionCooldownsAreIndependentPerActionKind()
+    {
+        var clock = new FakeClock();
+        var cooldowns = new PanelActionCooldowns(clock);
+
+        Assert.True(cooldowns.TryAcquire("player@steam", PanelActionKind.Role, 6000, out _));
+        Assert.False(cooldowns.TryAcquire("player@steam", PanelActionKind.Role, 6000, out double roleRemaining));
+        Assert.InRange(roleRemaining, 5.999d, 6d);
+
+        Assert.True(cooldowns.TryAcquire("player@steam", PanelActionKind.Item, 1000, out _));
+        Assert.True(cooldowns.TryAcquire("player@steam", PanelActionKind.Teleport, 1000, out _));
+        Assert.True(cooldowns.TryAcquire("player@steam", PanelActionKind.Arena, 5000, out _));
+
+        clock.Timestamp = 1000;
+        Assert.True(cooldowns.TryAcquire("player@steam", PanelActionKind.Item, 1000, out _));
+        Assert.False(cooldowns.TryAcquire("player@steam", PanelActionKind.Role, 6000, out _));
+
+        clock.Timestamp = 6000;
+        Assert.True(cooldowns.TryAcquire("player@steam", PanelActionKind.Role, 6000, out _));
+    }
+
     private sealed class FakeClock : IMonotonicClock
     {
         public long Timestamp { get; set; }

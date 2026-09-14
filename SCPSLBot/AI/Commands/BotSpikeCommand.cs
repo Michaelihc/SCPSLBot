@@ -1,5 +1,6 @@
 using CommandSystem;
 using LabLogger = LabApi.Features.Console.Logger;
+using SCPSLBot.AI.Diagnostics;
 using MapGeneration;
 using MEC;
 using PlayerRoles;
@@ -37,6 +38,17 @@ namespace SCPSLBot.AI.Commands
                 return true;
             }
 
+            if (action == "survey_status")
+            {
+                if (!sender.CheckPermission(PlayerPermissions.GameplayData, out response))
+                {
+                    return false;
+                }
+
+                response = BotConnectorSurvey.Status();
+                return true;
+            }
+
             if (!sender.CheckPermission(PlayerPermissions.PlayersManagement, out response))
             {
                 return false;
@@ -54,13 +66,22 @@ namespace SCPSLBot.AI.Commands
                     return BotSpikeDemo.Stop(out response);
                 case "cleanup":
                     return BotSpikeDemo.Cleanup(out response);
+                case "survey":
+                    return BotSpikeDemo.Survey(
+                        arguments.Count > 1 ? arguments.At(1) : "clutter",
+                        arguments.Count > 2 ? arguments.At(2) : "both",
+                        out response);
+                case "survey_stop":
+                    BotConnectorSurvey.Stop();
+                    response = "Stopped the connector survey.";
+                    return true;
                 default:
                     response = Usage;
                     return false;
             }
         }
 
-        private const string Usage = "Usage: botspike start | walk <RoomName|preset|offmesh> | tour | status | stop | cleanup";
+        private const string Usage = "Usage: botspike start | walk <RoomName|preset|offmesh> | tour | status | stop | cleanup | survey <clutter|doors|all|keycard> [both|forward] | survey_status | survey_stop";
     }
 
     internal static class BotSpikeDemo
@@ -168,7 +189,26 @@ namespace SCPSLBot.AI.Commands
                 return $"bot={BotName} role={role} route={routeLabel} routeRunning={routeRunning} order=none pos={Format(bot.transform.position)}";
             }
 
-            return $"bot={BotName} role={role} room={status.Room} route={routeLabel} routeRunning={routeRunning} order={status.CurrentOrder} active={status.IsActive} hasPath={status.HasPath} remaining={status.DistanceRemaining:F2} elapsed={status.ElapsedSeconds:F1} stalls={status.StallCount} doors={status.DoorsTraversed} maxTick={status.MaxTickDistance:F3} teleport={status.TeleportDetected} groundMisses={status.GroundProbeMisses} maxGround={status.MaxGroundDistance:F2} failure={status.FailureReason}";
+            return $"bot={BotName} role={role} room={status.Room} route={routeLabel} routeRunning={routeRunning} order={status.CurrentOrder} active={status.IsActive} hasPath={status.HasPath} remaining={status.DistanceRemaining:F2} elapsed={status.ElapsedSeconds:F1} stalls={status.StallCount} doors={status.DoorsTraversed} maxTick={status.MaxTickDistance:F3} teleport={status.TeleportDetected} groundMisses={status.GroundProbeMisses} maxGround={status.MaxGroundDistance:F2} failure={status.FailureReason} blocker={status.LastBlocker}";
+        }
+
+        public static bool Survey(string scopeArgument, string directionArgument, out string response)
+        {
+            if (!EnsureBot(out response))
+            {
+                return false;
+            }
+
+            if (!Enum.TryParse(scopeArgument, true, out BotConnectorSurvey.Scope scope))
+            {
+                response = "Survey scope must be clutter, doors, all, or keycard.";
+                return false;
+            }
+
+            var both = !string.Equals(directionArgument, "forward", StringComparison.OrdinalIgnoreCase);
+            StopRoute();
+            routeLabel = $"survey:{scope}";
+            return BotConnectorSurvey.Start(bot, scope, both, out response);
         }
 
         public static bool Stop(out string response)
@@ -179,6 +219,7 @@ namespace SCPSLBot.AI.Commands
             }
 
             StopRoute();
+            BotConnectorSurvey.Stop();
             BotOrders.Stop(bot);
             routeLabel = "none";
             response = "Stopped the active route and left the bot holding position.";
@@ -188,6 +229,7 @@ namespace SCPSLBot.AI.Commands
         public static bool Cleanup(out string response)
         {
             StopRoute();
+            BotConnectorSurvey.Stop();
             if (bot == null)
             {
                 response = "No spike bot to clean up.";

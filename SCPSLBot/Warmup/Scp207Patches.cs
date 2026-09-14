@@ -7,10 +7,11 @@ namespace SCPSLBot.Warmup
     internal static class Scp207Patches
     {
         [HarmonyPrefix]
-        private static bool SkipHealthDrainInStandardWarmup()
+        private static bool SkipHealthDrainInStandardWarmup(Scp207 __instance)
         {
             var config = LabApiPlugin.Instance?.Config;
-            return !WarmupManager.Instance.IsStandardWarmup
+            return !WarmupParticipation.IsManagedRole(__instance.Hub.roleManager.CurrentRole.RoleTypeId)
+                   || !WarmupManager.Instance.IsStandardWarmup
                    || config == null
                    || !config.DisableScp207HealthDrainInWarmup;
         }

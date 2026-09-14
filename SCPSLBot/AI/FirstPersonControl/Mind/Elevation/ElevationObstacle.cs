@@ -1,26 +1,31 @@
-﻿using Interactables.Interobjects;
+using Interactables.Interobjects;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
-using SCPSLBot.Navigation.Mesh;
-using System.Linq;
+using SCPSLBot.Navigation;
 using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Elevation
 {
     internal enum ElevationObstacleMode
-    { 
+    {
         NoElevator,
         IsElevatorNotAtOrigin,
         IsElevatorAtOrigin
     }
 
+    /// <summary>
+    /// Tracks the elevator crossing on the bot's current path. The runtime navmesh exposes the
+    /// crossing as a link with both doors, so the chamber and its docking state are read directly;
+    /// the authored cell mesh only knows an edgeless segment, for which the world around the
+    /// segment origin is probed as before.
+    /// </summary>
     internal class ElevationObstacle : Belief<ElevationObstacleMode>
     {
         private readonly int doorLayer = LayerMask.NameToLayer("Door");
 
-        private readonly FpcBotNavigator navigator;
+        private readonly IBotNavigator navigator;
         private readonly SightSense sightSense;
 
-        public ElevationObstacle(SightSense sightSense, FpcBotNavigator botNavigator) 
+        public ElevationObstacle(SightSense sightSense, IBotNavigator botNavigator)
         {
             this.navigator = botNavigator;
             this.sightSense = sightSense;
@@ -30,27 +35,33 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Elevation
 
         private void OnAfterSightSensing()
         {
-            var edgelessSegmentResult = navigator.CellPathSegments
-                .Where(s => !s.Cell.AdjacentCellEdges.ContainsKey(s.NextCell)
-                    && !NavigationMesh.TryGetForeignConnectedEdge(s.Cell, s.NextCell, out _))
-                .Select(s => new (TransformCell Cell, TransformCell NextCell)?(s))
-                .FirstOrDefault();
-            if (!edgelessSegmentResult.HasValue)
+            if (!navigator.TryGetElevatorLink(out var link))
             {
-                if (DestinationCell != null && DestinationCell == navigator.GetCellWithin())
+                if (DestinationPoint.HasValue && navigator.HasReached(DestinationPoint.Value))
                 {
                     Update(null, null, null, null);
                 }
 
                 return;
             }
-            var edgelessSegment = edgelessSegmentResult.Value;
 
-            // path has edgeless segment
-
-            var originPoint = edgelessSegment.Cell.CenterPosition;
             var goalPosition = navigator.GoalPosition;
+            if (link.HasDoors)
+            {
+                var chamber = link.OriginDoor.Chamber;
+                if (chamber == null && !ElevatorChamber.TryGetChamber(link.OriginDoor.Group, out chamber))
+                {
+                    Update(null, goalPosition, link.Destination, null);
+                    return;
+                }
 
+                var dockedAtOrigin = chamber.DestinationDoor == link.OriginDoor && chamber.IsReady;
+                Update(chamber, goalPosition, link.Destination, dockedAtOrigin ? chamber : null);
+                return;
+            }
+
+            // Authored backend: an edgeless cell link; probe the world around its origin.
+            var originPoint = link.Origin;
             if (!sightSense.IsPositionWithinFov(originPoint))
             {
                 return;
@@ -71,7 +82,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Elevation
                     return;
                 }
 
-                Update(elevator, goalPosition, edgelessSegment.NextCell, elevatorDoor.IsConsideredOpen() ? elevator : null);
+                Update(elevator, goalPosition, link.Destination, elevatorDoor.IsConsideredOpen() ? elevator : null);
                 return;
             }
 
@@ -80,23 +91,22 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Elevation
                 var elevator = hit.collider.GetComponentInParent<ElevatorChamber>();
                 if (elevator)
                 {
-                    Update(elevator, goalPosition, edgelessSegment.NextCell, elevator);
+                    Update(elevator, goalPosition, link.Destination, elevator);
                     return;
                 }
             }
 
-            var destPoint = edgelessSegment.NextCell.CenterPosition;
-            if (Physics.Raycast(destPoint, Vector3.down, out hit, 2f))
+            if (Physics.Raycast(link.Destination, Vector3.down, out hit, 2f))
             {
                 var elevator = hit.collider.GetComponentInParent<ElevatorChamber>();
                 if (elevator)
                 {
-                    Update(elevator, goalPosition, edgelessSegment.NextCell, null);
+                    Update(elevator, goalPosition, link.Destination, null);
                     return;
                 }
             }
 
-            Update(null, goalPosition, edgelessSegment.NextCell, null);
+            Update(null, goalPosition, link.Destination, null);
         }
 
         public ElevationObstacleMode Has(Vector3 goalPos) => GoalPosition == goalPos ? HasAtOrigin : ElevationObstacleMode.NoElevator;
@@ -104,16 +114,16 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Elevation
 
         public ElevatorChamber Elevator { get; private set; }
         public Vector3? GoalPosition { get; private set; }
-        public TransformCell? DestinationCell { get; private set; }
+        public Vector3? DestinationPoint { get; private set; }
         public ElevatorChamber ElevatorAtOrigin { get; private set; }
 
-        private void Update(ElevatorChamber newElevatorValue, Vector3? goalPos, TransformCell? destinationCell, ElevatorChamber elevatorAtOrigin)
+        private void Update(ElevatorChamber newElevatorValue, Vector3? goalPos, Vector3? destinationPoint, ElevatorChamber elevatorAtOrigin)
         {
-            if (newElevatorValue != Elevator || elevatorAtOrigin != ElevatorAtOrigin) 
-            { 
+            if (newElevatorValue != Elevator || elevatorAtOrigin != ElevatorAtOrigin)
+            {
                 Elevator = newElevatorValue;
                 GoalPosition = goalPos;
-                DestinationCell = destinationCell;
+                DestinationPoint = destinationPoint;
                 ElevatorAtOrigin = elevatorAtOrigin;
                 InvokeOnUpdate();
             }

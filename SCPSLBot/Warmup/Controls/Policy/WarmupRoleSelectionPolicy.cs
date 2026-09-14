@@ -19,7 +19,6 @@ public static class WarmupRoleSelectionPolicy
         "Overwatch",
         "Filmmaker",
         "CustomRole",
-        "Tutorial",
     };
 
     public static bool IsPlayerSelectableRole(string? exactRoleId)
@@ -29,6 +28,7 @@ public static class WarmupRoleSelectionPolicy
             return false;
         }
 
-        return !ExcludedRoleIds.Contains(exactRoleId!);
+        return global::WarmupShared.WarmupParticipationPolicy.IsManagedRole(exactRoleId!)
+            && !ExcludedRoleIds.Contains(exactRoleId!);
     }
 }

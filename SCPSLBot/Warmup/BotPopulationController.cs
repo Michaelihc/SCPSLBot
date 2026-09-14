@@ -3,11 +3,13 @@ using Mirror;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using SCPSLBot.AI;
+using SCPSLBot.Infrastructure;
 using SCPSLBot.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SCPSLBot.Warmup
 {
@@ -16,16 +18,18 @@ namespace SCPSLBot.Warmup
         private const float ReconcileIntervalSeconds = 0.25f;
         private const int MaxRoleAttempts = 6;
 
-        private readonly Dictionary<ReferenceHub, BotPopulationEntry> entries = new();
+        private readonly Dictionary<ReferenceHub, BotPopulationEntry> entries = new(ManagedReferenceComparer<ReferenceHub>.Instance);
         private CoroutineHandle reconcileHandle;
         private BotPluginConfig config;
         private Func<bool> isEnabled;
         private Func<IReadOnlyList<BotPopulationSpec>> desiredSpecs;
         private Action<ReferenceHub, BotPopulationSpec> onBotPreparing;
         private Action<ReferenceHub, BotPopulationSpec> onBotReady;
+        private Action<ReferenceHub> onBotReleased;
         private bool initialized;
         private float nextSpawnAttemptAt;
         private int consecutiveSpawnFailures;
+        private float nextReconcileFaultLogAt;
 
         public DateTime? LastReconcileUtc { get; private set; }
         public string LastSpawnError { get; private set; } = string.Empty;
@@ -36,7 +40,8 @@ namespace SCPSLBot.Warmup
             Func<bool> enabledProvider,
             Func<IReadOnlyList<BotPopulationSpec>> desiredSpecsProvider,
             Action<ReferenceHub, BotPopulationSpec> botPreparing,
-            Action<ReferenceHub, BotPopulationSpec> botReady)
+            Action<ReferenceHub, BotPopulationSpec> botReady,
+            Action<ReferenceHub> botReleased)
         {
             if (initialized)
             {
@@ -48,6 +53,7 @@ namespace SCPSLBot.Warmup
             desiredSpecs = desiredSpecsProvider ?? throw new ArgumentNullException(nameof(desiredSpecsProvider));
             onBotPreparing = botPreparing ?? throw new ArgumentNullException(nameof(botPreparing));
             onBotReady = botReady ?? throw new ArgumentNullException(nameof(botReady));
+            onBotReleased = botReleased ?? throw new ArgumentNullException(nameof(botReleased));
             initialized = true;
             reconcileHandle = Timing.RunCoroutine(RunReconciler());
         }
@@ -72,11 +78,92 @@ namespace SCPSLBot.Warmup
             desiredSpecs = null;
             onBotPreparing = null;
             onBotReady = null;
+            onBotReleased = null;
         }
 
         public void Wake()
         {
             nextSpawnAttemptAt = 0f;
+        }
+
+        public bool IsPopulationManaged(ReferenceHub hub) =>
+            hub != null && entries.ContainsKey(hub);
+
+        public bool TryManageBot(ReferenceHub hub, out string response)
+        {
+            PruneMissingEntries();
+            if (!initialized || isEnabled?.Invoke() != true)
+            {
+                response = "Bot population management requires Standard warmup mode.";
+                return false;
+            }
+
+            if (hub == null || !hub.IsDummy || !BotManager.Instance.BotPlayers.ContainsKey(hub))
+            {
+                response = "The selected player is not an SCPSLBot dummy.";
+                return false;
+            }
+
+            if (entries.ContainsKey(hub))
+            {
+                response = $"Bot {hub.PlayerId} is already population-managed.";
+                return false;
+            }
+
+            IReadOnlyList<BotPopulationSpec> desired = GetDesiredSpecs();
+            if (desired.Count == 0)
+            {
+                response = "The current warmup population has no managed slot to assign.";
+                return false;
+            }
+
+            BotPopulationSpec transferredSpec = null;
+            int? replacedPlayerId = null;
+            if (entries.Count >= desired.Count)
+            {
+                BotPopulationEntry replacement = entries.Values
+                    .OrderBy(entry => entry.Spec == null ? 0 : 1)
+                    .ThenByDescending(entry => entry.Hub?.PlayerId ?? int.MinValue)
+                    .First();
+                transferredSpec = replacement.Spec;
+                replacedPlayerId = replacement.Hub?.PlayerId;
+                Despawn(replacement);
+            }
+
+            var adopted = new BotPopulationEntry(hub)
+            {
+                Spec = transferredSpec,
+                NextActionAt = 0f,
+            };
+            entries.Add(hub, adopted);
+            Wake();
+
+            response = replacedPlayerId.HasValue
+                ? $"Bot {hub.PlayerId} is now population-managed; it replaced managed bot {replacedPlayerId.Value}."
+                : $"Bot {hub.PlayerId} is now population-managed.";
+            LabLogger.Info($"[SCPSLBot] BOT_POPULATION_MANAGED bot={hub.PlayerId} replaced={replacedPlayerId?.ToString() ?? "none"}");
+            return true;
+        }
+
+        public bool TryUnmanageBot(ReferenceHub hub, out string response)
+        {
+            PruneMissingEntries();
+            if (hub == null || !entries.TryGetValue(hub, out BotPopulationEntry entry))
+            {
+                response = hub == null
+                    ? "The selected player is not an SCPSLBot dummy."
+                    : $"Bot {hub.PlayerId} is already independent.";
+                return false;
+            }
+
+            entries.Remove(hub);
+            entry.Spec = null;
+            entry.State = BotPopulationState.Alive;
+            onBotReleased?.Invoke(hub);
+            Wake();
+            response = $"Bot {hub.PlayerId} is now independent; its current role will not be reconciled.";
+            LabLogger.Info($"[SCPSLBot] BOT_POPULATION_UNMANAGED bot={hub.PlayerId} role={hub.roleManager?.CurrentRole?.RoleTypeId.ToString() ?? "none"}");
+            return true;
         }
 
         public void OnRoundRestarted()
@@ -140,13 +227,22 @@ namespace SCPSLBot.Warmup
                 try
                 {
                     Reconcile();
+                    if (!string.IsNullOrEmpty(LastReconcileFault))
+                    {
+                        LabLogger.Info("[SCPSLBot] BOT_POPULATION_RECOVERED population maintenance resumed.");
+                    }
                     LastReconcileFault = string.Empty;
                 }
                 catch (Exception exception)
                 {
+                    bool firstFault = string.IsNullOrEmpty(LastReconcileFault);
                     LastReconcileFault = $"{exception.GetType().Name}: {exception.Message}";
-                    Debug.LogError($"SCPSLBot population reconciler recovered from a fault: {LastReconcileFault}");
-                    Debug.LogException(exception);
+                    if (firstFault || Time.realtimeSinceStartup >= nextReconcileFaultLogAt)
+                    {
+                        nextReconcileFaultLogAt = Time.realtimeSinceStartup + 15f;
+                        LabLogger.Error($"[SCPSLBot] BOT_POPULATION_FAULT retry_seconds={ReconcileIntervalSeconds} "
+                            + (firstFault ? exception.ToString() : LastReconcileFault));
+                    }
                 }
 
                 yield return Timing.WaitForSeconds(ReconcileIntervalSeconds);
@@ -393,6 +489,7 @@ namespace SCPSLBot.Warmup
         {
             entry.State = BotPopulationState.Despawning;
             entries.Remove(entry.Hub);
+            onBotReleased?.Invoke(entry.Hub);
             if (entry.Hub != null)
             {
                 BotManager.Instance.DespawnBot(entry.Hub);
@@ -414,6 +511,8 @@ namespace SCPSLBot.Warmup
                 if (pair.Key == null || !BotManager.Instance.BotPlayers.ContainsKey(pair.Key))
                 {
                     entries.Remove(pair.Key);
+                    // Release retained managed state even when Unity considers this hub null.
+                    onBotReleased?.Invoke(pair.Key);
                 }
             }
         }

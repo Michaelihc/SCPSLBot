@@ -20,8 +20,20 @@ public sealed class WarmupPanelConfig
     /// <summary>Native feedback broadcast duration. Values outside 1..30 are clamped.</summary>
     public int FeedbackDurationSeconds { get; set; } = 4;
 
-    /// <summary>Minimum interval between any two accepted player-facing SSS mutations.</summary>
+    /// <summary>Legacy throttle retained for admin/tool toggles.</summary>
     public int MinimumActionIntervalMilliseconds { get; set; } = 1000;
+
+    /// <summary>Independent cooldown between role-change actions.</summary>
+    public float RoleChangeCooldownSeconds { get; set; } = 6f;
+
+    /// <summary>Independent cooldown between item-grant actions.</summary>
+    public float ItemGrantCooldownSeconds { get; set; } = 1f;
+
+    /// <summary>Independent cooldown between room-teleport actions.</summary>
+    public float TeleportCooldownSeconds { get; set; } = 1f;
+
+    /// <summary>Independent cooldown between arena-switch actions.</summary>
+    public float ArenaSwitchCooldownSeconds { get; set; } = 5f;
 
     /// <summary>
     /// Legacy loadout data retained for configuration compatibility. The player SSS loadout control

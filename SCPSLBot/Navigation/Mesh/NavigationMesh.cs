@@ -17,6 +17,9 @@ namespace SCPSLBot.Navigation.Mesh
         public event Action<Cell> CellCreated;
         public event Action<Cell> CellDeleted;
 
+        /// <summary>True for meshes filled at runtime from live collision probes; never persisted.</summary>
+        public bool IsGenerated { get; set; }
+
         private NavigationMesh()
         {
             VertexDeleted += RemoveVertexFromCells;

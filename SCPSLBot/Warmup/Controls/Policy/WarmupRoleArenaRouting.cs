@@ -1,5 +1,7 @@
 #nullable enable
 
+using System;
+
 namespace SCPSLBot.Warmup.Controls;
 
 /// <summary>
@@ -15,6 +17,13 @@ public static class WarmupRoleArenaRouting
         "FacilityGuard" or "NtfPrivate" or "NtfSergeant" or "NtfCaptain" or "NtfSpecialist" => true,
         _ => false,
     };
+
+    /// <summary>
+    /// Room teleport is a facility-navigation aid, not an alternate Surface entry path. Keeping
+    /// this rule independent of role also makes stale personalized SSS views harmless.
+    /// </summary>
+    public static bool CanRoomTeleportEnterZone(string exactZoneId) =>
+        !string.Equals(exactZoneId, "Surface", StringComparison.OrdinalIgnoreCase);
 
     public static string ResolveSurfaceOriginArenaId(bool isSurfaceAllowedRole, bool isScp) =>
         isSurfaceAllowedRole ? "surface" : ResolveArenaId(isScp);

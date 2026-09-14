@@ -80,10 +80,29 @@ public sealed class WarmupArenaPopulationPlannerTests
     [InlineData("ClassD")]
     [InlineData("Scientist")]
     [InlineData("Scp173")]
-    [InlineData("Tutorial")]
     public void OtherRolesAreEvacuatedFromSurface(string roleId)
     {
         Assert.False(WarmupRoleArenaRouting.IsSurfaceAllowedRole(roleId));
+    }
+
+    [Fact]
+    public void TutorialIsExemptFromSurfaceEvacuationButNotPlayerSelectable()
+    {
+        Assert.False(global::WarmupShared.WarmupParticipationPolicy.IsManagedRole("Tutorial"));
+        Assert.False(WarmupRoleSelectionPolicy.IsPlayerSelectableRole("Tutorial"));
+    }
+
+    [Theory]
+    [InlineData("Surface", false)]
+    [InlineData("surface", false)]
+    [InlineData("LightContainment", true)]
+    [InlineData("HeavyContainment", true)]
+    [InlineData("Entrance", true)]
+    public void RoomTeleportNeverTargetsSurface(
+        string zoneId,
+        bool expected)
+    {
+        Assert.Equal(expected, WarmupRoleArenaRouting.CanRoomTeleportEnterZone(zoneId));
     }
 
     [Theory]

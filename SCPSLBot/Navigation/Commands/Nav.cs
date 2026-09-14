@@ -14,10 +14,15 @@ namespace SCPSLBot.Navigation.Commands
 
         public override string[] Aliases { get; } = new string[] { };
 
-        public override string Description { get; } = "Manipulates navigation mesh.";
+        public override string Description { get; } = "Navigation diagnostics (status/rebuild/probe/path) and the authored cell editor.";
 
         public override void LoadGeneratedCommands()
         {
+            this.RegisterCommand(new NavStatusCommand());
+            this.RegisterCommand(new NavRebuildCommand());
+            this.RegisterCommand(new NavProbeCommand());
+            this.RegisterCommand(new NavPathCommand());
+            // Authored-backend cell editor (kept for one release behind navigation.backend = authored).
             this.RegisterCommand(new NavEditCommand());
             this.RegisterCommand(new NavLoadCommand());
             this.RegisterCommand(new NavSaveCommand());
