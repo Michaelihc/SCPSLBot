@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Library</OutputType>
+    <LangVersion>latest</LangVersion>
+    <!-- Kept in lockstep with KeybindRegistry.ApiVersion so the deployed DLL can be identified from
+         its file properties alone. It is NOT a binding boundary: this assembly is not strong-named
+         (PublicKeyToken=null), and the CLR ignores version, culture and token when binding those. An
+         old consumer therefore still loads against a new DLL - which is why consumers must probe for
+         API 3 members by reflection before calling them, not trust a version number. -->
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <FileVersion>4.0.0.0</FileVersion>
+    <Version>4.0.0</Version>
+    <InformationalVersion>4.0.0</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>ServerKeybinds</AssemblyName>
+    <RootNamespace>ServerKeybinds</RootNamespace>
+    <!-- Shared LIBRARY (not a LabAPI plugin): deploy once per target port under
+         %APPDATA%\SCP Secret Laboratory\LabAPI\dependencies\<port>. Each server process still gets
+         one shared keybind/dropdown/slider registry without leaking the ABI into other local lanes. -->
+    <SCP_SL_MANAGED Condition="'$(SCP_SL_MANAGED)' == ''">C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed</SCP_SL_MANAGED>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp" HintPath="$(SCP_SL_MANAGED)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="Assembly-CSharp-firstpass" HintPath="$(SCP_SL_MANAGED)\Assembly-CSharp-firstpass.dll" Private="false" />
+    <Reference Include="CommandSystem.Core" HintPath="$(SCP_SL_MANAGED)\CommandSystem.Core.dll" Private="false" />
+    <Reference Include="LabApi" HintPath="$(SCP_SL_MANAGED)\LabApi.dll" Private="false" />
+    <Reference Include="Mirror" HintPath="$(SCP_SL_MANAGED)\Mirror.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(SCP_SL_MANAGED)\UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(SCP_SL_MANAGED)\UnityEngine.CoreModule.dll" Private="false" />
+    <!-- SSTextArea's constructor defaults a TMPro.TextAlignmentOptions parameter, so the compiler
+         needs this reference even where we never pass one. -->
+    <Reference Include="Unity.TextMeshPro" HintPath="$(SCP_SL_MANAGED)\Unity.TextMeshPro.dll" Private="false" />
+  </ItemGroup>
+
+  <!-- Compatibility fork builds never auto-deploy. Packaging must deliberately select exactly this
+       ServerKeybinds.dll or the upstream one, never both. -->
+</Project>

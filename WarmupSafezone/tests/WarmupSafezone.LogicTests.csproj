@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="logic\Program.cs" />
+    <Compile Include="..\Core\MonotonicClock.cs" Link="Core\MonotonicClock.cs" />
+    <Compile Include="..\Core\ExitProtectionTracker.cs" Link="Core\ExitProtectionTracker.cs" />
+    <Compile Include="..\Core\BlockerPenaltyTracker.cs" Link="Core\BlockerPenaltyTracker.cs" />
+    <Compile Include="..\Core\BlockerDrainCalculator.cs" Link="Core\BlockerDrainCalculator.cs" />
+    <Compile Include="..\Core\DamagePolicy.cs" Link="Core\DamagePolicy.cs" />
+    <Compile Include="..\Core\ActionPolicy.cs" Link="Core\ActionPolicy.cs" />
+    <Compile Include="..\Core\ResilientSchedule.cs" Link="Core\ResilientSchedule.cs" />
+    <Compile Include="..\Core\SurfaceSafezoneGeometry.cs" Link="Core\SurfaceSafezoneGeometry.cs" />
+  </ItemGroup>
+</Project>

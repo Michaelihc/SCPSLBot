@@ -1,0 +1,94 @@
+{
+  "entries": [
+    {
+      "id": "warmupsafezone.action-blocked",
+      "owner": "WarmupSafezone",
+      "system": "hsm",
+      "text": "<color=#8fe7ff><b>SAFEZONE</b></color> · Action blocked.<color=#00000000><mspace=1em>                                                 </mspace></color>",
+      "x": -800,
+      "y": 150,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 22,
+      "lineHeight": 12,
+      "priority": 30
+    },
+    {
+      "id": "warmupsafezone.blocker",
+      "owner": "WarmupSafezone",
+      "system": "hsm",
+      "text": "<size=32><color=#ff3030><b>KEEP SAFEZONE CLEAR</b></color></size><color=#00000000><mspace=1em>                                                 </mspace></color>\n<size=22><color=#ffd166>Next: 1 HP · Reset after 60s outside.</color></size><color=#00000000><mspace=1em>                                                 </mspace></color>",
+      "x": -800,
+      "y": 235,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 22,
+      "lineHeight": 12,
+      "priority": 20
+    },
+    {
+      "id": "warmupsafezone.surface-drain",
+      "owner": "WarmupSafezone",
+      "system": "hsm",
+      "text": "<color=#ff6060><b>SAFEZONE DRAIN</b> · 0.5% max HP/s.</color><color=#00000000><mspace=1em>                                                 </mspace></color>",
+      "x": -800,
+      "y": 325,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 22,
+      "lineHeight": 12,
+      "priority": 10
+    },
+    {
+      "id": "statsbots.warmup.flash",
+      "owner": "StatsBots",
+      "system": "hsm",
+      "text": "<color=#5bff80>+10 SCORE</color> · BOT KILL<color=#00000000><mspace=1em>                                             </mspace></color>",
+      "x": -800,
+      "y": 735,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 26,
+      "lineHeight": 12,
+      "priority": 30
+    },
+    {
+      "id": "statsbots.warmup.hero",
+      "owner": "StatsBots",
+      "system": "hsm",
+      "text": "<color=#4fcbff>Veteran</color> · <color=#e7ecf3>Bot Hunter</color> · 640/1.5K<color=#00000000><mspace=1em>                                             </mspace></color>\nK42 D7 · S5/11 · 3 BOT · Hardest<color=#00000000><mspace=1em>                                             </mspace></color>",
+      "x": -800,
+      "y": 780,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 23,
+      "lineHeight": 12,
+      "priority": 20
+    },
+    {
+      "id": "statsbots.warmup.footer",
+      "owner": "StatsBots",
+      "system": "hsm",
+      "text": "SSS · Choose an unlocked title<color=#00000000><mspace=1em>                                             </mspace></color>",
+      "x": -800,
+      "y": 850,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 22,
+      "lineHeight": 12,
+      "priority": 10
+    },
+    {
+      "id": "scpslbot.warmup.warhead",
+      "owner": "scpslbot",
+      "system": "hsm",
+      "text": "<b><color=#FFB347>WARMUP</color></b> · The Alpha Warhead is disabled.",
+      "x": 0,
+      "y": 1040,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 24,
+      "priority": 40
+    }
+  ]
+}

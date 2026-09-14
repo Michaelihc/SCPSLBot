@@ -1,0 +1,50 @@
+SCPSLBot live lifecycle validation
+Date: 2026-08-30 (Asia/Shanghai)
+Port: 7911
+Server: SCP:SL 14.2.7 / LabAPI
+Harness level: standard
+Map seed: 135488306
+
+Staged artifacts (SHA-256)
+- SCPSLBot.dll: ECBD2C38A6EFC71DA38F99D447D86EC0ADDA60B390837563F761F25E508C58E5
+- SCPSLBot.Components.dll: 1ECDAAFEB6B0EF282E2C32DA3F359E7E61595198B768628953E1F7A2FB351E45
+- PlaytestHarness.dll: 7F95AF8A725F445D7753B8A7535CB9C243FE4A824B5614EF44243F585B807EF6
+- SCPSLBot.PlaytestScenarios.dll: 28C7D78256212DCBFBFBC1E8E3D2551C5280A02069DA95A316EB331964AF3D04
+
+Dependency/config transaction
+- Original global ServerKeybinds: assembly 3.0.0.0, SHA-256 492AB5EFAF87BA59CC090DC357C0E369BFFE51AA8C3E0B74941F63D10463BD9B.
+- A first preflight with v3 and panel.enabled=false could not enable SCPSLBot. LabAPI CommandLoader called Assembly.GetTypes before OnEnabled and encountered v4 DropdownSelection fields in WarmupSssController compiler display classes. No scenario ran in that preflight.
+- After explicit authorization, global v3 was backed up byte-for-byte and temporarily replaced with compat v4 assembly 4.0.0.0, SHA-256 49F6BBDEBB9D79F6803CB9C0653F59D6185FB664AAB2C6D7545492ACE093D0C4.
+- The original/default panel remained enabled. SCPSLBot enabled successfully and registered both SSS blocks: SCPSLBot.Warmup block 1130000 and SCPSLBot.Tools block 1132000.
+- Original SCPSLBot config SHA-256 before and after: E24BAEC1A6695D215BE04BD71659BCE2BF188FAF4BAF0C6F168417A3F4F13FC7.
+- After shutdown, global ServerKeybinds v3 was restored byte-for-byte and re-verified as assembly 3.0.0.0 with its original SHA-256. Both explicit temporary backup files were removed.
+- Port 7911 finished with zero matching LocalAdmin/SCPSL processes and zero listeners.
+
+Commands
+- ptest list
+- ptest run scpslbot-population-recovery standard
+- ptest run scpslbot-role-death-recovery standard
+- ptest run scpslbot-native-walk-grounding standard
+- ptest report
+
+Results
+- PASS scpslbot-population-recovery: 3.183s; run passed=1 failed=0 skipped=0. Exact desired/live/owned/tracked population was 3, all three bots were grounded with 13/13 ground rays, and None -> Standard recovery succeeded.
+  Artifacts: 20260830-053718-standard.jsonl and 20260830-053718-standard.summary.json
+- PASS scpslbot-role-death-recovery: 2.851s; run passed=1 failed=0 skipped=0. The canceled repair retried, forced death recovered, and repeated 13/13 ground probes plus settling checks passed.
+  Artifacts: 20260830-053753-standard.jsonl and 20260830-053753-standard.summary.json
+- FAIL scpslbot-native-walk-grounding: 121.053s; run passed=0 failed=1 skipped=0. The real botspike route acquired a path but never left position (57.57,100.91,64.23). It timed out after 120.1s with remaining=45.57m, stalls=24, doors=0, maxTick=0.000, teleport=false, groundMisses=0, maxGround=1.19m.
+  Artifacts: 20260830-053835-standard.jsonl and 20260830-053835-standard.summary.json
+
+Excluded by instruction
+- scpslbot-bot-add-cap was not run.
+- scpslbot-midround-reload-recovery was not run.
+
+Authorized patched walk-only rerun
+- Root changed SteerToPosition to always emit the inverse-transformed world waypoint direction after the near-zero guard, removing the behind-facing zero-input deadlock.
+- Fresh Release build succeeded with 0 warnings and 0 errors. Rerun SCPSLBot.dll SHA-256: 467E456E3518892A83BEB0B363387F7955A3C98BBFCFA535171FAE4888E75A01.
+- Only this command was run: ptest run scpslbot-native-walk-grounding standard
+- PASS scpslbot-native-walk-grounding: 33.295s; run passed=1 failed=0 skipped=0; seed=364901731.
+- Route: two native legs completed in 31.39s, stalls=0, doors=4, maxTick=0.068m, teleport=false, groundMisses=0, maxGround=1.21m. Final world probes were ground=13/13 and surrounding=16/16.
+- Artifacts: 20260830-054838-standard.jsonl and 20260830-054838-standard.summary.json.
+- After this artifact was built/staged and the run completed, the root agent added IncludeSourceRevisionInInformationalVersion=false to the core/components/compat project metadata. The next final build hash will therefore differ from the evidence DLL only by informational-version metadata; no movement behavior changed after this passing run.
+- Cleanup repeated successfully: port 7911 process/listener counts were zero, config returned to SHA-256 E24BAEC1A6695D215BE04BD71659BCE2BF188FAF4BAF0C6F168417A3F4F13FC7, and global ServerKeybinds returned to assembly 3.0.0.0 / SHA-256 492AB5EFAF87BA59CC090DC357C0E369BFFE51AA8C3E0B74941F63D10463BD9B. Both rerun backup files were removed.

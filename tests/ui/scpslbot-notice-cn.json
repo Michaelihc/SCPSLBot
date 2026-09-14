@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "id": "scpslbot.warmup.warhead",
+      "owner": "scpslbot",
+      "system": "hsm",
+      "text": "<b><color=#FFB347>热身模式</color></b> · 已禁用阿尔法核弹。",
+      "x": 0,
+      "y": 1040,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 24,
+      "priority": 40
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{"t":0.006,"ev":"run_start","data":{"level":"standard","seed":135488306,"scenarios":["scpslbot-population-recovery"]}}
+{"t":0.007,"ev":"scenario_start","scenario":"scpslbot-population-recovery","data":{"timeout_s":90}}
+{"t":0.015,"ev":"require","scenario":"scpslbot-population-recovery","msg":"acceptance profile has a non-zero bounded desired population (actual 3)","data":{"ok":true}}
+{"t":0.016,"ev":"require","scenario":"scpslbot-population-recovery","msg":"zero-permission RA sender cannot read bot_status","data":{"ok":true}}
+{"t":0.016,"ev":"require","scenario":"scpslbot-population-recovery","msg":"bot_status denial names the permission boundary: You don't have permissions to execute this command.\nRequired permission: FacilityManagement\nBOT_STATUS#You don't have permissions to execute this command.\nRequired permission: FacilityManagement","data":{"ok":true}}
+{"t":0.022,"ev":"require","scenario":"scpslbot-population-recovery","msg":"RA command succeeded for enable Standard warmup: success=True replies=1 response='Warmup mode set to Standard.' lastReply='BOT_WARMUP#Warmup mode set to Standard.'","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"owned population equals desired (3/3)","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"initialized live population equals desired (3/3)","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"world exposes exactly desired warmup dummies (3/3)","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"tracked population covers all warmup-owned bots (3>=3)","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"native network readiness is true","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"current-map navigation readiness is true","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"nav generation is current (2/2)","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"global AI runner reports running","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"global AI runner has emitted a heartbeat","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 is network-ready","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 is alive","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 has desired role ChaosRifleman (actual ChaosRifleman)","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 owns a live native FPC role graph","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 remains in the native hub world","data":{"ok":true}}
+{"t":0.566,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 has an authoritative native network registration","data":{"ok":true}}
+{"t":0.569,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 passed 13/13 tightly-spaced downward ground raycasts","data":{"ok":true}}
+{"t":0.569,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world probes bot=SCPSL Warmup Bot 1 id=2 ground=13/13 surrounding=16/16 position=(7.06,291.6,-45.57)"}
+{"t":0.569,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 is network-ready","data":{"ok":true}}
+{"t":0.569,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 is alive","data":{"ok":true}}
+{"t":0.569,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 has desired role ChaosRifleman (actual ChaosRifleman)","data":{"ok":true}}
+{"t":0.569,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 owns a live native FPC role graph","data":{"ok":true}}
+{"t":0.569,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 remains in the native hub world","data":{"ok":true}}
+{"t":0.569,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 has an authoritative native network registration","data":{"ok":true}}
+{"t":0.569,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 passed 13/13 tightly-spaced downward ground raycasts","data":{"ok":true}}
+{"t":0.569,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world probes bot=SCPSL Warmup Bot 2 id=3 ground=13/13 surrounding=15/16 position=(9.94,291.6,-46.94)"}
+{"t":0.57,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 is network-ready","data":{"ok":true}}
+{"t":0.57,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 is alive","data":{"ok":true}}
+{"t":0.57,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 has desired role ChaosRifleman (actual ChaosRifleman)","data":{"ok":true}}
+{"t":0.57,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 owns a live native FPC role graph","data":{"ok":true}}
+{"t":0.57,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 remains in the native hub world","data":{"ok":true}}
+{"t":0.57,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 has an authoritative native network registration","data":{"ok":true}}
+{"t":0.57,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 passed 13/13 tightly-spaced downward ground raycasts","data":{"ok":true}}
+{"t":0.57,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world probes bot=SCPSL Warmup Bot 3 id=4 ground=13/13 surrounding=15/16 position=(10.91,291.6,-46.26)"}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 identity survived the settle window","data":{"ok":true}}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 did not fall into the void (291.6->291.6)","data":{"ok":true}}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 still has walkable ground after settling/moving","data":{"ok":true}}
+{"t":1.816,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world settle bot=SCPSL Warmup Bot 1 id=2 start=(7.06,291.6,-45.57) end=(7.06,291.6,-45.57) moved=0m"}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 identity survived the settle window","data":{"ok":true}}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 did not fall into the void (291.6->291.6)","data":{"ok":true}}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 still has walkable ground after settling/moving","data":{"ok":true}}
+{"t":1.816,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world settle bot=SCPSL Warmup Bot 2 id=3 start=(9.94,291.6,-46.94) end=(9.94,291.6,-46.94) moved=0m"}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 identity survived the settle window","data":{"ok":true}}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 did not fall into the void (291.6->291.6)","data":{"ok":true}}
+{"t":1.816,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 still has walkable ground after settling/moving","data":{"ok":true}}
+{"t":1.816,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world settle bot=SCPSL Warmup Bot 3 id=4 start=(10.91,291.6,-46.26) end=(10.91,291.6,-46.26) moved=0m"}
+{"t":1.819,"ev":"require","scenario":"scpslbot-population-recovery","msg":"RA command succeeded for disable warmup: success=True replies=1 response='Warmup mode set to None.' lastReply='BOT_WARMUP#Warmup mode set to None.'","data":{"ok":true}}
+{"t":2.106,"ev":"require","scenario":"scpslbot-population-recovery","msg":"diagnostics report None after disable (actual None)","data":{"ok":true}}
+{"t":2.106,"ev":"require","scenario":"scpslbot-population-recovery","msg":"None mode exposes no owned/live/world warmup bots","data":{"ok":true}}
+{"t":2.108,"ev":"require","scenario":"scpslbot-population-recovery","msg":"RA command succeeded for re-enable Standard warmup: success=True replies=1 response='Warmup mode set to Standard.' lastReply='BOT_WARMUP#Warmup mode set to Standard.'","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"owned population equals desired (3/3)","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"initialized live population equals desired (3/3)","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"world exposes exactly desired warmup dummies (3/3)","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"tracked population covers all warmup-owned bots (3>=3)","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"native network readiness is true","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"current-map navigation readiness is true","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"nav generation is current (2/2)","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"global AI runner reports running","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"global AI runner has emitted a heartbeat","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 is network-ready","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 is alive","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 has desired role ChaosRifleman (actual ChaosRifleman)","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 owns a live native FPC role graph","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 remains in the native hub world","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 has an authoritative native network registration","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 1 passed 13/13 tightly-spaced downward ground raycasts","data":{"ok":true}}
+{"t":2.657,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world probes bot=SCPSL Warmup Bot 1 id=5 ground=13/13 surrounding=15/16 position=(8.02,291.6,-40.03)"}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 is network-ready","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 is alive","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 has desired role ChaosRifleman (actual ChaosRifleman)","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 owns a live native FPC role graph","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 remains in the native hub world","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 has an authoritative native network registration","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 2 passed 13/13 tightly-spaced downward ground raycasts","data":{"ok":true}}
+{"t":2.657,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world probes bot=SCPSL Warmup Bot 2 id=6 ground=13/13 surrounding=15/16 position=(10.91,291.6,-37.97)"}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 is network-ready","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 is alive","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 has desired role ChaosRifleman (actual ChaosRifleman)","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 owns a live native FPC role graph","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 remains in the native hub world","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 has an authoritative native network registration","data":{"ok":true}}
+{"t":2.657,"ev":"require","scenario":"scpslbot-population-recovery","msg":"SCPSL Warmup Bot 3 passed 13/13 tightly-spaced downward ground raycasts","data":{"ok":true}}
+{"t":2.657,"ev":"step","scenario":"scpslbot-population-recovery","msg":"world probes bot=SCPSL Warmup Bot 3 id=7 ground=13/13 surrounding=16/16 position=(7.06,291.6,-46.26)"}
+{"t":3.173,"ev":"require","scenario":"scpslbot-population-recovery","msg":"AI runner remains supervised after population churn","data":{"ok":true}}
+{"t":3.173,"ev":"step","scenario":"scpslbot-population-recovery","msg":"population recovery final status: mode=Standard; desired=3; desired_role=ChaosRifleman; tracked=3; owned=3; live=3; states=alive=3; network_ready=True; nav_ready=True; nav_generation=2; nav_ready_generation=2; last_reconcile=2026-08-29T21:37:21.8515643Z; last_spawn_error=none; reconcile_fault=none; ai_runner_running=True; ai_heartbeat=2026-08-29T21:37:22.0844460Z; ai_last_fault=none; ai_last_fault_time=never; parked=0; sight_senses=18; raycast_capacity=192; tracked_colliders=35; nav_error=none; role_warning=none"}
+{"t":3.191,"ev":"result","scenario":"scpslbot-population-recovery","data":{"outcome":"pass","duration_s":3.183,"violations":0}}
+{"t":3.742,"ev":"run_result","data":{"level":"standard","passed":1,"failed":0,"skipped":0,"summary":"C:\\Users\\Michael\\AppData\\Roaming\\SCP Secret Laboratory\\LabAPI\\configs\\7911\\PlaytestHarness\\runs\\20260830-053718-standard.summary.json"}}

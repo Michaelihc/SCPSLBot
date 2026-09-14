@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "id": "scpslbot.admin.bot_diagnostics",
+      "owner": "scpslbot",
+      "system": "hsm",
+      "text": "<size=18><b>BOT</b> Warmup Bot 1 · Chaos Rifleman\n<b>STATE</b> pursuing · runner healthy\n<b>TARGET</b> Player 2 · visible\n<b>NAV</b> generation 8 · path 3/11",
+      "x": 0,
+      "y": 180,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 18,
+      "priority": 30
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "id": "scpslbot.admin.bot_diagnostics",
+      "owner": "scpslbot",
+      "system": "hsm",
+      "text": "<size=18><b>机器人</b> 热身机器人 1 · 混沌步枪手\n<b>状态</b> 追击中 · 调度器正常\n<b>目标</b> 玩家 2 · 可见\n<b>导航</b> 第 8 代 · 路径 3/11",
+      "x": 0,
+      "y": 180,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 18,
+      "priority": 30
+    }
+  ]
+}

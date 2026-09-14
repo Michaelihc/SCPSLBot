@@ -1,0 +1,10 @@
+{
+  "release": "production-2026-09-08",
+  "status": "stable",
+  "production_deployed_at": "2026-09-08T19:41:34+08:00",
+  "artifact": "SCPSLBot.dll",
+  "sha256": "8b4163539d8342c4d817ed4af9d835ebe7d0908c338bf2fe01b7183023cd8d26",
+  "source_baseline": "f036fb06d9b16adaa708363de2fd6bc7e5ed322f",
+  "source_status": "Current source development is in testing. The stable binary includes subsequent production fixes; this baseline is not its exact build source.",
+  "scope": "SCPSLBot.dll only; retain existing companion DLLs and configuration."
+}

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>StatsSystem</AssemblyName>
+    <RootNamespace>StatsBots.Tests</RootNamespace>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\Core\Identity.cs" Link="Core\Identity.cs" />
+    <Compile Include="..\Core\Scoring.cs" Link="Core\Scoring.cs" />
+    <Compile Include="..\Core\Catalogs.cs" Link="Core\Catalogs.cs" />
+    <Compile Include="..\Core\Cadence.cs" Link="Core\Cadence.cs" />
+    <Compile Include="..\Config\StatsBotsConfig.cs" Link="Config\StatsBotsConfig.cs" />
+    <Compile Include="..\Integration\StatsSystemAdapter.cs" Link="Integration\StatsSystemAdapter.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,43 @@
+{
+  "entries": [
+    {
+      "id": "statsbots.warmup.flash",
+      "owner": "StatsBots",
+      "system": "hsm",
+      "text": "<color=#5bff80>+10 SCORE</color> · BOT KILL<color=#00000000><mspace=1em>                                             </mspace></color>",
+      "x": -800,
+      "y": 735,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 26,
+      "lineHeight": 12,
+      "priority": 30
+    },
+    {
+      "id": "statsbots.warmup.hero",
+      "owner": "StatsBots",
+      "system": "hsm",
+      "text": "<color=#4fcbff>Veteran</color> · <color=#e7ecf3>Bot Hunter</color> · 640/1.5K<color=#00000000><mspace=1em>                                             </mspace></color>\nK42 D7 · S5/11 · 3 BOT · Hardest<color=#00000000><mspace=1em>                                             </mspace></color>",
+      "x": -800,
+      "y": 780,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 23,
+      "lineHeight": 12,
+      "priority": 20
+    },
+    {
+      "id": "statsbots.warmup.footer",
+      "owner": "StatsBots",
+      "system": "hsm",
+      "text": "SSS · Choose an unlocked title<color=#00000000><mspace=1em>                                             </mspace></color>",
+      "x": -800,
+      "y": 850,
+      "alignment": "center",
+      "verticalAlign": "middle",
+      "textSize": 22,
+      "lineHeight": 12,
+      "priority": 10
+    }
+  ]
+}

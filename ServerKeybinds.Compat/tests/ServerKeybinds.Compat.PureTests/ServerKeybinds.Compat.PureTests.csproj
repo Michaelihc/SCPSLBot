@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\SssRefreshCoordinator.cs" Link="SssRefreshCoordinator.cs" />
+    <Compile Include="..\..\src\SssInterestIndex.cs" Link="SssInterestIndex.cs" />
+    <Compile Include="..\..\src\PersonalizedDropdownResponseLatch.cs" Link="PersonalizedDropdownResponseLatch.cs" />
+  </ItemGroup>
+</Project>

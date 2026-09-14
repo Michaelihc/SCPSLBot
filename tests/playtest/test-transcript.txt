@@ -1,0 +1,79 @@
+SCPSLBot Playtest Transcript Template
+=====================================
+
+Date/time:
+Commit/worktree:
+Server build:
+LabAPI build:
+Port (isolated; never production):
+SCPSLBot.dll SHA-256:
+PlaytestHarness.dll SHA-256:
+SCPSLBot.PlaytestScenarios.dll SHA-256:
+Nav source/generation:
+Warmup bot desired count before run:
+
+Build
+-----
+dotnet build .tests\Playtest\PlaytestHarness.csproj -c Release
+Result:
+
+dotnet build scpsl-bot-plugin\tests\playtest\SCPSLBot.PlaytestScenarios.csproj -c Release
+Result:
+
+node .tests\lint-scenarios.js
+Result:
+
+Lifecycle suite
+---------------
+RA: ptest reload
+Result/catalog count:
+
+RA: ptest run scpslbot-lifecycle standard
+RUN_RESULT:
+Summary JSON path:
+JSONL path:
+
+Expected externally observed assertions:
+- bot_status rejects a zero-permission RA sender and exposes every readiness/fault field.
+- Standard reaches owned=live=world=desired within 12 seconds.
+- Every warmup dummy is alive, desired-role FPC, native-network registered, and passes 13 downward
+  ground raycasts plus 16 surrounding raycasts at each probe beat.
+- None removes every owned/world warmup bot; Standard recreates the exact target within 12 seconds.
+- One LabAPI ChangingRole cancellation is observed; later retry heals the same bot.
+- Native RA kill emits LabAPI Death; the same maintained identity returns alive in desired role.
+- botspike physically walks LczToilets -> Lcz173 with Completed, teleport=False,
+  groundMisses=0, maxTick<=1.5, plus pre/post ground probes.
+
+Per-scenario results:
+- scpslbot-population-recovery:
+- scpslbot-role-death-recovery:
+- scpslbot-native-walk-grounding:
+
+Disruptive acceptance: maintained add/cap (isolated port only)
+------------------------------------------------------------
+Config backup path:
+RA: ptest run scpslbot-bot-add-cap standard
+Result:
+Observed desired increments:
+Observed cap rejection:
+Reset warmup_bot_count after run:
+
+Disruptive acceptance: mid-round plugin reload (optional test driver)
+------------------------------------------------------------------
+SCPSLPluginExtensions intentionally deployed to this test port: yes/no
+RA: ptest run scpslbot-midround-reload-recovery standard
+Result or explicit SKIP:
+Old owned player IDs:
+New owned player IDs:
+Recovered within 12 seconds without round restart: yes/no
+
+Repeated live gates not automated by one scenario
+------------------------------------------------
+20 cold boots exact target <=12s: __/20
+20 round restarts exact target <=12s: __/20
+3 injected spawn-stage failures recovered with no orphan/partial dummy: __/3
+100 add/despawn cycles with native memory/handles/subscriptions returning to baseline: __/100
+20 disable/enable cycles with collision state/coroutines returning to baseline: __/20
+30-minute 10-bot/30-player load budget captured: yes/no
+
+Notes/log excerpts (keep [Playtest] lines grep-stable):

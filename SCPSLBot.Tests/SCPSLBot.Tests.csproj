@@ -1,0 +1,68 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <Platforms>x64</Platforms>
+    <AssemblyName>SCPSLBot.Tests</AssemblyName>
+    <RootNamespace>SCPSLBot.Tests</RootNamespace>
+    
+    <LangVersion>12.0</LangVersion>
+
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
+
+    <AssemblySearchPaths>$(SL_REFERENCES);$(AssemblySearchPaths)</AssemblySearchPaths>
+
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <IsPublishable>False</IsPublishable>
+    <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);UNITY_ASSERTIONS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SCPSLBot\SCPSLBot.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="netstandard" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="Assembly-CSharp">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="CommandSystem.Core">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="LabApi">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mirror">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Pooling">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

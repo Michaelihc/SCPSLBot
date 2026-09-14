@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SCPSLBot project audit</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090d13;
+      --panel: #101722;
+      --panel-2: #151f2d;
+      --line: #273447;
+      --text: #e7ecf3;
+      --muted: #9aa6b7;
+      --cyan: #4fcbff;
+      --green: #5bff80;
+      --gold: #ffd24d;
+      --red: #ff6666;
+      --orange: #ff9f55;
+      --violet: #b6a6ff;
+      --shadow: 0 16px 42px rgba(0, 0, 0, .24);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 15% -10%, rgba(79, 203, 255, .13), transparent 34rem),
+        radial-gradient(circle at 100% 10%, rgba(182, 166, 255, .09), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    a { color: var(--cyan); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    a:hover { color: #9de5ff; }
+    code, .mono {
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: .92em;
+    }
+    code {
+      color: #d7e7f5;
+      background: rgba(255, 255, 255, .055);
+      border: 1px solid rgba(255, 255, 255, .07);
+      border-radius: 5px;
+      padding: .08rem .3rem;
+    }
+
+    .shell { width: min(1220px, calc(100% - 32px)); margin: 0 auto; }
+    .hero { padding: 72px 0 42px; border-bottom: 1px solid var(--line); }
+    .eyebrow {
+      color: var(--cyan);
+      font-size: .76rem;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1 { margin: .55rem 0 .7rem; font-size: clamp(2.35rem, 7vw, 5.25rem); line-height: .96; letter-spacing: -.055em; }
+    h2 { margin: 0 0 1rem; font-size: clamp(1.55rem, 3vw, 2.3rem); letter-spacing: -.025em; }
+    h3 { margin: 1.3rem 0 .55rem; font-size: 1.12rem; }
+    p { margin: .55rem 0 1rem; }
+    .lede { max-width: 820px; color: #c6d0dd; font-size: 1.12rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: .55rem 1.2rem; color: var(--muted); font-size: .86rem; }
+
+    .nav-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(9, 13, 19, .91);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    nav { display: flex; gap: 1.2rem; overflow-x: auto; padding: .78rem 0; white-space: nowrap; }
+    nav a { color: #b6c2d1; text-decoration: none; font-size: .84rem; font-weight: 700; }
+    nav a:hover { color: white; }
+
+    main { padding: 36px 0 90px; }
+    section { scroll-margin-top: 72px; margin: 0 0 56px; }
+    .panel {
+      background: linear-gradient(145deg, rgba(21, 31, 45, .97), rgba(16, 23, 34, .97));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 3vw, 30px);
+    }
+    .verdict { border-left: 4px solid var(--red); }
+    .verdict strong { color: white; }
+    .plain-list { margin: .75rem 0 0; padding-left: 1.15rem; }
+    .plain-list li { margin: .48rem 0; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .metric { background: rgba(255, 255, 255, .035); border: 1px solid var(--line); border-radius: 11px; padding: 17px; }
+    .metric .number { display: block; font-size: 1.75rem; font-weight: 850; line-height: 1; }
+    .metric .label { display: block; color: var(--muted); font-size: .78rem; margin-top: .5rem; }
+    .critical .number { color: var(--red); }
+    .high .number { color: var(--orange); }
+    .ok .number { color: var(--green); }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1.2fr) 64px minmax(0, 1fr);
+      align-items: stretch;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .arch-col { display: grid; gap: 10px; align-content: center; }
+    .arch-node { border: 1px solid var(--line); border-radius: 11px; padding: 14px; background: rgba(255,255,255,.035); }
+    .arch-node strong { display: block; margin-bottom: .3rem; }
+    .arch-node span { display: block; color: var(--muted); font-size: .83rem; }
+    .arch-node.core { border-color: rgba(79,203,255,.55); }
+    .arch-node.data { border-color: rgba(182,166,255,.55); }
+    .arch-node.safety { border-color: rgba(91,255,128,.45); }
+    .arrow { display: grid; place-items: center; color: var(--cyan); font-size: 1.8rem; }
+    .flow-note { color: var(--muted); font-size: .82rem; margin-top: 1rem; }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .assembly { border: 1px solid var(--line); border-radius: 11px; padding: 16px; background: rgba(255,255,255,.027); }
+    .assembly h3 { margin: 0 0 .35rem; }
+    .assembly p { margin: 0; color: var(--muted); font-size: .88rem; }
+
+    .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 13px; }
+    button, input {
+      font: inherit;
+      color: var(--text);
+      background: #111a27;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: .52rem .72rem;
+    }
+    button { cursor: pointer; font-size: .8rem; font-weight: 750; }
+    button.active { color: #071019; background: var(--cyan); border-color: var(--cyan); }
+    input { margin-left: auto; min-width: 250px; }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; }
+    table { width: 100%; border-collapse: collapse; min-width: 900px; }
+    th, td { text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); padding: .82rem .75rem; }
+    tr:last-child td { border-bottom: 0; }
+    th { color: #cbd7e5; background: #111925; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
+    td { font-size: .84rem; }
+    td:first-child { width: 72px; font-family: "Cascadia Code", Consolas, monospace; color: #c8d5e5; }
+    td:nth-child(2) { width: 92px; }
+    .sev { display: inline-block; border-radius: 99px; padding: .2rem .48rem; font-size: .68rem; font-weight: 850; letter-spacing: .05em; }
+    .sev-critical { background: rgba(255,102,102,.15); color: #ff9191; border: 1px solid rgba(255,102,102,.35); }
+    .sev-high { background: rgba(255,159,85,.14); color: #ffb47c; border: 1px solid rgba(255,159,85,.34); }
+    .sev-medium { background: rgba(255,210,77,.12); color: #ffe07c; border: 1px solid rgba(255,210,77,.3); }
+    .sev-risk { background: rgba(182,166,255,.12); color: #cfc4ff; border: 1px solid rgba(182,166,255,.3); }
+    .confidence { color: var(--muted); font-size: .75rem; white-space: nowrap; }
+    .source { display: block; color: var(--muted); margin-top: .35rem; font-size: .77rem; }
+    .source a { color: #a8cfe0; }
+    tr[hidden] { display: none; }
+
+    .decision { border-left: 3px solid var(--cyan); }
+    .decision h3 { margin-top: 0; }
+    .palette { display: flex; flex-wrap: wrap; gap: 8px; margin: .9rem 0; }
+    .swatch { border-radius: 7px; padding: .38rem .58rem; color: #071019; font-size: .76rem; font-weight: 850; }
+
+    .plan { counter-reset: plan; display: grid; gap: 13px; }
+    .plan-step {
+      counter-increment: plan;
+      position: relative;
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 17px;
+      background: rgba(255,255,255,.028);
+    }
+    .plan-step::before {
+      content: counter(plan);
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      color: #071019;
+      background: var(--cyan);
+      font-weight: 900;
+    }
+    .plan-step h3 { margin: 0 0 .4rem; }
+    .plan-step p { margin: .28rem 0; }
+    .done { color: #b5c2d2; font-size: .86rem; }
+    .done strong { color: var(--green); }
+    .files { color: var(--muted); font-size: .78rem; }
+
+    details { border: 1px solid var(--line); border-radius: 10px; padding: .78rem 1rem; background: rgba(255,255,255,.022); }
+    details + details { margin-top: 9px; }
+    summary { cursor: pointer; font-weight: 800; }
+    details p, details ul { color: #b9c5d3; font-size: .87rem; }
+
+    .status-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .status-card { border: 1px solid var(--line); border-radius: 10px; padding: 15px; }
+    .status-card strong { display: block; margin-bottom: .35rem; }
+    .status-card span { color: var(--muted); font-size: .84rem; }
+    .pass { border-top: 3px solid var(--green); }
+    .warn { border-top: 3px solid var(--gold); }
+    .fail { border-top: 3px solid var(--red); }
+
+    .footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font-size: .8rem; }
+    .small { color: var(--muted); font-size: .82rem; }
+
+    @media (max-width: 900px) {
+      .metrics, .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .architecture { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); min-height: 38px; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 20px, 1220px); }
+      .metrics, .status-grid { grid-template-columns: 1fr; }
+      .hero { padding-top: 48px; }
+      input { width: 100%; min-width: 0; margin-left: 0; }
+      .plan-step { grid-template-columns: 40px 1fr; padding: 14px; }
+      .plan-step::before { width: 36px; height: 36px; }
+    }
+    @media print {
+      :root { color-scheme: light; --bg: white; --panel: white; --panel-2: white; --line: #cdd4dc; --text: #121820; --muted: #4d5967; }
+      body { background: white; }
+      .nav-wrap, .filters { display: none; }
+      .panel { box-shadow: none; }
+      section { break-inside: avoid; }
+      a { color: #075b79; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <div class="eyebrow">Source audit and rebuild plan</div>
+      <h1>SCPSLBot</h1>
+      <p class="lede">The bot runtime has good raw capability, but its lifecycle is brittle. Fix spawning and safe zones before adding features. Rebuild the missing player layer as a small <code>StatsBots</code> companion over the metarepo's existing StatsSystem and HSM. Use a compatibility fork when ServerKeybinds needs a new API. Never edit an upstream plugin that other products depend on.</p>
+      <div class="meta">
+        <span>Audited 2026-08-30</span>
+        <span>Branch <code>spike/bot-orders</code></span>
+        <span>Commit <code>c61ac0d</code></span>
+        <span>145 C# files</span>
+        <span>Static audit plus build checks</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="nav-wrap">
+    <nav class="shell" aria-label="Report sections">
+      <a href="#verdict">Verdict</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#bugs">Bug register</a>
+      <a href="#stats-ui">Stats and UI</a>
+      <a href="#plan">Fix plan</a>
+      <a href="#tests">Test gate</a>
+      <a href="#scope">Scope</a>
+    </nav>
+  </div>
+
+  <main class="shell">
+    <section id="verdict">
+      <div class="panel verdict">
+        <h2>Verdict</h2>
+        <p><strong>Do not expand the current feature set yet.</strong> The reported spawn failures come from a concrete timing bug, not vague server instability. Safezone code also changes native process-wide protection settings and can leave a player invulnerable after leaving SCP-914.</p>
+        <ul class="plain-list">
+          <li>Port the lifecycle cleanup already explored on local branch <code>codex/bot-architecture-refactor-20260823</code>. Take the focused fixes, not the whole branch.</li>
+          <li>Rewrite the bot population controller around one owned reconciliation loop. Count live, initialized bots, not dictionary entries.</li>
+          <li>Rewrite safezone enforcement around LabAPI events and native zone bounds. Remove godmode and all writes to <code>SpawnProtected</code> statics.</li>
+          <li>Move role changes and item grants behind server-authoritative policy. Spectator, zone, reconnect, and stale SSS state must never expand player authority or reset cooldowns.</li>
+          <li>Create <code>StatsBots</code> as a new companion. Leave StatsSystem, CustomizableUIMeow, PlayerBadge, and AdditionalNameTags unchanged.</li>
+          <li>Use HSM for player text and ServerKeybinds for SSS. Keep bot and nav diagnostics admin-only.</li>
+          <li>Do not patch a shared upstream plugin in place. Fork it from a pinned commit, keep the upstream directory untouched, and deploy either the compatible fork or upstream, never both.</li>
+        </ul>
+
+        <div class="panel decision">
+          <h3>Dependency rule</h3>
+          <p>SCPSLBot, WarmupSafezone, and the new StatsBots product are in scope. Existing metarepo dependencies are not. If a required API is missing, create a fork in a new directory, record its upstream commit in the fork README, keep existing public behavior compatible, and put all new behavior behind tests.</p>
+          <p>A process-wide owner needs special handling. The planned ServerKeybinds fork must remain a drop-in <code>ServerKeybinds.dll</code> so existing consumers bind to one registry. The package must never contain both the upstream build and the fork build.</p>
+        </div>
+
+        <div class="metrics" aria-label="Audit summary">
+          <div class="metric critical"><span class="number">9</span><span class="label">Critical source defects</span></div>
+          <div class="metric high"><span class="number">13</span><span class="label">High priority defects</span></div>
+          <div class="metric"><span class="number">5</span><span class="label">Assemblies in the solution</span></div>
+          <div class="metric ok"><span class="number">0</span><span class="label">Release build errors</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>Architecture</h2>
+      <div class="panel">
+        <h3>Current runtime</h3>
+        <div class="architecture" role="img" aria-label="Current runtime flow from LabAPI events through warmup, bot runtime, navigation, and player output">
+          <div class="arch-col">
+            <div class="arch-node"><strong>LabAPI and native events</strong><span>Map, round, player, damage, role, warhead</span></div>
+            <div class="arch-node"><strong>Harmony patches</strong><span>FPC movement, mouse look, map connectors, SCP-207</span></div>
+          </div>
+          <div class="arrow" aria-hidden="true">&#8594;</div>
+          <div class="arch-col">
+            <div class="arch-node core"><strong>SCPSLBot plugin</strong><span><code>WarmupManager</code> owns mode, respawn, hazards, and population</span></div>
+            <div class="arch-node core"><strong>BotManager and BotHub</strong><span>Dummy creation, one global update loop, orders, role assignment</span></div>
+            <div class="arch-node core"><strong>FpcBotPlayer</strong><span>Combat, perception, mind, navigation, movement, debug output</span></div>
+          </div>
+          <div class="arrow" aria-hidden="true">&#8594;</div>
+          <div class="arch-col">
+            <div class="arch-node"><strong>Static navigation graph</strong><span>Room meshes, door links, elevator links, A* pathing</span></div>
+            <div class="arch-node safety"><strong>WarmupSafezone</strong><span>Separate plugin, its own loops, geometry, damage rules, toys, vanilla hints</span></div>
+            <div class="arch-node"><strong>Players</strong><span>Vanilla hints, broadcasts, SSS supplied by missing companion</span></div>
+          </div>
+        </div>
+        <p class="flow-note">Main entry points: <a href="SCPSLBot/LabApiPlugin.cs">SCPSLBot/LabApiPlugin.cs:27</a>, <a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:38</a>, <a href="SCPSLBot/AI/BotManager.cs">BotManager.cs:43</a>, <a href="WarmupSafezone/WarmupSafezonePlugin.cs">WarmupSafezonePlugin.cs:82</a>.</p>
+
+        <h3>Assembly map</h3>
+        <div class="grid-2">
+          <div class="assembly"><h3>SCPSLBot</h3><p>Main LabAPI plugin. Warmup rules, dummy lifecycle, combat, GOAP, navigation, Harmony patches, and RA commands.</p></div>
+          <div class="assembly"><h3>SCPSLBot.Components</h3><p>Small Unity bridge for sensing triggers and collider records. The main plugin references it.</p></div>
+          <div class="assembly"><h3>WarmupSafezone</h3><p>Independent companion. It does not depend on SCPSLBot and currently stays active when warmup mode changes to None.</p></div>
+          <div class="assembly"><h3>SCPSLBot.Tests</h3><p>In-server command plugin, not a normal unit-test assembly. <code>dotnet test</code> discovers zero tests.</p></div>
+          <div class="assembly"><h3>SCPSLPluginExtensions</h3><p>Unrelated plugin reload utility. It should not sit in the production solution or copy itself after every build.</p></div>
+          <div class="assembly"><h3>Missing player layer</h3><p>The README names <code>WarmupPlayerPanel</code>, but the project is absent. This report replaces that design with StatsBots.</p></div>
+        </div>
+
+        <h3>Target boundaries</h3>
+        <div class="architecture" role="img" aria-label="Recommended architecture with SCPSLBot core, WarmupSafezone, and StatsBots">
+          <div class="arch-col">
+            <div class="arch-node data"><strong>Existing StatsSystem</strong><span>Unchanged provider and storage. Default store with namespaced <code>Warmup.*</code> keys.</span></div>
+            <div class="arch-node"><strong>ServerKeybinds compatibility fork</strong><span>Forked from a pinned upstream commit. One process-wide SSS owner, existing API preserved, personalized dropdown API added.</span></div>
+            <div class="arch-node"><strong>HintServiceMeow</strong><span>Stable IDs, one owner per message, center alignment.</span></div>
+          </div>
+          <div class="arrow" aria-hidden="true">&#8594;</div>
+          <div class="arch-col">
+            <div class="arch-node data"><strong>StatsBots companion</strong><span>Stats adapter, warmup scoring, tier and tag catalog, native RA onboarding broadcasts, HSM stats view, SSS display toggles.</span></div>
+            <div class="arch-node core"><strong>SCPSLBot core</strong><span>Mode coordinator, bot population controller, player role and item policy, bot runtime, nav readiness, diagnostics.</span></div>
+            <div class="arch-node safety"><strong>WarmupSafezone</strong><span>Native volumes, occupancy, event enforcement, penalties, visuals, HSM notices.</span></div>
+          </div>
+          <div class="arrow" aria-hidden="true">&#8594;</div>
+          <div class="arch-col">
+            <div class="arch-node"><strong>Player HUD</strong><span>Three short HSM bands with per-player EN or CN text.</span></div>
+            <div class="arch-node"><strong>Player controls</strong><span>Personalized valid options that apply on deliberate dropdown change. No Apply shortcuts.</span></div>
+            <div class="arch-node"><strong>RA tools</strong><span>Permission-gated granular commands and diagnostics.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="bugs">
+      <h2>Bug register</h2>
+      <p class="small">Critical and high entries should block new feature work. Risk entries need a fault test before they become release blockers.</p>
+      <div class="filters" aria-label="Bug filters">
+        <button type="button" class="active" data-filter="all">All</button>
+        <button type="button" data-filter="critical">Critical</button>
+        <button type="button" data-filter="high">High</button>
+        <button type="button" data-filter="medium">Medium</button>
+        <button type="button" data-filter="risk">Risk</button>
+        <input id="bug-search" type="search" placeholder="Search findings" aria-label="Search findings">
+      </div>
+      <div class="table-wrap">
+        <table id="bug-table">
+          <thead><tr><th>ID</th><th>Severity</th><th>Finding and impact</th><th>Fix</th></tr></thead>
+          <tbody>
+            <tr data-severity="critical"><td>BOT-01</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Confirmed</div></td><td>The eight-second dummy embargo outlives every normal retry. Retries end at five seconds and an early return schedules nothing. This is the main cause of bots that never spawn.<span class="source"><a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:127-150, 463-473</a></span></td><td>Use one owned reconciler that waits for real network and nav readiness, then maintains the exact live target.</td></tr>
+            <tr data-severity="critical"><td>BOT-02</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Confirmed</div></td><td>Reload after WaitingForPlayers leaves <code>serverReadyForDummies</code> false until another round. A healthy live server can never reconcile its target.<span class="source"><a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:31-32, 87, 199-205, 600-606</a></span></td><td>Derive readiness from current native state. Events should wake the reconciler, not own the truth.</td></tr>
+            <tr data-severity="critical"><td>BOT-03</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Confirmed</div></td><td>Bot death gets one respawn attempt. A canceled or transiently failed role change leaves a spectator in <code>BotPlayers</code>. That dead entry still satisfies the target count.<span class="source"><a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:320-348, 387-446, 475-483</a></span></td><td>Track initializing, alive, dead, respawning, failed, and despawning states. Reconcile healthy live bots.</td></tr>
+            <tr data-severity="critical"><td>BOT-04</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Confirmed</div></td><td>Each bot allocates persistent Unity buffers and pinned handles through its sight senses. Despawn and restart remove dictionary entries but never dispose the bot graph. Memory grows with bot churn.<span class="source"><a href="SCPSLBot/AI/FirstPersonControl/Perception/Senses/SIght/SightSense.cs">SightSense.cs:69-74, 193-194</a>; <a href="SCPSLBot/AI/BotManager.cs">BotManager.cs:250-269</a></span></td><td>Add an idempotent disposal chain from BotHub through every perception sense. Complete jobs before freeing native buffers.</td></tr>
+            <tr data-severity="critical"><td>SAFE-01</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Confirmed</div></td><td>Exit protection writes process-wide <code>SpawnProtected.IsProtectionEnabled</code> and <code>SpawnDuration</code> and never restores them. Later native role spawns inherit the changed behavior. Class-D and Scientists may receive no protection because native team gating rejects them.<span class="source"><a href="WarmupSafezone/WarmupSafezonePlugin.cs">WarmupSafezonePlugin.cs:668-680</a></span></td><td>Never write native spawn-protection statics. Enforce a per-player expiry in damage events.</td></tr>
+            <tr data-severity="critical"><td>SAFE-02</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Confirmed</div></td><td>SCP-914 godmode is removed by a one-second monitor. A player can leave, shoot immediately, and remain invulnerable. The plugin can also remove godmode granted later by an admin or another plugin.<span class="source"><a href="WarmupSafezone/Scp914SafezoneService.cs">Scp914SafezoneService.cs:26-45, 103-143</a></span></td><td>Remove godmode. Cancel incoming and outgoing damage from explicit zone and exit-protection state.</td></tr>
+            <tr data-severity="critical"><td>SEC-01</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Confirmed</div></td><td>Nine RA command roots have no explicit permission checks. They can change warmup, spawn bots, teleport players, edit and save nav data, or run spike tools.<span class="source"><a href="SCPSLBot/Warmup/Commands/BotWarmupCommand.cs">BotWarmupCommand.cs:16</a>; <a href="SCPSLBot/Navigation/Commands/Nav.cs">Nav.cs:19</a>; <a href="SCPSLBot/Misc/TeleportToCommand.cs">TeleportToCommand.cs:21</a></span></td><td>Add a permission matrix. Use high admin rights for nav writes and native player-management rights for bot or teleport changes.</td></tr>
+            <tr data-severity="critical"><td>GAME-01</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Confirmed</div></td><td>Every SCP-049 and SCP-173 player is moved to SCP-939's room on spawn. The code does not check warmup mode or bot identity.<span class="source"><a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:300-317, 542-567</a></span></td><td>Remove the override, or gate a documented bot-only rule behind Standard mode and config.</td></tr>
+            <tr data-severity="critical"><td>OPS-01</td><td><span class="sev sev-critical">Critical</span><div class="confidence">Observed</div></td><td>A normal solution build deploys <code>SCPSLBot.Tests.dll</code> and <code>SCPSLPluginExtensions.dll</code> to the global plugin directory even when <code>SL_APPDATA</code> is empty. This audit reproduced the copy to <code>C:\LabAPI\plugins\global</code>.<span class="source"><a href="SCPSLBot.Tests/SCPSLBot.Tests.csproj">SCPSLBot.Tests.csproj:68-73</a>; <a href="SCPSLPluginExtensions/SCPSLPluginExtensions.csproj">SCPSLPluginExtensions.csproj:30-35</a></span></td><td>Delete unconditional PostBuild copies. Keep test and reload plugins out of the release solution.</td></tr>
+
+            <tr data-severity="high"><td>BOT-05</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Bot construction is not transactional. A fault after native dummy creation can leave an orphan or a partial managed entry. Warmup ignores the spawn result.<span class="source"><a href="SCPSLBot/AI/BotManager.cs">BotManager.cs:98-137</a>; <a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:478-486</a></span></td><td>Build in stages, publish only after success, and roll back the native dummy plus every created component on failure.</td></tr>
+            <tr data-severity="high"><td>BOT-06</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Role ownership conflicts. <code>AddBotPlayer()</code> requests ChaosRifleman while warmup later applies <code>WarmupBotRole</code>. Delayed callbacks can revert the configured role, and non-FPC roles count as valid.<span class="source"><a href="SCPSLBot/AI/BotManager.cs">BotManager.cs:95-136</a>; <a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:507-539, 707-710</a></span></td><td>Make warmup the single desired-role owner. Validate bot-compatible roles and verify the actual role after change.</td></tr>
+            <tr data-severity="high"><td>BOT-07</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed risk</div></td><td>The only global AI coroutine has no outer fault boundary or heartbeat. An allocation, dictionary, job-completion, or rearm fault can freeze every bot. Temp buffer disposal is not in <code>finally</code>.<span class="source"><a href="SCPSLBot/AI/BotManager.cs">BotManager.cs:184-225</a></span></td><td>Supervise the runner, isolate each bot, guarantee disposal, and expose last fault plus runner health in <code>bot_status</code>.</td></tr>
+            <tr data-severity="high"><td>BOT-08</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Each bot's SCP-914 belief subscribes to a global event and never unsubscribes. Activations start untracked overlapping coroutines and can dereference stale room state.<span class="source"><a href="SCPSLBot/AI/FirstPersonControl/Mind/Scp914/Scp914RunningOnSetting.cs">Scp914RunningOnSetting.cs:17-44</a></span></td><td>Dispose the subscription and own one generation-cancelled activation task per bot.</td></tr>
+            <tr data-severity="high"><td>BOT-09</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Failed initial role checks schedule a full reconcile per failing bot. Several bad bots can multiply delayed callbacks.<span class="source"><a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:500-513</a></span></td><td>Allow one pending reconcile per generation and use bounded backoff with a recorded failure reason.</td></tr>
+            <tr data-severity="high"><td>NAV-01</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Map generation starts a nav load coroutine without keeping its handle. Disable and round reset cannot cancel it, so stale work can republish graph state.<span class="source"><a href="SCPSLBot/Navigation/NavigationSystem.cs">NavigationSystem.cs:41-65</a></span></td><td>Own the coroutine handle, guard it by map generation, and publish an explicit nav-ready state.</td></tr>
+            <tr data-severity="high"><td>SAFE-03</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>The blocker timer counts time spent outside the blocker, stepping into the safezone resets it immediately, and the first post-grace hit is twice the configured initial value.<span class="source"><a href="WarmupSafezone/WarmupSafezonePlugin.cs">WarmupSafezonePlugin.cs:35-47, 427-460, 699-750</a></span></td><td>Accumulate active delta only. Reset after one continuous configured period outside the blocker.</td></tr>
+            <tr data-severity="high"><td>SAFE-04</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Either safezone monitor dies permanently if one pass throws because it reschedules only after all work completes.<span class="source"><a href="WarmupSafezone/WarmupSafezonePlugin.cs">WarmupSafezonePlugin.cs:287-345</a></span></td><td>Use one owned loop, isolate service ticks, log faults, and keep later passes alive.</td></tr>
+            <tr data-severity="high"><td>SAFE-05</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>The setting named SurfaceEscape health drain iterates the union of surface and SCP-914. Players in 914 see warnings while godmode prevents the configured damage.<span class="source"><a href="WarmupSafezone/WarmupSafezonePlugin.cs">WarmupSafezonePlugin.cs:348-371, 478-499</a></span></td><td>Define separate volumes and rule sets. Never route a surface-only policy through a union predicate.</td></tr>
+            <tr data-severity="high"><td>UI-01</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Player text uses ten direct vanilla or native hint sites. Messages have no stable owner and collide with other plugins. Several are English-only or hard-coded Chinese.<span class="source"><a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:233-257</a>; <a href="WarmupSafezone/WarmupSafezonePlugin.cs">WarmupSafezonePlugin.cs:575-739</a></span></td><td>Inject the HSM-backed HintDisplayProvider pattern into SCPSLBot and WarmupSafezone.</td></tr>
+            <tr data-severity="high"><td>UI-02</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Any spectator watching a bot can receive a 40-line internal planner graph at size 14. It is unreadable and leaks debugging detail into normal play.<span class="source"><a href="SCPSLBot/AI/FirstPersonControl/FpcBotPlayer.cs">FpcBotPlayer.cs:498-540, 643-670</a></span></td><td>Default it off. Offer a four-field admin HSM overlay through an RA-visible Tools setting.</td></tr>
+            <tr data-severity="high"><td>UI-03</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Nav authoring clears the player's entire broadcast queue and resends a 60-second broadcast every frame. It does not compare against the cached sent string.<span class="source"><a href="SCPSLBot/Navigation/Mesh/NavigationMeshEditor.cs">NavigationMeshEditor.cs:32-49</a>; <a href="SCPSLBot/Navigation/Mesh/NavigationMeshVisuals.cs">NavigationMeshVisuals.cs:70-81</a></span></td><td>Use one admin-only HSM tools tag and update only when its text changes.</td></tr>
+            <tr data-severity="high"><td>STAT-01</td><td><span class="sev sev-high">High</span><div class="confidence">Confirmed</div></td><td>Every native RA dummy uses <code>ID_Dummy</code>. Existing StatsSystem keys by UserId, so bot deaths and playtime collapse into one account. Bot-vs-bot kills can disappear while shared deaths keep rising.<span class="source"><a href="../scp-sl-starter-qol-plugins/MedveMarci__StatsSystem/StatsSystem/Events/EventHandler.cs">StatsSystem EventHandler.cs:20, 72-138, 183-218</a></span></td><td>StatsBots must identify managed bots through SCPSLBot membership and must never write <code>ID_Dummy</code>.</td></tr>
+
+            <tr data-severity="medium"><td>BOT-10</td><td><span class="sev sev-medium">Medium</span><div class="confidence">Confirmed</div></td><td><code>HumanRespawnDelayMs</code> is unused. Human deaths use <code>SpectatorRespawnDelayMs</code> instead.<span class="source"><a href="SCPSLBot/BotPluginConfig.cs">BotPluginConfig.cs:11-15</a>; <a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:334-347</a></span></td><td>Route human, bot, and spectator paths to their named delay and validate ranges once at load.</td></tr>
+            <tr data-severity="medium"><td>BOT-11</td><td><span class="sev sev-medium">Medium</span><div class="confidence">Confirmed</div></td><td>Room perception indexes graph dictionaries and calls <code>First()</code> without checking. Unknown native item-spawn subclasses throw <code>NotImplementedException</code>. Ordinary missing data becomes a repeating bot fault.<span class="source"><a href="SCPSLBot/AI/FirstPersonControl/Perception/Senses/RoomSightSense.cs">RoomSightSense.cs:58-73</a>; <a href="SCPSLBot/AI/FirstPersonControl/Mind/Item/Beliefs/ItemSpawnsLocation.cs">ItemSpawnsLocation.cs:125-184</a></span></td><td>Use checked lookups and skip unsupported native types with one rate-limited diagnostic.</td></tr>
+            <tr data-severity="medium"><td>BOT-12</td><td><span class="sev sev-medium">Medium</span><div class="confidence">Confirmed</div></td><td>Plugin enable changes all layer-31 collision pairs. Disable never restores the prior process-wide matrix.<span class="source"><a href="SCPSLBot/AI/BotManager.cs">BotManager.cs:52-80</a></span></td><td>Snapshot every touched pair and restore on disable and failed enable.</td></tr>
+            <tr data-severity="medium"><td>BOT-13</td><td><span class="sev sev-medium">Medium</span><div class="confidence">Confirmed</div></td><td>Saved <code>WarmupMode</code> is overwritten by <code>DefaultWarmupMode</code> on every enable. <code>bot_add</code> also spawns a temporary bot without raising the maintained count.<span class="source"><a href="SCPSLBot/Warmup/WarmupManager.cs">WarmupManager.cs:38-42, 105-124</a>; <a href="SCPSLBot/AI/Commands/BotAddCommand.cs">BotAddCommand.cs:30</a></span></td><td>Choose one startup-mode rule and make command names match maintained versus temporary behavior.</td></tr>
+            <tr data-severity="medium"><td>NAV-02</td><td><span class="sev sev-medium">Medium</span><div class="confidence">Confirmed</div></td><td>Nav bootstrap trusts any existing file. Load has no recovery, and save truncates the live file instead of using an atomic replace and backup.<span class="source"><a href="SCPSLBot/Navigation/NavigationSystem.cs">NavigationSystem.cs:265-315</a></span></td><td>Version the format, validate before publish, quarantine corrupt data, and save through temp plus atomic replace.</td></tr>
+            <tr data-severity="medium"><td>SAFE-06</td><td><span class="sev sev-medium">Medium</span><div class="confidence">Confirmed</div></td><td>Surface membership can use X, Y, or Z, but blocker checks and world visuals remain fixed to Z. The closest-room scan has no horizontal limit. Visuals can lie about the gameplay boundary.<span class="source"><a href="WarmupSafezone/WarmupSafezonePlugin.cs">WarmupSafezonePlugin.cs:478-530, 753-771, 869-907</a></span></td><td>Anchor surface bounds to LabAPI <code>Map.EscapeZones</code>. Use a verified room-local volume for 914.</td></tr>
+            <tr data-severity="medium"><td>SAFE-07</td><td><span class="sev sev-medium">Medium</span><div class="confidence">Confirmed</div></td><td>Exit detection runs once per second. Fast entry and exit can be missed. The action denylist also leaves SCP abilities and indirect hazards without a clear policy.<span class="source"><a href="WarmupSafezone/WarmupSafezonePlugin.cs">WarmupSafezonePlugin.cs:174-285, 382-416, 588-665</a></span></td><td>Resolve state during damage and action events, plus a 100 ms occupancy recovery tick. Test an explicit action matrix.</td></tr>
+            <tr data-severity="medium"><td>PERF-01</td><td><span class="sev sev-medium">Medium</span><div class="confidence">Confirmed</div></td><td>Every bot scans all hubs each frame and may run two linecasts per hostile. Every idle bot also runs every perception sense each frame. Difficulty profiles allocate repeatedly, and A* uses an O(V) minimum search.<span class="source"><a href="SCPSLBot/AI/FirstPersonControl/Combat/FpcBotCombat.cs">FpcBotCombat.cs:991-1131, 1646-1691</a>; <a href="SCPSLBot/Navigation/Mesh/NavigationMesh.Static.cs">NavigationMesh.Static.cs:179-236</a></span></td><td>After correctness, share a 5 to 10 Hz world snapshot, cache profiles, and use a reusable priority queue.</td></tr>
+
+            <tr data-severity="risk"><td>STAT-02</td><td><span class="sev sev-risk">Dependency risk</span><div class="confidence">Source-backed</div></td><td>StatsSystem file recovery returns an empty state after read or parse failure. Its atomic replace keeps no backup. A later autosave can make that empty state permanent.<span class="source"><a href="../scp-sl-starter-qol-plugins/MedveMarci__StatsSystem/StatsSystem/Storage/JsonStorageProvider.cs">JsonStorageProvider.cs:28-44</a>; <a href="../scp-sl-starter-qol-plugins/MedveMarci__StatsSystem/StatsSystem/Storage/DurableAtomicFile.cs">DurableAtomicFile.cs:25-43</a></span></td><td>Do not change the provider in this project. Keep external snapshots or MySQL and alert on load errors.</td></tr>
+            <tr data-severity="risk"><td>STAT-03</td><td><span class="sev sev-risk">Dependency risk</span><div class="confidence">Source-backed</div></td><td>StatsSystem mutation calls return void. Its bounded MySQL queue can drop a write after the local cache changed. StatsBots cannot promise per-event durability from a return value.<span class="source"><a href="../scp-sl-starter-qol-plugins/MedveMarci__StatsSystem/StatsSystem/Storage/MySqlDeltaStore.cs">MySqlDeltaStore.cs:243-251</a></span></td><td>Expose provider health honestly, flush on clean shutdown, and prove persistence across restart and cross-server hydrate.</td></tr>
+            <tr data-severity="risk"><td>ARCH-01</td><td><span class="sev sev-risk">Design debt</span><div class="confidence">Measured</div></td><td>Five files own too many domains: <code>FpcBotCombat</code> 1,694 lines, <code>WarmupSafezonePlugin</code> 920, <code>WarmupManager</code> 737, <code>BotManager</code> 684, and <code>FpcBotPlayer</code> 676.</td><td>Split by responsibility after the P0 fixes. Keep lifecycle services small enough to unit test without Unity.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="stats-ui">
+      <h2>Stats, tags, HSM, and SSS</h2>
+      <div class="grid-2">
+        <div class="panel decision">
+          <h3>Build StatsBots, not another database</h3>
+          <p>StatsBots should use the existing StatsSystem provider and its default <code>player_stats</code> store. Add reserved keys such as <code>Warmup.BotKills</code>, <code>Warmup.BotDeaths</code>, <code>Warmup.Score</code>, <code>Warmup.BestStreak</code>, <code>Warmup.TagUnlocked.&lt;id&gt;</code>, and <code>Warmup.SelectedTagCode</code>.</p>
+          <p>Keep the default store because StatsSystem hydrates it on join. Its extra stores do not have a public per-player hydrate method. Do not copy or edit StatsSystem storage code.</p>
+          <p>Only authenticated real users may write warmup keys. A managed bot must be identified through a tiny public SCPSLBot contract, not <code>Player.IsDummy</code> and never <code>ID_Dummy</code>.</p>
+        </div>
+        <div class="panel decision">
+          <h3>Stop fighting over player names and badges</h3>
+          <p>Do not write <code>Player.DisplayName</code>, the native badge, or group state. AdditionalNameTags and PlayerBadge already own those paths. That ownership conflict is the likely source of the wonky tag behavior seen in deployed companions.</p>
+          <p>Render the selected warmup title inside the StatsBots HSM profile card. Persist grants and selection through namespaced StatsSystem keys. Admin commands should use an exact full UserId for offline players and reject ambiguous nicknames.</p>
+          <p>If a safe tag API cannot replace only the StatsBots-owned entry, omit the native tag. Losing one cosmetic line is better than overwriting a staff badge.</p>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <h3>Scoring rules</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Attacker</th><th>Victim</th><th>StatsBots result</th></tr></thead>
+            <tbody>
+              <tr><td>Real player</td><td>Managed bot</td><td>Increment bot kills, score, and current streak for the real player's full UserId.</td></tr>
+              <tr><td>Managed bot</td><td>Real player</td><td>Increment bot deaths and reset the real player's current streak.</td></tr>
+              <tr><td>Managed bot</td><td>Managed bot</td><td>No player score and no <code>ID_Dummy</code> write.</td></tr>
+              <tr><td>Real player</td><td>Real player</td><td>No warmup bot score. Existing generic stats keep their own behavior.</td></tr>
+              <tr><td>World, self, or disallowed team kill</td><td>Any</td><td>No warmup score.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Player HUD</h3>
+        <p>Use three center-aligned HSM entries. Keep each entry short and update only when its rendered snapshot changes.</p>
+        <ul class="plain-list">
+          <li><code>statsbots.warmup.flash</code> at about Y 700, size 24 to 26. One success, blocked action, kill, or cooldown result.</li>
+          <li><code>statsbots.warmup.hero</code> at about Y 760, size 22 to 24. Two lines maximum for tier, tag, score progress, bot K-D, streak, alive target, and difficulty.</li>
+          <li><code>statsbots.warmup.footer</code> at about Y 835, size 22. One active instruction or cooldown.</li>
+        </ul>
+        <div class="palette" aria-label="Recommended HUD palette">
+          <span class="swatch" style="background:#4fcbff">Cyan: current</span>
+          <span class="swatch" style="background:#e7ecf3">White: values</span>
+          <span class="swatch" style="background:#8b95a6">Muted: labels</span>
+          <span class="swatch" style="background:#5bff80">Green: safe</span>
+          <span class="swatch" style="background:#ffd24d">Gold: wait</span>
+          <span class="swatch" style="background:#ff5555;color:white">Red: blocked</span>
+        </div>
+        <p class="small">Always send HSM Center alignment with an explicit X. Do not use HSM Left or Right. Color must have a text label such as SAFE, COOLDOWN, or BLOCKED.</p>
+
+        <h3>Native RA onboarding broadcasts</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rule</th><th>Required behavior</th></tr></thead>
+            <tbody>
+              <tr><td>Eligibility</td><td>Read StatsSystem <code>TotalPlayTime</code> for the authenticated user and add the current session's elapsed time in memory. A player is new while the verified total is under one hour. Missing, stale, or failed provider data must not become zero.</td></tr>
+              <tr><td>Transport</td><td>Use the native per-player RA broadcast path: <code>Player.SendBroadcast(text, duration, BroadcastFlags.Normal, shouldClearPrevious: false)</code>. Never call <code>ClearBroadcasts</code>. This is the same client queue used by RA <code>playerbroadcast</code>.</td></tr>
+              <tr><td>First notice</td><td>Send an eight-second broadcast once per session, about 20 seconds after join: <q>New here? Open Settings &gt; Server-Specific Settings to configure warmup controls.</q></td></tr>
+              <tr><td>Periodic tips</td><td>While the verified total remains under one hour, send one eight-second localized broadcast every 120 seconds. Shuffle without immediate repeats. Example: <q>Did you know you can play as an SCP? Switch to Entrance Zone.</q></td></tr>
+              <tr><td>Community notice</td><td>Send a 12-second broadcast on join, at round start, and every five minutes: <q>Join QQ 897907125 to report bugs, discuss the server, or apply for admin and other perks.</q> The Display setting may hide it for that player.</td></tr>
+              <tr><td>Scheduling</td><td>Do not enqueue the setup notice, a tip, and the QQ notice together. Use one per-player scheduler and move a lower-priority notice to the next free slot. Stop beginner tips as soon as verified playtime reaches one hour. Clear only local scheduler state on leave or disable.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">Provide matching Chinese text. Put the one-hour threshold, durations, delays, intervals, and tip catalog in validated config. Native broadcasts use a shared FIFO queue and have no per-plugin removal key. A literally always-on broadcast would block or delay other RA, warhead, decontamination, and plugin messages, so the QQ message must recur instead of occupying the queue forever.</p>
+
+        <h3>Server-Specific Settings</h3>
+        <p>Use ServerKeybinds category ordering and a claimed 1000-ID block per consumer. Do a final collision scan before choosing IDs.</p>
+        <div class="grid-2">
+          <div class="assembly"><h3>Warmup personal controls</h3><p>Use regular, non-scrollable dropdowns named <code>Respawn as</code>, <code>Equip loadout</code>, <code>Request item</code>, and <code>Teleport to</code>. A deliberate selection applies immediately. There is no Apply key or confirmation control.</p></div>
+          <div class="assembly"><h3>Arena preset</h3><p>One curated preset dropdown that applies immediately. Show it to a non-admin only while exactly one real player is connected. With two or more real players, only authorized RA users receive it. Keep granular controls in RA.</p></div>
+          <div class="assembly"><h3>StatsBots display</h3><p>Native two-button settings for Warmup HUD, Warmup title, combat notices, beginner tips, and the community line. Put this block in Display.</p></div>
+          <div class="assembly"><h3>Admin tools</h3><p>An exact <code>Force role</code> dropdown that includes Tutorial, plus bot diagnostics and nav authoring overlays. Require the configured RA permission at render and execution. Log every force-role action.</p></div>
+        </div>
+
+        <h3>SSS execution rules</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Control</th><th>Server rule</th></tr></thead>
+            <tbody>
+              <tr><td>All action dropdowns</td><td>Opening or acquiring SSS never performs an action. ServerKeybinds records the first value for each per-player send generation as the baseline. Only a later, deliberate value change executes. Refresh after success so the menu reflects current state.</td></tr>
+              <tr><td><code>Respawn as</code></td><td>Build options per player from the same <code>RoleEligibilityService</code> used by execution. Show exact roles that can be assigned now. Do not show a generic SCP option. Omit unavailable roles completely. If no alternative is valid, omit the dropdown and show a short read-only explanation.</td></tr>
+              <tr><td>Regular role authority</td><td>Do not show <code>Respawn as</code> to a spectator. A regular player physically on Surface, or using a preset that disallows SCP players, receives no SCP options. Becoming Spectator, dying, reconnecting, or changing zones never expands role authority. Resolve the source state and facility zone from the server when the request arrives.</td></tr>
+              <tr><td>Stale role choice</td><td>Recheck eligibility when the value arrives. If the role became unavailable after the menu was sent, reject it, send a short native RA broadcast, and refresh SSS. Never fall back to Chaos, Class-D, or another role.</td></tr>
+              <tr><td>Role placement</td><td>Resolve and validate the destination anchor before changing role. An SCP role always uses the preset's allowed SCP spawn anchor and never inherits a spectator or Surface position. Verify the actual role after <code>SetRole</code>; cancellation or mismatch is a failed request, not permission to substitute another role.</td></tr>
+              <tr><td>Admin force role</td><td>Use a separate Tools control with an exact permission check. It may bypass regular zone, spectator, and role-cap rules. Its explicit allowlist includes <code>RoleTypeId.Tutorial</code>. Selecting Tutorial calls the native role change with <code>RoleChangeReason.RemoteAdmin</code> and verifies that the resulting role is Tutorial.</td></tr>
+              <tr><td>Global arena controls</td><td>Visibility and execution require either the configured RA permission or exactly one connected non-dummy player. Managed bots and test dummies do not count. A second real player immediately removes the block from non-admins and invalidates stale callbacks. When the server returns to one real player, refresh the remaining player and restore the block.</td></tr>
+              <tr><td>Population transition</td><td>Join and leave events request a refresh only when they change a player's visible control set. The active arena preset stays in force when permission changes. Only control ownership changes.</td></tr>
+              <tr><td>Titles and toggles</td><td>Title selection saves immediately and lists only unlocked titles. Two-button display settings remain ordinary on/off choices and do not respawn or teleport anyone.</td></tr>
+              <tr><td>Interest management</td><td>Every state event first resolves an affected-player set. A personal action, role or zone change, permission change, title change, or cooldown expiry invalidates only that player. Population boundaries invalidate only the players whose global-control visibility changed. Never rebuild or resend every player's SSS because one player's model changed.</td></tr>
+              <tr><td>Refresh triggers</td><td>Request a per-player refresh only after a join send, warmup enable or disable, a one-player to two-player boundary change, permission change, role eligibility fingerprint change, title grant or revoke, successful action that changes visible options, or that player's next item cooldown expiry. Do not poll SSS and do not refresh it for live stats or countdown text.</td></tr>
+              <tr><td>Refresh budget</td><td>Route every request through one coordinator. Debounce for 500 ms, coalesce all pending reasons, require at least two seconds between sends to the same player, and cap at six sends per player in any rolling 60 seconds. A newer request replaces the queued snapshot instead of adding another send.</td></tr>
+              <tr><td>Change fingerprint</td><td>Hash the final per-player categories, setting IDs, labels, options, defaults, hints, language, and visibility. If the hash matches the last sent view, suppress the send. Security policy changes take effect immediately even when the visible menu is waiting for its rate-limited refresh.</td></tr>
+              <tr><td>Population fan-out</td><td>A transition from one to two real players refreshes the former sole player and sends the normal join view to the newcomer. Two to three and larger changes do not refresh existing players because global-control visibility is already admin-only. A transition from two to one refreshes only the remaining player. Even a server-wide mode or config change becomes a set of independent per-player invalidations and sends only changed fingerprints.</td></tr>
+              <tr><td>Diagnostics</td><td>Expose per-player last-send time and fingerprint plus process counters for requested, sent, coalesced, rate-limited, and identical-snapshot refreshes. Log only abnormal sustained suppression, not every skipped request.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">The current ServerKeybinds dropdown API stores one fixed option array. Exact per-player role visibility needs an addition such as <code>AddDropdownForPlayer(Func&lt;Player, DropdownModel&gt;)</code>, plus acquisition-baseline tracking, an interest index, and a per-player refresh coordinator. Add them only in a new compatibility-fork directory. Do not edit the upstream ServerKeybinds project. Keep the merge, interest routing, fingerprint, and rate limit inside the fork rather than registering settings directly from StatsBots. Personalized state must never call a global block-changed or refresh-all path.</p>
+
+        <h3>Item cooldown policy</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Rule</th><th>Required behavior</th></tr></thead>
+            <tbody>
+              <tr><td>Simple config</td><td>Give every catalog entry a stable ID, item or preset, cooldown seconds, optional shared cooldown group, per-life limit, per-round limit, allowed roles, and allowed zones. High-impact items such as grenades and special weapons share a group cooldown.</td></tr>
+              <tr><td>Cooldown identity</td><td>Key cooldowns and counters by the full authenticated UserId plus stable catalog ID. Never key them only by PlayerId, role, life, or spectator state. Keep disconnected users' round state until round end so reconnecting cannot reset a cooldown.</td></tr>
+              <tr><td>Visible choices</td><td><code>Request item</code> lists only entries that are valid and ready for that player now. If nothing is ready, omit the dropdown and show the next relevant availability in a read-only line. Refresh at the next expiry or state transition, not every frame.</td></tr>
+              <tr><td>Atomic grant</td><td>Under one per-user in-flight guard, recheck authentication, warmup mode, alive state, exact role, server zone, inventory capacity, item allowlist, item cooldown, group cooldown, and life and round limits. Call the native inventory add once. Commit cooldowns and counters only if it returns an item. Reject duplicate, replayed, stale, or concurrent requests.</td></tr>
+              <tr><td>No reset exploit</td><td>Death, Spectator, role change, team change, teleport, SSS refresh, plugin UI reopen, and reconnect do not clear cooldowns or per-round counters. A new round clears only round-scoped state. A monotonic clock drives expiry.</td></tr>
+              <tr><td>Feedback and admin bypass</td><td>Rejections use a short per-player native RA broadcast with the exact reason and rounded remaining time. Any admin bypass needs a separate permission, an explicit control, and an audit log. Normal admin status alone does not silently bypass item limits.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="plan">
+      <h2>Concrete fix plan</h2>
+      <p class="small">This is the order I would use. Each step has a hard acceptance test. Do not start the next feature phase until the current gate passes.</p>
+      <div class="plan">
+        <article class="plan-step">
+          <div>
+            <h3>Make builds safe and add diagnostics</h3>
+            <p>Remove unconditional PostBuild deployment from the test and reload projects. Move both out of the release solution. Add a semantic version and a permission-gated <code>bot_status</code> command with mode, desired count, tracked count, live count, readiness, nav generation, last reconcile, last spawn error, AI runner health, and parked faults.</p>
+            <p class="files">Touch: solution, test and extension csproj files, plugin metadata, one diagnostics service and RA command.</p>
+            <p class="done"><strong>Done when:</strong> Release build writes only under <code>bin</code>, has zero warnings, and <code>bot_status</code> explains every spawn refusal.</p>
+          </div>
+        </article>
+        <article class="plan-step">
+          <div>
+            <h3>Fix bot lifecycle and spawning</h3>
+            <p>Port the focused transactional creation, disposal, idempotency, and nav-generation work from local commit <code>f06cc4b</code>. Replace scattered delayed calls with one cancellable population reconciler. Use native network state plus explicit current-map nav readiness. Count only initialized live bots.</p>
+            <p class="files">Touch: WarmupManager split, new BotPopulationController, BotManager, BotHub, FpcBotPlayer, perception and sight senses, NavigationSystem.</p>
+            <p class="done"><strong>Done when:</strong> 20 cold boots and 20 round restarts reach exactly three live bots within 12 seconds. Three injected spawn failures recover. Mid-round reload recovers without a round restart.</p>
+          </div>
+        </article>
+        <article class="plan-step">
+          <div>
+            <h3>Fix roles, deaths, and runtime supervision</h3>
+            <p>Make warmup the only desired-role owner. Validate FPC-compatible roles and verify the result. Retry failed death respawns with bounded backoff. Supervise the global AI runner. Dispose temp buffers in <code>finally</code>. Remove or gate the 049 and 173 relocation. Add permissions to every RA command.</p>
+            <p class="files">Touch: desired-role service, bot state model, update scheduler, warmup spawn rules, all mutating command roots.</p>
+            <p class="done"><strong>Done when:</strong> a canceled role change heals, a configured non-Chaos role stays stable, one injected bot fault does not stop other bots, and low-privilege RA senders cannot mutate state.</p>
+          </div>
+        </article>
+        <article class="plan-step">
+          <div>
+            <h3>Rewrite WarmupSafezone</h3>
+            <p>Separate surface and SCP-914 policies. Anchor surface geometry to <code>Map.EscapeZones</code>. Use a verified 914 room-local volume. Split occupancy, enforcement, exit protection, blocker penalty, visuals, and lifecycle. Remove godmode and all writes to native spawn-protection statics. Use a monotonic clock and event-time membership checks.</p>
+            <p class="files">Touch: replace the 920-line plugin body with focused services, keep the LabAPI plugin class for lifecycle only.</p>
+            <p class="done"><strong>Done when:</strong> immediate egress attacks follow the contract, native spawn-protection sentinels never change, blocker timelines match config, both recurring loops survive injected faults, and exact missing toys are restored.</p>
+          </div>
+        </article>
+        <article class="plan-step">
+          <div>
+            <h3>Replace player text and controls</h3>
+            <p>Copy the current HintDisplayProvider template into SCPSLBot and WarmupSafezone. Add per-player EN and CN text, stable IDs, change caches, and explicit removal. Move planner and nav output to admin-only Tools toggles. Fork ServerKeybinds into a new compatibility directory and add personalized regular dropdowns there. Selections apply on deliberate change, without an Apply key. Hide global arena controls from non-admins whenever two or more real players are connected. Build <code>Respawn as</code> from exact roles the server can assign now. Make SSS refresh per-player, interest-managed, event-driven, fingerprinted, debounced, coalesced, and rate-limited.</p>
+            <p class="files">Touch target products only. Add a new ServerKeybinds compatibility-fork directory with the personalized-dropdown API, acquisition guard, SssInterestIndex, and SssRefreshCoordinator. Leave the upstream ServerKeybinds, StatsSystem, HSM, CUIMeow, PlayerBadge, and AdditionalNameTags directories unchanged.</p>
+            <p class="done"><strong>Done when:</strong> UI harness renders EN and CN on five native backgrounds with zero wrap or collision errors, HSM absence fails quiet, and no tool output clears another plugin's hint or broadcast. Opening SSS performs nothing. A one-to-two-player transition revokes global authority immediately and refreshes only the affected views within the configured budget. One player's role, item, cooldown, title, zone, or preference change sends nothing to unrelated players. Every visible role produces that exact role or a rejection, never a fallback. Ten idle minutes after the join send produce zero further SSS sends. Thirty requests inside one debounce window produce one candidate view, and all later sends obey the two-second minimum and six-per-minute cap. Existing ServerKeybinds consumers pass against the fork without source changes.</p>
+          </div>
+        </article>
+        <article class="plan-step">
+          <div>
+            <h3>Lock down roles and item grants</h3>
+            <p>Put all SSS role and item actions behind server-authoritative policy services. Hide regular role controls from spectators. Remove SCP options on Surface and from presets that disallow SCP players. Resolve spawn anchors before role changes and verify the exact resulting role. Add a separate permission-gated admin <code>Force role</code> control that includes Tutorial. Build item cooldowns around full UserId, stable catalog IDs, monotonic expiry, shared groups, and life and round caps. Treat every dropdown event as untrusted input.</p>
+            <p class="files">New SCPSLBot warmup-control services: RoleEligibilityService, RoleChangeService, SpawnAnchorResolver, ItemCatalog, ItemGrantPolicy, CooldownLedger, and per-user request guard. StatsBots does not own gameplay grants. Use the ServerKeybinds compatibility fork only for personalized presentation and event routing.</p>
+            <p class="done"><strong>Done when:</strong> becoming Spectator never unlocks SCP, Surface never offers or grants SCP to a regular player, and a stale forged role request cannot bypass those rules. An authorized admin can select Tutorial and becomes Tutorial exactly. Item cooldowns survive death, Spectator, role changes, SSS refresh, and reconnect. Concurrent item requests produce at most one item and one committed cooldown.</p>
+          </div>
+        </article>
+        <article class="plan-step">
+          <div>
+            <h3>Create StatsBots without changing upstream plugins</h3>
+            <p>Create a new companion with a cached StatsSystem adapter, strict managed-bot attribution, namespaced <code>Warmup.*</code> keys, score and streak rules, a validated tier and title catalog, RA grant and revoke commands, one SSS selector, and the three-band HSM stats profile. Add a native RA broadcast scheduler driven by verified <code>TotalPlayTime</code>: one SSS setup notice per session for players below one hour, localized rotating tips every 120 seconds, and a recurring QQ community notice.</p>
+            <p class="files">New product: StatsBots. Add a tiny public read-only bot identity contract to SCPSLBot. Read existing providers through adapters. Do not edit or copy StatsSystem, CUIMeow, HSM, PlayerBadge, AdditionalNameTags, or any other upstream plugin.</p>
+            <p class="done"><strong>Done when:</strong> two bots that share <code>ID_Dummy</code> cause no dummy writes, ten kills and two deaths persist over reload and restart, locked title selection is rejected, revoke is idempotent, and provider unavailable shows unavailable rather than zero. A player at 59 minutes receives onboarding and stops at 60 minutes without reconnecting. Unknown playtime never triggers beginner messaging.</p>
+          </div>
+        </article>
+        <article class="plan-step">
+          <div>
+            <h3>Split and optimize after correctness</h3>
+            <p>Split combat into targeting, human weapon, and per-SCP strategies. Split warmup into mode, population, respawn, and hazard services. Build one low-rate world snapshot for target selection, stagger perception at 5 to 10 Hz, cache difficulty profiles, and replace the LINQ A* minimum with a reusable heap.</p>
+            <p class="files">Touch the large classes only after behavior tests lock their contracts.</p>
+            <p class="done"><strong>Done when:</strong> ten bots and 30 players stay within a recorded main-thread, linecast, allocation, and network-message budget for 30 minutes.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="tests">
+      <h2>Test and release gate</h2>
+      <div class="status-grid">
+        <div class="status-card pass"><strong>Build</strong><span>Full solution Release build passed with 0 errors and 1 warning. Targeted main, safezone, and playtest builds passed.</span></div>
+        <div class="status-card warn"><strong>Automated tests</strong><span><code>dotnet test</code> found zero tests in SCPSLBot.Tests. That green exit code is not coverage.</span></div>
+        <div class="status-card warn"><strong>Scenario lint</strong><span>0 lint errors. The metarepo still reports 11 legacy reflection-backlog scenarios, none from WarmupSafezone.</span></div>
+        <div class="status-card warn"><strong>Historical safezone test</strong><span>One 11-second SCP-914 scenario passed 1 of 1. It checks godmode and toy flags only.</span></div>
+        <div class="status-card fail"><strong>Build isolation</strong><span>The full build copied two DLLs to <code>C:\LabAPI\plugins\global</code>. The source target must be fixed.</span></div>
+        <div class="status-card fail"><strong>Live behavior</strong><span>No server was launched. Spawn, combat, geometry, UI readability, and memory behavior still need local port 7911 tests.</span></div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <details open>
+          <summary>Bot lifecycle gate</summary>
+          <ul>
+            <li>Cold start with readiness before the old eight-second gate. Target appears without a player event.</li>
+            <li>Mid-round plugin reload after WaitingForPlayers. Target repairs itself.</li>
+            <li>Cancel one death role change. The bot retries and returns alive.</li>
+            <li>Fail every spawn-construction stage. No native orphan or partial entry remains.</li>
+            <li>Run 100 add and despawn cycles plus 20 disable and enable cycles. Native memory, handles, subscriptions, collision state, and coroutine counts return to baseline.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Safezone gate</summary>
+          <ul>
+            <li>Two-dummy damage matrix for outside to inside, inside to outside, inside to inside, and outside to outside.</li>
+            <li>Immediate egress shots before 100 ms, just before protection expiry, and just after expiry.</li>
+            <li>Gun, melee, grenade, HID, Jailbird, SCP ability, self, environment, and indirect hazard cases.</li>
+            <li>Boundary raycasts and dummy walking at all faces of native escape bounds and the 914 room volume.</li>
+            <li>Blocker timeline with exact initial damage, paused active time, and continuous reset.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>StatsBots and UI gate</summary>
+          <ul>
+            <li>Provider call assertions use only full real UserIds and reserved <code>Warmup.*</code> keys.</li>
+            <li>Provider absent, late load, reload, hydrate delay, and thrown calls show loading or unavailable. They never show a fake zero.</li>
+            <li>Tier thresholds, score clamp, streak reset, duplicate event suppression, tag grant, revoke, select, and removed-catalog behavior.</li>
+            <li>Playtime boundaries at 59:59, 60:00, and 60:01; current-session rollover; once-per-session setup notice; 120-second tip cadence; no immediate repeats; priority pause; leave and disable cleanup.</li>
+            <li>Exact EN and CN onboarding and QQ copy, rich-text escaping, per-player beginner and community toggles, and no message when playtime is unknown.</li>
+            <li>Native broadcast integration with <code>shouldClearPrevious: false</code>. Concurrent RA, warhead, decontamination, and plugin broadcasts remain present, and the onboarding scheduler never grows its own queue without bound.</li>
+            <li>SSS acquisition and resend execute no actions. A deliberate regular-dropdown change applies once, refresh does not replay it, and forged or stale values are rejected.</li>
+            <li>Refresh-budget test with a fake monotonic clock: 500 ms debounce, reason coalescing, identical-fingerprint suppression, two-second minimum, six sends per rolling minute, and latest-snapshot replacement.</li>
+            <li>Interest-routing matrix proves that a player's role, item, cooldown, title, language, zone, permission, and display changes invalidate only that player. One-to-two and two-to-one population boundaries touch only the expected players.</li>
+            <li>Ten idle minutes after join send no SSS rebuilds. Cooldown expiry sends one affected-player refresh. Live stats, countdown ticks, and population changes above two real players send none to existing players.</li>
+            <li>Role option matrices cover current role, warmup mode, configured allowlist, role capacity, death, disconnect, and availability changes. Hidden roles never appear, and execution never substitutes another role.</li>
+            <li>Exploit matrix: alive to Spectator to SCP, Surface to Spectator to SCP, reconnect to SCP, stale SSS role value after zone change, canceled role event, missing spawn anchor, and repeated role event. Every regular-player bypass is rejected.</li>
+            <li>Admin role matrix includes Tutorial from alive and Spectator states, permission loss while SSS is open, role-event cancellation, and exact post-change verification. No admin request silently falls back.</li>
+            <li>Item matrix covers item and group cooldowns, per-life and per-round limits, full inventory, forbidden role and zone, death, Spectator, role change, reconnect with the same UserId, PlayerId reuse by a different UserId, duplicate callbacks, and two concurrent requests.</li>
+            <li>Global-control visibility at zero, one, and two real players; dummy bots excluded; admin access retained; join and leave refresh; stale non-admin callback rejected after the second player connects.</li>
+            <li>EN and CN HSM screenshots at 1920 by 1080 against inventory, announcements, spectator, waiting, and spawn-flash native backgrounds.</li>
+            <li>Two-client live check for per-client language, SSS readability, forged hidden settings, cooldown feedback, and cross-plugin hint ownership.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Release gate</summary>
+          <ul>
+            <li>Fresh port installs only SCPSLBot, Components, Harmony, WarmupSafezone, StatsBots, the declared ServerKeybinds compatibility fork, and other declared process-wide dependencies.</li>
+            <li>Every fork records the exact upstream commit and compatibility promise in its README. No file under the upstream plugin directory changes.</li>
+            <li>Existing ServerKeybinds consumers load and behave unchanged against the fork. The package contains exactly one <code>ServerKeybinds.dll</code>, never upstream and fork builds together.</li>
+            <li>Missing or corrupt navmesh gets a clear error, quarantine, and last-known-good or embedded recovery.</li>
+            <li>Thirty-minute soak at 10 bots records stable memory and frame time with zero unhandled exceptions or allocator warnings.</li>
+            <li>Package manifest lists exact DLL hashes and semantic versions. Test and reload plugins are absent.</li>
+          </ul>
+        </details>
+      </div>
+    </section>
+
+    <section id="scope">
+      <h2>Scope and evidence</h2>
+      <div class="panel">
+        <p>This audit covers the current working tree, including the untracked WarmupSafezone directory and the user's existing edits. It does not treat the absent WarmupPlayerPanel code as a dependency to recover. The proposed StatsBots project replaces that player layer.</p>
+        <p>Seven parallel audits covered architecture, spawn lifecycle, safezone, stats and tags, HSM and SSS, testing and operations, and an independent adversarial bug pass. Claims marked Confirmed come from current source or the local LabAPI and decompiled server reference workspace. Claims marked Risk need the listed fault test.</p>
+        <p>No production or local SCP:SL server was started. No existing source file was edited. This HTML file is the only intentional source-tree addition.</p>
+        <p class="small">One unintended build side effect occurred because the repository's unconditional PostBuild targets copied <code>SCPSLBot.Tests.dll</code> and <code>SCPSLPluginExtensions.dll</code> to <code>C:\LabAPI\plugins\global</code>. The report leaves those files in place because the build may have replaced prior copies and deleting them would be a second destructive guess.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">SCPSLBot source audit. Generated from branch <code>spike/bot-orders</code> at <code>c61ac0d</code>.</div>
+  </footer>
+
+  <script>
+    (() => {
+      const buttons = [...document.querySelectorAll('[data-filter]')];
+      const rows = [...document.querySelectorAll('#bug-table tbody tr')];
+      const search = document.querySelector('#bug-search');
+      let severity = 'all';
+
+      function apply() {
+        const query = search.value.trim().toLowerCase();
+        for (const row of rows) {
+          const severityMatch = severity === 'all' || row.dataset.severity === severity;
+          const textMatch = !query || row.textContent.toLowerCase().includes(query);
+          row.hidden = !(severityMatch && textMatch);
+        }
+      }
+
+      for (const button of buttons) {
+        button.addEventListener('click', () => {
+          severity = button.dataset.filter;
+          for (const item of buttons) item.classList.toggle('active', item === button);
+          apply();
+        });
+      }
+      search.addEventListener('input', apply);
+    })();
+  </script>
+</body>
+</html>
