@@ -1,6 +1,15 @@
 # scpsl-bot-plugin
 
-**Reliability first, performance first** 
+## Repository visibility and language policy
+
+**OSS: yes** — public on GitHub. Checked 2026-09-18.
+GitHub: [Michaelihc/scpsl-bot-plugin](https://github.com/Michaelihc/scpsl-bot-plugin) (public).
+
+- OSS means public on GitHub for this policy. Record the owning repository's status here; recheck GitHub visibility when remotes or publication status change. A nested repository has its own status.
+- Maintain English and Chinese user-facing documentation and player-facing text. Show one player language at a time; prefer the client language with Chinese fallback.
+- Developer instructions, code identifiers, command syntax, and host/operator documentation remain English. Preserve proper names and native labels.
+
+**Reliability first, performance first**
 **Keep behavior predictable under load**
 **Maintain clear per-player/per-client vs whole-server boundaries.**
 
@@ -48,7 +57,7 @@
 
 ### Testing
 - Follow [../.tests/AGENTS.md](../.tests/AGENTS.md) for relevant tests; read-only and documentation work needs no game-server launch.
-- Plugin-specific tests, transcripts, and screenshots should live in this plugin's `tests` folder. 
+- Plugin-specific tests, transcripts, and screenshots should live in this plugin's `tests` folder.
 - Plugin configs are under `%APPDATA%\SCP Secret Laboratory\LabAPI\configs\<active port>\<Plugin Name>\`.
 - Call out when multiplayer/manual verification is needed. Keep detailed logs, especially for client/server behavior, so kicks, disconnects, jitter, and plugin glitches can be distinguished reliably.
 
@@ -61,7 +70,7 @@
 ## Best Practices
 - Avoid God Classes. Do not add new feature logic to an existing class only because it is the lowest-diff place to put it.
 - If a change makes one class own multiple unrelated domains, split the class before adding more behavior.
-- Avoid per frame updates unless they are cheap and necessary. 
+- Avoid per frame updates unless they are cheap and necessary.
 
 ### Documentation
 - Create and maintain a localized (language toggle at top) user-facing `README.md` with a clear explanation of what the plugin does, how to use it, config files, player/RA commands, and known plugin conflicts.
