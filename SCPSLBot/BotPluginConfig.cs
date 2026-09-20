@@ -31,6 +31,9 @@ namespace SCPSLBot
 
         public WarmupMode WarmupMode { get; set; } = WarmupMode.Standard;
 
+        [Description("Disable native reinforcement waves, including mini-waves and forced waves, during Standard warmup. Individual warmup respawns remain enabled.")]
+        public bool DisableNativeRespawnWavesInWarmup { get; set; } = true;
+
         public int HumanRespawnDelayMs { get; set; } = 1200;
 
         public int BotRespawnDelayMs { get; set; } = 2500;

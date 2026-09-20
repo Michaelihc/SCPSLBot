@@ -62,6 +62,8 @@ Bots follow string-pulled corners nudged into each turn, slide around whatever c
 
 Destroying maintained dummies through native RA automatically replenishes the configured population. Destroyed bot references are cleared safely without blocking other bots or `bot_status`. Population maintenance faults log `BOT_POPULATION_FAULT` at most every 15 seconds during a continuous failure; successful recovery logs `BOT_POPULATION_RECOVERED`.
 
+Native reinforcement waves are disabled during Standard warmup by default (`disable_native_respawn_waves_in_warmup: true`). This covers NTF/CI main waves, mini-waves, and forced native waves. Individual player and managed-bot warmup respawns continue normally. Setting this option to `false`, switching warmup off, or unloading SCPSLBot releases the wave restriction without overwriting native timers or token counts.
+
 ## Player controls
 
 While Standard warmup is active, SSS provides personalized controls:

@@ -16,6 +16,7 @@ namespace SCPSLBot.Warmup
         private readonly BotPopulationController botPopulation = new();
         private readonly WarmupArenaService arenas = new();
         private readonly WarmupRoundRespawnService respawns = new();
+        private readonly WarmupNativeWaveService nativeWaves = new();
         private readonly WarmupPlayerSpawnProtectionService playerSpawnProtection = new();
         private readonly WarmupHazardService hazards = new();
         private readonly WarmupModeCoordinator modeCoordinator = new();
@@ -58,6 +59,7 @@ namespace SCPSLBot.Warmup
                 config,
                 () => modeCoordinator.IsStandardWarmup);
             hazards.Init(config, () => modeCoordinator.IsStandardWarmup);
+            nativeWaves.Init(config, () => modeCoordinator.IsStandardWarmup);
             modeCoordinator.Init(
                 config,
                 botPopulation,
@@ -77,6 +79,7 @@ namespace SCPSLBot.Warmup
 
             PlayerEvents.ChangedRole -= OnPlayerChangedRole;
             playerSpawnProtection.Terminate();
+            nativeWaves.Terminate();
             modeCoordinator.Terminate();
             hazards.Terminate();
             respawns.Terminate();
