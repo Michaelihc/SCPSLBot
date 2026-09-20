@@ -129,6 +129,12 @@ geometry before rebuilding, then wait for `nav status` to report `ready=True`, `
 `nav path` query those points without requiring native room membership. This does not add custom
 room names or roaming anchors.
 
+`BotOrders.MoveTo` accepts either a floor point or the actor's native standing-root position on
+runtime navigation. It tests the original point first, then a floor candidate derived from that
+actor's `CharacterControllerSettings` height, center and skin width, keeping the same 0.5 m sample
+radius. The requested goal remains unchanged for movement and telemetry. Authored navigation keeps
+its original target convention.
+
 Custom sizes are 1–1024 m on X/Z and 1–256 m on Y; the entire region must stay within ±20,000 m
 on each world axis. Coordinates use invariant decimal points. Facility and custom source volumes
 are collected separately with shared collider exclusions and overlap deduplication. Only stationary

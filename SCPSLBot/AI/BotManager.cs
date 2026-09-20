@@ -15,6 +15,8 @@ using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
 using SCPSLBot.Components;
 using SCPSLBot.Infrastructure;
 using SCPSLBot.Navigation;
+using SCPSLBot.Navigation.Policy;
+using SCPSLBot.Navigation.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -543,7 +545,11 @@ namespace SCPSLBot.AI
             orders[hub] = state;
 
             var backend = NavigationSystem.Instance.Backend;
-            if (backend != null && NavigationSystem.Instance.IsReadyForCurrentMap && !backend.IsOnMesh(goal, 0.5f))
+            var capsule = (hub.roleManager.CurrentRole as FpcStandardRoleBase)?.FpcModule.CharacterControllerSettings;
+            if (backend != null && NavigationSystem.Instance.IsReadyForCurrentMap
+                && !OrderGoalPolicy.IsOnNavigation(backend is RuntimeNavigationBackend,
+                    capsule?.Height ?? 0f, capsule?.Center.y ?? 0f, capsule?.SkinWidth ?? 0f,
+                    offset => backend.IsOnMesh(goal - Vector3.up * offset, 0.5f)))
             {
                 backend.TryGetNearestPoint(goal, 60f, out var nearest, out var nearestDistance);
                 state.Kind = BotOrderKind.FailedOffMesh;
