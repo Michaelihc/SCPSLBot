@@ -113,12 +113,29 @@ A round-owned service scans all participating ready real players every `respawn_
 | `botspike survey <clutter|doors|all|keycard> [both|forward]`, `botspike survey_status`, `botspike survey_stop` | Walk the spike bot natively across every door-less connector (or plain door) of the generated map and log per-case `[BotSurvey]` verdicts; `keycard` asserts keycard-aware routing with path queries only | Survey: `PlayersManagement`; status: `GameplayData` |
 | `nav status` | Active/configured backend, readiness, bake and reconcile diagnostics | `GameplayData` |
 | `nav rebuild` | Re-bake (runtime) or re-load (authored) navigation for the current map | `ServerConfigs` |
+| `nav rebuild <centerX> <centerY> <centerZ> <sizeX> <sizeY> <sizeZ>` | Re-bake runtime navigation including one custom-map region; replaces the previous region | `ServerConfigs` |
+| `nav rebuild clear` | Remove the custom region and rebuild facility navigation | `ServerConfigs` |
 | `nav probe [x y z|RoomName]` | Is a point on the navigation surface, nearest surface point, navmesh area / door class | `GameplayData` |
 | `nav path <from> <to> [perms <hex>|all]` | Runtime path query between points or room anchors with a permission mask | `GameplayData` |
 | `nav edit|load|save|vertex ...` | Authored-backend cell editor (kept for one release) | Read: `GameplayData`; mutation: `ServerConfigs` |
 | `statsbots status|grant|revoke <fullUserId> ...` | Inspect or administer warmup titles | configurable `statsbots.manage` |
 
 StatsBots admin commands require an exact full authenticated UserId; ambiguous nicknames and `ID_Dummy` are rejected.
+
+Custom-map regions are temporary for the current map. A plain `nav rebuild` retains the region;
+round restart, new map generation, plugin unload, or `nav rebuild clear` removes it. Load the custom
+geometry before rebuilding, then wait for `nav status` to report `ready=True`, `built=True`, and
+`active_backend=runtime` before issuing world-position `BotOrders.MoveTo` walks. `nav probe` and
+`nav path` query those points without requiring native room membership. This does not add custom
+room names or roaming anchors.
+
+Custom sizes are 1–1024 m on X/Z and 1–256 m on Y; the entire region must stay within ±20,000 m
+on each world axis. Coordinates use invariant decimal points. Facility and custom source volumes
+are collected separately with shared collider exclusions and overlap deduplication. Only stationary
+toy hierarchies are baked: mark platforms and their parents `IsStatic=true`. Non-static AdminToy
+parents exclude their children, keeping moving aircraft/boats out of static navigation while a
+stationary carrier deck remains eligible. Source selection uses the native
+`AdminToys.AdminToyBase.IsStatic` field (`.references/Decompiled/DedicatedServer/Assembly-CSharp/AdminToys/AdminToyBase.cs`).
 
 ## Configuration
 

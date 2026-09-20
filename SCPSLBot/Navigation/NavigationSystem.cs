@@ -61,6 +61,9 @@ namespace SCPSLBot.Navigation
         /// <summary>Consecutive runtime bake failures for the current map (resets per map).</summary>
         public int RuntimeBakeFailures { get; private set; }
 
+        /// <summary>Optional additional geometry region, retained only for this native map.</summary>
+        public Bounds? CustomBounds { get; private set; }
+
         private readonly AuthoredNavigationBackend authoredBackend = new();
         private readonly RuntimeNavigationBackend runtimeBackend;
         private CoroutineHandle mapLoadHandle;
@@ -94,6 +97,7 @@ namespace SCPSLBot.Navigation
             }
 
             Initialized = false;
+            CustomBounds = null;
             MapGeneration = unchecked(MapGeneration + 1);
             ReadyGeneration = -1;
             if (mapLoadHandle.IsRunning)
@@ -125,16 +129,25 @@ namespace SCPSLBot.Navigation
             BeginMapLoad();
         }
 
+        public void Rebuild(Bounds? customBounds)
+        {
+            if (!Initialized) return;
+            CustomBounds = customBounds;
+            Rebuild();
+        }
+
         private INavigationBackend ConfiguredBackend => Config.Backend == NavigationBackend.Runtime ? runtimeBackend : authoredBackend;
 
         private void OnMapGenerated(MapGeneratedEventArgs args)
         {
+            CustomBounds = null;
             Backend = ConfiguredBackend;
             BeginMapLoad();
         }
 
         private void OnRoundRestarted()
         {
+            CustomBounds = null;
             MapGeneration = unchecked(MapGeneration + 1);
             ReadyGeneration = -1;
             if (mapLoadHandle.IsRunning)
@@ -193,7 +206,7 @@ namespace SCPSLBot.Navigation
                 bool loaded;
                 if (ReferenceEquals(Backend, runtimeBackend))
                 {
-                    var bake = Timing.RunCoroutine(Runtime.BuildAsync(Config, loadGeneration));
+                    var bake = Timing.RunCoroutine(Runtime.BuildAsync(Config, loadGeneration, CustomBounds));
                     yield return Timing.WaitUntilDone(bake);
                     if (!Initialized || loadGeneration != MapGeneration)
                     {
