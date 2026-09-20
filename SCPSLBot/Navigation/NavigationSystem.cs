@@ -91,6 +91,7 @@ namespace SCPSLBot.Navigation
 
         public void Terminate()
         {
+            RuntimeNavigationTiming.Reset();
             if (!Initialized)
             {
                 return;
@@ -140,6 +141,7 @@ namespace SCPSLBot.Navigation
 
         private void OnMapGenerated(MapGeneratedEventArgs args)
         {
+            RuntimeNavigationTiming.Reset();
             CustomBounds = null;
             Backend = ConfiguredBackend;
             BeginMapLoad();
@@ -147,6 +149,7 @@ namespace SCPSLBot.Navigation
 
         private void OnRoundRestarted()
         {
+            RuntimeNavigationTiming.Reset();
             CustomBounds = null;
             MapGeneration = unchecked(MapGeneration + 1);
             ReadyGeneration = -1;

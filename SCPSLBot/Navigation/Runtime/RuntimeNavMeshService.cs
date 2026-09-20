@@ -275,10 +275,8 @@ namespace SCPSLBot.Navigation.Runtime
         {
             try
             {
-                var stopwatch = Stopwatch.StartNew();
-                sourceHash = collector.Collect(facilityBounds, config.KeycardAreaRouting, sources, customBounds);
+                sourceHash = CollectSources(out var collectMs);
                 SourceCount = sources.Count;
-                stopwatch.Stop();
                 if (sources.Count == 0)
                 {
                     Fail("no navmesh sources were collected");
@@ -286,7 +284,7 @@ namespace SCPSLBot.Navigation.Runtime
                 }
 
                 pendingUpdate = NavMeshBuilder.UpdateNavMeshDataAsync(data, settings, sources, bounds);
-                LabLogger.Info($"[SCPSLBot] NAV_BAKE_START generation={owningGeneration} sources={sources.Count} collectMs={stopwatch.ElapsedMilliseconds} unreadableMeshes={UnreadableMeshes} modifierBoxes={ModifierBoxes} triggersDropped={collector.TriggerSources} ignoredRoots={collector.IgnoredRoots} bounds={bounds.size}");
+                LabLogger.Info($"[SCPSLBot] NAV_BAKE_START generation={owningGeneration} sources={sources.Count} collectMs={collectMs} unreadableMeshes={UnreadableMeshes} modifierBoxes={ModifierBoxes} triggersDropped={collector.TriggerSources} ignoredRoots={collector.IgnoredRoots} bounds={bounds.size}");
                 return pendingUpdate;
             }
             catch (Exception exception)
@@ -429,13 +427,12 @@ namespace SCPSLBot.Navigation.Runtime
         private AsyncOperation TryStartReconcile(out bool changed)
         {
             changed = false;
+            var observation = RuntimeNavigationTiming.Begin("ReconcileStart", Time.frameCount);
             try
             {
                 ReconcileCount++;
-                var stopwatch = Stopwatch.StartNew();
-                var hash = collector.Collect(facilityBounds, config.KeycardAreaRouting, sources, customBounds);
-                stopwatch.Stop();
-                LastReconcileMs = stopwatch.ElapsedMilliseconds;
+                var hash = CollectSources(out var collectMs);
+                LastReconcileMs = collectMs;
                 if (hash == sourceHash)
                 {
                     return null;
@@ -454,6 +451,25 @@ namespace SCPSLBot.Navigation.Runtime
                 LabLogger.Warn($"[SCPSLBot] NAV_RECONCILE_FAILED {exception.GetType().Name}: {exception.Message}");
                 return null;
             }
+            finally { observation.Complete(sources.Count, changed); }
+        }
+
+        private ulong CollectSources(out long elapsedMilliseconds)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var observation = RuntimeNavigationTiming.Begin("SourceCollection", Time.frameCount);
+            ulong hash = sourceHash;
+            try
+            {
+                hash = collector.Collect(facilityBounds, config.KeycardAreaRouting, sources, customBounds);
+                return hash;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+                observation.Complete(sources.Count, hash != sourceHash);
+            }
         }
 
         private void FinishReconcile(float started, bool changed)
@@ -464,6 +480,7 @@ namespace SCPSLBot.Navigation.Runtime
                 return;
             }
 
+            var observation = RuntimeNavigationTiming.Begin("ReconcileFinish", Time.frameCount);
             try
             {
                 links.Rebuild(settings.agentTypeID);
@@ -476,6 +493,7 @@ namespace SCPSLBot.Navigation.Runtime
             {
                 LabLogger.Warn($"[SCPSLBot] NAV_RECONCILE_FAILED index {exception.GetType().Name}: {exception.Message}");
             }
+            finally { observation.Complete(sources.Count, changed); }
         }
 
         private void Subscribe()
