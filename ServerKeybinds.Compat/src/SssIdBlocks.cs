@@ -74,6 +74,9 @@ public static class SssIdBlocks
     /// <summary>SCPSLBot permission-gated diagnostics, navigation authoring, and force-role tools.</summary>
     public const int ScpslBotTools = 1132000;
 
+    /// <summary>Ganzir aircraft, jetpack and naval insertion controls.</summary>
+    public const int Scp5kGanzir = 1150000;
+
     // --- The registry's own reserved block ---
 
     /// <summary>
