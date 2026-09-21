@@ -21,10 +21,10 @@ if (-not $before.ready -or $before.items -notcontains 'ParticleDisruptor') {
 }
 
 # The only firearm occupies the native primary-weapon hotkey. Record the key press
-# and a six-second tail so a disconnect/crash or the held 3-X model is observable.
+# and a twenty-second tail so a delayed disconnect or the held 3-X model is observable.
 $receipt = Invoke-LabInput @{
     id = 'equip-particle-disruptor'
-    frames = 360
+    frames = 1200
     inputFrames = 2
     keys = @(49)
     capture = $true
