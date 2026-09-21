@@ -1,6 +1,11 @@
 param($Context)
 
 $actorId = $Context.Actor.id
+# Exercise a participating human role, not the Tutorial fixture excluded from warmup.
+Invoke-LabServer "/forcerole $actorId ClassD" | Out-Null
+Start-Sleep -Seconds 2
+Invoke-LabServer "/strip $actorId" | Out-Null
+Invoke-LabServer "/god $actorId enable" | Out-Null
 $setupReply = Invoke-LabServer "/give $actorId 47"
 $setupReply | Set-Content "$($Context.Evidence)\particle-disruptor-setup.txt" -Encoding utf8
 if ($setupReply -notmatch 'Done!') {
