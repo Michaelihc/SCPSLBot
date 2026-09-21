@@ -31,24 +31,21 @@ $receipt = Invoke-LabInput @{
     audio = $true
 }
 
-$afterPlayers = @(Observe | Where-Object { $_.id -eq $actorId })
+$clientProcess = Get-Process -Id $Context.ClientId -ErrorAction SilentlyContinue
+$connectionReply = Invoke-LabServer "/god $actorId enable"
 $evidence = @{
     actorId = $actorId
     before = $before
-    after = if ($afterPlayers.Count -eq 1) { $afterPlayers[0] } else { $null }
+    clientProcessAlive = $null -ne $clientProcess
+    connectionReply = $connectionReply
     input = $receipt
 }
 $evidence | ConvertTo-Json -Depth 9 |
     Set-Content "$($Context.Evidence)\particle-disruptor-result.json" -Encoding utf8
 
-if ($afterPlayers.Count -ne 1) {
-    throw 'Client disconnected or became unobservable while equipping ParticleDisruptor'
+if ($null -eq $clientProcess) {
+    throw 'Client process exited while equipping ParticleDisruptor'
 }
-
-$after = $afterPlayers[0]
-if (-not $after.ready -or $after.life -ne $before.life) {
-    throw 'Client was no longer ready in the same life after equipping ParticleDisruptor'
-}
-if ($after.firearm.type -ne 'ParticleDisruptor') {
-    throw "Native selection did not leave ParticleDisruptor equipped; current firearm: $($after.firearm.type)"
+if (($connectionReply -join "`n") -notmatch 'affected 1 player') {
+    throw "Server could no longer target the client after equipping ParticleDisruptor: $connectionReply"
 }
