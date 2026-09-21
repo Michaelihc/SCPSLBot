@@ -32,7 +32,8 @@ $receipt = Invoke-LabInput @{
 }
 
 $clientProcess = Get-Process -Id $Context.ClientId -ErrorAction SilentlyContinue
-$connectionReply = Invoke-LabServer "/god $actorId enable"
+# Toggle always affects a connected target; enabling an already enabled flag reports zero.
+$connectionReply = Invoke-LabServer "/god $actorId"
 $evidence = @{
     actorId = $actorId
     before = $before
