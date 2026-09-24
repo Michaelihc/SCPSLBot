@@ -10,7 +10,7 @@ This repository builds a LabAPI `net48` warmup suite for SCP: Secret Laboratory:
 - `WarmupSafezone` independently owns surface/SCP-914 volumes, protection, blocker/drain rules, and visuals. It never changes native godmode or process-wide spawn-protection settings.
 - `StatsBots` records authenticated players' warmup bot score through the existing StatsSystem `player_stats` store, renders an HSM profile, manages unlockable titles, and schedules beginner/community notices.
 - `LabAPI_InfiniteAmmo` supplies reload-time reserve ammunition so warmup firefights do not end when finite role ammo is exhausted.
-- `ServerKeybinds.Compat` is the pinned, drop-in `ServerKeybinds.dll` API 4 build used for personalized SSS. It is not a second registry.
+- Personalized SSS uses the mainline `ServerKeybinds.dll`, built from the metarepo `ServerKeybinds` project (`../ServerKeybinds/ServerKeybinds.csproj`, overridable with `-p:ServerKeybindsProject=<path>`). It is the only SSS registry on the port.
 
 The old `WarmupPlayerPanel` design is obsolete and must not be deployed with this suite.
 
@@ -24,7 +24,7 @@ plugins/<port>/SCPSLBot.Components.dll
 plugins/<port>/WarmupSafezone.dll
 plugins/<port>/StatsBots.dll
 plugins/<port>/LabAPI_InfiniteAmmo_x64.dll
-dependencies/<port>/ServerKeybinds.dll       # from ServerKeybinds.Compat
+dependencies/<port>/ServerKeybinds.dll       # mainline build from the metarepo ServerKeybinds project
 dependencies/<port>/0Harmony.dll
 ```
 
@@ -46,7 +46,7 @@ restored the stock files; `tools\Start-BotTestServer8888.ps1`, the isolated 8891
 production deploy script refuse to start an unpatched server. Client files are never touched. With
 `navigation.backend: authored` the patch is not needed and the hand-authored `navmesh.slnmf` is used.
 
-Declared process-wide companions are `HintServiceMeow.dll` for owned HSM text and the existing StatsSystem plugin/provider for persistence. StatsBots fails honestly as loading/unavailable when StatsSystem is missing; HSM text quietly disables when HSM is absent. Do not deploy upstream and compatibility-fork `ServerKeybinds.dll` files together.
+Declared process-wide companions are `HintServiceMeow.dll` for owned HSM text and the existing StatsSystem plugin/provider for persistence. StatsBots fails honestly as loading/unavailable when StatsSystem is missing; HSM text quietly disables when HSM is absent. Install exactly one `ServerKeybinds.dll` per port, in the folder that port's LabAPI loader reads; never two copies.
 
 Surface PvE managed CI bots use their exact native CI reinforcement spawn. Real players may remain on Surface as Facility Guard, NTF Private, Sergeant, Captain, or Specialist. Admin-assigned Tutorial is outside all per-player warmup management: it retains native spawning and effects, contributes no arena population, and has no warmup controls. Native RA remains available. Other human roles are evacuated to HCZ/EZ, while SCP roles are evacuated to LCZ, with a clear localized per-player broadcast that flushes stale queued broadcasts and displays immediately.
 
@@ -188,13 +188,13 @@ Build deployment is opt-in; the production solution excludes the in-server test 
 The dedicated local bot-testing deployment is port `8888`. It carries the runtime suite, HSM,
 PlaytestHarness, and the bot/safezone scenario assemblies without DummyRoleFiller.
 Start it with `tools\Start-BotTestServer8888.ps1`; the launcher supplies the lane-specific
-`SCPSL_OPS_STATE_ROOT` required by StatsSystem persistence and restores the compatibility fork under
+`SCPSL_OPS_STATE_ROOT` required by StatsSystem persistence and installs the mainline `ServerKeybinds.dll` under
 `dependencies/8888`. Local deployments keep `dependencies/global` empty so one lane cannot replace
 another lane's SSS ABI.
 
 ## Known conflicts and limits
 
-- Do not deploy `WarmupPlayerPanel`, legacy `ScpslPluginStarter.dll`, or both upstream/fork ServerKeybinds assemblies.
+- Do not deploy `WarmupPlayerPanel`, legacy `ScpslPluginStarter.dll`, or more than one `ServerKeybinds.dll` per port.
 - `force_standard_door_connectors: true` rewrites map connectors and can conflict with map-layout plugins; it is off by default.
 - The runtime navigation backend needs the patched dedicated-server assets (see Install); a game update or Steam file validation restores the stock files and the launchers/deploy script then refuse to start until `NavMeshAssetPatcher patch` is re-applied. Elevator travel by bots and keycard routing in live multiplayer remain manual verification items. The Intercom room interior is not part of the baked surface (its floor does not voxelize), so bots stop at the Intercom doorway.
 - This suite never owns native badges/player names. StatsBots titles stay in its HSM profile.
@@ -211,7 +211,7 @@ another lane's SSS ABI.
 - `WarmupSafezone` 独立负责地表与 SCP-914 安全区、保护、堵门惩罚/扣血和可视化；不会修改原生无敌状态或进程级出生保护设置。
 - `StatsBots` 通过现有 StatsSystem 的 `player_stats` 存储记录已认证玩家的热身机器人积分，并提供 HSM 资料卡、可解锁称号和新手/社区通知。
 - `LabAPI_InfiniteAmmo` 在换弹时补充备用弹药，避免热身交火因角色初始弹药耗尽而永久停止。
-- `ServerKeybinds.Compat` 是固定上游提交、可直接替换的 `ServerKeybinds.dll` API 4；它不是第二套注册表。
+- 个性化 SSS 使用主线 `ServerKeybinds.dll`，由 metarepo 的 `ServerKeybinds` 项目（`../ServerKeybinds/ServerKeybinds.csproj`，可用 `-p:ServerKeybindsProject=<path>` 覆盖）从源码构建；它是该端口上唯一的 SSS 注册表。
 
 旧的 `WarmupPlayerPanel` 方案已经废弃，不能与本套件一起部署。
 
@@ -225,7 +225,7 @@ plugins/<端口>/SCPSLBot.Components.dll
 plugins/<端口>/WarmupSafezone.dll
 plugins/<端口>/StatsBots.dll
 plugins/<端口>/LabAPI_InfiniteAmmo_x64.dll
-dependencies/<端口>/ServerKeybinds.dll       # 来自 ServerKeybinds.Compat
+dependencies/<端口>/ServerKeybinds.dll       # 由 metarepo 的 ServerKeybinds 项目构建的主线版本
 dependencies/<端口>/0Harmony.dll
 ```
 
@@ -239,7 +239,7 @@ dotnet tools\NavMeshAssetPatcher\bin\Release\net8.0\NavMeshAssetPatcher.dll veri
 
 补丁程序会重写 `SCPSL_Data/*.assets`（所有 `Mesh` 变为可读并内联顶点数据），在旁边保留 `.bak` 原件，写入 `SCPSL_Data/navmesh-asset-patch.json`；`restore` 可恢复原件。游戏更新或 Steam 文件校验恢复原版文件后，`verify` 返回 2；`tools\Start-BotTestServer8888.ps1`、隔离端口 8891 的驱动脚本和生产部署脚本都会拒绝启动未打补丁的服务器。客户端文件不会被修改。使用 `navigation.backend: authored` 时无需补丁，将使用手工网格 `navmesh.slnmf`。
 
-进程级依赖包括用于独占 HSM 文本的 `HintServiceMeow.dll`，以及用于持久化的现有 StatsSystem 插件/提供器。StatsSystem 缺失时，StatsBots 会明确显示“加载中/不可用”；HSM 缺失时只会安静停用文字层。严禁同时部署上游版和兼容分支版 `ServerKeybinds.dll`。
+进程级依赖包括用于独占 HSM 文本的 `HintServiceMeow.dll`，以及用于持久化的现有 StatsSystem 插件/提供器。StatsSystem 缺失时，StatsBots 会明确显示“加载中/不可用”；HSM 缺失时只会安静停用文字层。每个端口只安装一份 `ServerKeybinds.dll`，放在该端口 LabAPI 加载器读取的目录中；绝不安装两份。
 
 地表 PvE 的托管 CI 机器人使用其精确 CI 角色的原生增援出生点。真实玩家可作为设施警卫、九尾狐列兵、中士、指挥官或收容专家留在地表；管理员分配的 Tutorial 角色完全不参与个人热身管理：保留原生出生与效果，不计入竞技场人数，也不显示热身控制；原生 RA 仍然可用；其他人类角色会被疏散至重收/入口，SCP 会被疏散至轻收。个人本地化广播会先清空该玩家的旧广播队列并立即显示。
 
@@ -371,7 +371,7 @@ node ..\.tests\lint-scenarios.js
 
 ## 已知冲突与限制
 
-- 不要部署 `WarmupPlayerPanel`、旧版 `ScpslPluginStarter.dll`，也不要同时部署两份 ServerKeybinds。
+- 不要部署 `WarmupPlayerPanel`、旧版 `ScpslPluginStarter.dll`，每个端口也不要安装多份 `ServerKeybinds.dll`。
 - `force_standard_door_connectors: true` 会改写地图连接点，可能与地图布局插件冲突；默认关闭。
 - 运行时导航后端需要已打补丁的专用服务器资源（见安装）；游戏更新或 Steam 文件校验会恢复原版文件，启动脚本和部署脚本会拒绝启动，直到重新执行 `NavMeshAssetPatcher patch`。机器人乘坐电梯和真实多人环境下的门禁路径规划仍需手工验证。对讲机房间内部不在烘焙表面内（其地面无法体素化），机器人会停在对讲机房门口。
 - 本套件不会改写原生徽章或玩家名；StatsBots 称号只显示在其 HSM 资料卡中。

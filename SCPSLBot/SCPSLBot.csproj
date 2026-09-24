@@ -42,8 +42,20 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SCPSLBot.Components\SCPSLBot.Components.csproj" />
-    <ProjectReference Include="..\ServerKeybinds.Compat\ServerKeybinds.csproj" Private="false" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <!-- ServerKeybinds is built from source. Default: the sibling metarepo checkout; a task worktree under
+         .worktrees/<task>/<repo> resolves three levels up; anything else passes -p:ServerKeybindsProject=<path>. -->
+    <ServerKeybindsProject Condition="'$(ServerKeybindsProject)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\ServerKeybinds\ServerKeybinds.csproj')">$(MSBuildThisFileDirectory)..\..\ServerKeybinds\ServerKeybinds.csproj</ServerKeybindsProject>
+    <ServerKeybindsProject Condition="'$(ServerKeybindsProject)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\..\..\ServerKeybinds\ServerKeybinds.csproj')">$(MSBuildThisFileDirectory)..\..\..\..\ServerKeybinds\ServerKeybinds.csproj</ServerKeybindsProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(ServerKeybindsProject)" Private="false" />
+  </ItemGroup>
+  <Target Name="RequireServerKeybindsProject" BeforeTargets="BeforeBuild" Condition="!Exists('$(ServerKeybindsProject)')">
+    <Error Text="ServerKeybinds.csproj not found. Pass -p:ServerKeybindsProject=&lt;path&gt;." />
+  </Target>
   
   <ItemGroup>
     <PackageReference Include="IsExternalInit" Version="1.0.3" />
