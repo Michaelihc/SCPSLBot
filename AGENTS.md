@@ -57,6 +57,17 @@ GitHub: [Michaelihc/scpsl-bot-plugin](https://github.com/Michaelihc/scpsl-bot-pl
 
 ### Testing
 - Follow [../.tests/AGENTS.md](../.tests/AGENTS.md) for relevant tests; read-only and documentation work needs no game-server launch.
+- Read the [Playtest contract](../.tests/Playtest/AGENTS.md) and
+  [scenario/driver guide](tests/playtest/README.md) before bot tests. Use `ptest` for new scenarios.
+- Test SCPSLBot through native RA/game-console processors and observable dummy/world behavior;
+  do not reflect into SCPSLBot under the movement-provider exception when it is the subject of the test.
+- Cover the affected player sequence, including repeated Apply/Grant with unchanged selections,
+  role/zone transitions and death/respawn where relevant. SSS/authenticated-player cases require
+  a real client; dummy-excluded cases remain explicit gaps, not passes. Combat regressions need
+  sustained shooting through magazine depletion/reload, not merely one successful hit.
+- For navigation changes, use the existing isolated 8891 drivers and asset-patcher verification.
+  A complete `nav path` query is planning evidence; connector/door acceptance also needs actual
+  native walks. Retain seed-specific failures and report skipped destinations separately.
 - Plugin-specific tests, transcripts, and screenshots should live in this plugin's `tests` folder.
 - Plugin configs are under `%APPDATA%\SCP Secret Laboratory\LabAPI\configs\<active port>\<Plugin Name>\`.
 - Call out when multiplayer/manual verification is needed. Keep detailed logs, especially for client/server behavior, so kicks, disconnects, jitter, and plugin glitches can be distinguished reliably.
@@ -84,3 +95,9 @@ GitHub: [Michaelihc/scpsl-bot-plugin](https://github.com/Michaelihc/scpsl-bot-pl
 - Add a `language` config setting where `""` means match client, `"cn"` forces Chinese, and `"en"` forces English.
 - Default to `language: ""`; fall back to Chinese when the client language cannot be determined.
 - Keep internal development notes, `AGENTS.md`, code comments, identifiers, and CLI commands in English.
+
+## Native client verification
+
+Use the [test tool index](../.tests/README.md) for the shared offline client queue. Read fresh
+reports/logs before footage and finish with visual QA. Documentation-only work requires no
+game-server launch.
