@@ -7,10 +7,16 @@ $serverRoot = 'C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laborato
 $localAdmin = Join-Path $serverRoot 'LocalAdmin.exe'
 $stateRoot = Join-Path $env:APPDATA 'SCP Secret Laboratory\LabAPI\state\8888'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-# ServerKeybinds.Compat is AnyCPU and ignores the solution's x64 platform folder. Its canonical
-# Release artifact is emitted directly under bin\Release; bin\x64 can retain a stale assembly from
-# older project settings and must never be deployed.
-$compatKeybinds = Join-Path $repositoryRoot 'ServerKeybinds.Compat\bin\Release\net48\ServerKeybinds.dll'
+# ServerKeybinds is built from source through SCPSLBot's ProjectReference. Default: the sibling
+# metarepo checkout (<metarepo>\ServerKeybinds); override with $env:ServerKeybindsProject, the same
+# path passed to MSBuild as -p:ServerKeybindsProject. The library is AnyCPU: a solution or x64 build
+# emits it under bin\x64\Release\net48, a bare project build under bin\Release\net48. Use the newest.
+$keybindsProject = if ($env:ServerKeybindsProject) { $env:ServerKeybindsProject } else { Join-Path (Split-Path -Parent $repositoryRoot) 'ServerKeybinds\ServerKeybinds.csproj' }
+$keybindsBuild = @('bin\x64\Release\net48\ServerKeybinds.dll', 'bin\Release\net48\ServerKeybinds.dll') |
+    ForEach-Object { Join-Path (Split-Path -Parent $keybindsProject) $_ } |
+    Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+    Sort-Object { (Get-Item -LiteralPath $_).LastWriteTimeUtc } -Descending |
+    Select-Object -First 1
 $portDependencyRoot = Join-Path $env:APPDATA 'SCP Secret Laboratory\LabAPI\dependencies\8888'
 $deployedKeybinds = Join-Path $portDependencyRoot 'ServerKeybinds.dll'
 
@@ -52,28 +58,28 @@ if ($existing) {
     throw 'Port 8888 already has a LocalAdmin/SCPSL process. Stop that exact port before starting another copy.'
 }
 
-if (-not (Test-Path -LiteralPath $compatKeybinds -PathType Leaf)) {
-    throw "The ServerKeybinds.Compat release build was not found at '$compatKeybinds'. Build SCPSLBotAddon.sln for x64 Release before starting 8888."
+if (-not $keybindsBuild) {
+    throw "No ServerKeybinds release build was found beside '$keybindsProject'. Build SCPSLBotAddon.sln for x64 Release (it builds ServerKeybinds from '$keybindsProject') before starting 8888."
 }
 
-# Keep the compatibility fork isolated to the dedicated bot-test lane. A sibling upstream build can
-# otherwise replace it while still reporting assembly version 4.0.0.
+# Exactly one ServerKeybinds.dll per port, in the folder this port's LabAPI loader reads. Reinstall
+# whenever the deployed copy differs from the current build so the lane never runs a stale library.
 New-Item -ItemType Directory -Path $portDependencyRoot -Force | Out-Null
-$compatHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $compatKeybinds).Hash
+$keybindsHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $keybindsBuild).Hash
 $deployedHash = if (Test-Path -LiteralPath $deployedKeybinds -PathType Leaf) {
     (Get-FileHash -Algorithm SHA256 -LiteralPath $deployedKeybinds).Hash
 } else {
     $null
 }
 
-if ($deployedHash -ne $compatHash) {
-    Copy-Item -LiteralPath $compatKeybinds -Destination $deployedKeybinds -Force
+if ($deployedHash -ne $keybindsHash) {
+    Copy-Item -LiteralPath $keybindsBuild -Destination $deployedKeybinds -Force
     $verifiedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $deployedKeybinds).Hash
-    if ($verifiedHash -ne $compatHash) {
-        throw "ServerKeybinds.Compat deployment verification failed. Expected $compatHash but found $verifiedHash."
+    if ($verifiedHash -ne $keybindsHash) {
+        throw "ServerKeybinds deployment verification failed. Expected $keybindsHash but found $verifiedHash."
     }
 
-    Write-Host "Restored ServerKeybinds.Compat ($compatHash)."
+    Write-Host "Installed ServerKeybinds ($keybindsHash)."
 }
 
 New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null

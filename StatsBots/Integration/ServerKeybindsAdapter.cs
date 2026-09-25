@@ -10,7 +10,7 @@ using StatsBots.Services;
 
 namespace StatsBots.Integration;
 
-/// <summary>Late-bound consumer of the compatibility fork; StatsBots has no assembly dependency on it.</summary>
+/// <summary>Late-bound consumer of ServerKeybinds; StatsBots has no assembly dependency on it.</summary>
 internal sealed class ServerKeybindsAdapter
 {
     private readonly StatsBotsConfig _config;
@@ -52,7 +52,7 @@ internal sealed class ServerKeybindsAdapter
                 .OrderByDescending(m => m.GetParameters().Length)
                 .FirstOrDefault(m => m.GetParameters().Length is 4 or 5);
             if (registryType == null || blockType == null || categoryType == null || modelType == null || selectionType == null || addDropdown == null)
-                return Unavailable("the personalized dropdown compatibility API is missing");
+                return Unavailable("the ServerKeybinds personalized dropdown API is missing");
 
             MethodInfo? claim = registryType.GetMethod("ClaimBlock", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int), typeof(string) }, null);
             _requestRefresh = registryType.GetMethod("RequestPlayerRefresh", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(Player), typeof(string) }, null);

@@ -59,7 +59,7 @@ public sealed class StatsBotsPlugin : Plugin<StatsBotsConfig>
             sss = new ServerKeybindsAdapter(Config, runtime, text, preferences);
             runtime.SetSss(sss);
             runtime.Enable();
-            sss.Enable(); // Optional: one logged fallback if the compatibility fork is absent.
+            sss.Enable(); // Optional: one logged fallback if ServerKeybinds is absent.
 
             _hints = hints;
             _runtime = runtime;

@@ -4,7 +4,7 @@
 
 ## English
 
-StatsBots is the player-facing companion for SCPSLBot warmup. It records managed-bot kills/deaths in the existing StatsSystem `player_stats` store, renders a localized three-band HSM card, supplies an unlocked-title selector through the ServerKeybinds compatibility fork, and schedules short native onboarding/community broadcasts without clearing anyone else's queue.
+StatsBots is the player-facing companion for SCPSLBot warmup. It records managed-bot kills/deaths in the existing StatsSystem `player_stats` store, renders a localized three-band HSM card, supplies an unlocked-title selector through ServerKeybinds, and schedules short native onboarding/community broadcasts without clearing anyone else's queue.
 
 ### Install
 
@@ -13,7 +13,7 @@ Build `StatsBots.csproj` for `Release|x64` and install `StatsBots.dll` as a LabA
 - `SCPSLBot.dll` exposing `SCPSLBot.Api.ManagedBotIdentity`;
 - `StatsSystem.dll` 2.2-compatible, using its default `player_stats` store;
 - `HintServiceMeow.dll` for the HUD (missing HSM fails quiet and never falls back to the shared native hint channel);
-- the ServerKeybinds compatibility-fork build with `AddDropdownForPlayer`, installed instead of upstream—not alongside it.
+- the mainline `ServerKeybinds.dll` built from the metarepo `ServerKeybinds` project (provides `AddDropdownForPlayer`); exactly one copy per port.
 
 StatsSystem must have its lane/state environment configured normally. StatsBots never opens or copies StatsSystem's files.
 
@@ -39,7 +39,7 @@ The HSM profile owns only these stable entries. Every entry still uses HSM `Cent
 
 Provider loading or failure is rendered as `LOADING`/`UNAVAILABLE`; StatsBots never substitutes an unverified zero. Configured title/tier labels are rich-text escaped. StatsBots does not change display names, native badges, groups, PlayerBadge, or AdditionalNameTags.
 
-The Server-Specific Settings `Display` block uses base `1131000`. It contains one personalized regular/non-scrollable unlocked-title dropdown and native two-button settings for Warmup HUD, Warmup title, combat notices, beginner tips, and the QQ community line. The compatibility fork suppresses acquisition callbacks, validates the exact sent model/generation, and rate-limits per-player refresh. StatsBots rechecks unlock state on execution. If the fork is absent, use `warmuptitle list` and `warmuptitle <id|none>` in Player Console.
+The Server-Specific Settings `Display` block uses base `1131000`. It contains one personalized regular/non-scrollable unlocked-title dropdown and native two-button settings for Warmup HUD, Warmup title, combat notices, beginner tips, and the QQ community line. ServerKeybinds suppresses acquisition callbacks, validates the exact sent model/generation, and rate-limits per-player refresh. StatsBots rechecks unlock state on execution. If ServerKeybinds is absent, use `warmuptitle list` and `warmuptitle <id|none>` in Player Console.
 
 Player Console title responses are localized per player. RA command names and responses intentionally remain stable English for scripts and staff runbooks.
 
@@ -77,11 +77,11 @@ StatsSystem exposes no public hydration-complete/health receipt and mutation cal
 
 ## 中文
 
-StatsBots 是 SCPSLBot 热身模式的玩家端配套插件。它复用 StatsSystem 默认的 `player_stats` 存储记录托管机器人战绩，通过 HSM 显示三段式中文/英文状态卡，通过 ServerKeybinds 兼容分支提供“仅显示已解锁称号”的下拉菜单，并以不会清除其他公告的方式发送新手与 QQ 社区提示。
+StatsBots 是 SCPSLBot 热身模式的玩家端配套插件。它复用 StatsSystem 默认的 `player_stats` 存储记录托管机器人战绩，通过 HSM 显示三段式中文/英文状态卡，通过 ServerKeybinds 提供“仅显示已解锁称号”的下拉菜单，并以不会清除其他公告的方式发送新手与 QQ 社区提示。
 
 ### 安装
 
-以 `Release|x64` 构建 `StatsBots.csproj`，将 `StatsBots.dll` 安装为 LabAPI 插件。StatsBots 使用延迟绑定，因此编译时不硬依赖其他插件；完整运行环境应安装：带公开 `ManagedBotIdentity` 契约的 `SCPSLBot.dll`、兼容 StatsSystem 2.2 的 `StatsSystem.dll`、用于 HUD 的 `HintServiceMeow.dll`，以及 ServerKeybinds 兼容分支。兼容分支和上游版只能安装一个，不能同时加载。
+以 `Release|x64` 构建 `StatsBots.csproj`，将 `StatsBots.dll` 安装为 LabAPI 插件。StatsBots 使用延迟绑定，因此编译时不硬依赖其他插件；完整运行环境应安装：带公开 `ManagedBotIdentity` 契约的 `SCPSLBot.dll`、兼容 StatsSystem 2.2 的 `StatsSystem.dll`、用于 HUD 的 `HintServiceMeow.dll`，以及由 metarepo 的 `ServerKeybinds` 项目构建的主线 `ServerKeybinds.dll`。每个端口只安装一份。
 
 ### 计分与身份
 

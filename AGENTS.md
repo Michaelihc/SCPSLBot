@@ -23,7 +23,7 @@ GitHub: [Michaelihc/scpsl-bot-plugin](https://github.com/Michaelihc/scpsl-bot-pl
 ## Project Snapshot
 
 - Runtime suite: `SCPSLBot` 1.0.0, `WarmupSafezone` 1.0.0, `StatsBots` 1.0.0, `XPSystem` 2.0.2, and the existing `LabAPI_InfiniteAmmo` 1.0.1 plugin; `RatingTags` remains rating/tier-only with its old XP progression disabled
-- SSS dependency: `ServerKeybinds.Compat` API 4; deploy its single `ServerKeybinds.dll` under the target port only, never `dependencies/global`
+- SSS dependency: the mainline `ServerKeybinds.dll` built from the metarepo `ServerKeybinds` project (`ServerKeybindsProject` MSBuild property); one copy per port in the folder that port's LabAPI loader reads, never two copies and never `dependencies/global`
 - Player text: HSM stable-tag providers with EN/CN config and Chinese fallback
 - Dedicated local bot test port: `8888`; production bot server uses remote port `7777`
 - A single shared participation policy excludes Tutorial from SCPSLBot and WarmupSafezone player management; native spawn/effects remain untouched, and arena state, population, controls, bot targeting, protection and safezone enforcement ignore it
