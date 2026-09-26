@@ -175,10 +175,6 @@ $null=Set-LabAim -Target @{x=$gate.x;y=$gate.y+0.9;z=$gate.z}
 $null=Invoke-LabInput @{id='914-panel-outside';frames=90;capture=$true}
 $null=Invoke-LabScreenshot -Name '914-panel-outside'
 Mark '914-panel-outside'
-$results.debugText=Server 'safezonedebugtext'
-Start-Sleep -Seconds 1
-$null=Invoke-LabScreenshot -Name '914-debug-text'
-$null=Invoke-LabInput @{id='914-debug-text-sweep';frames=180;dx=0.4;capture=$true}
 
 # 3. Surface boundary wall and label.
 $doors=Server '/doorslist'

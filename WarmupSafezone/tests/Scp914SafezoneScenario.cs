@@ -155,7 +155,7 @@ public sealed class Scp914SafezoneScenario : Scenario
         Vector3 panelCenter = door.Transform.TransformPoint(new Vector3(0f, 1.85f, 0f));
         TextToy[] labels = TextToy.List
             .Where(toy => toy.Parent == null
-                && Vector3.Distance(toy.Position, panelCenter) < 0.5f
+                && Vector3.Distance(toy.Position, panelCenter) < 1f
                 && (toy.TextFormat.Contains("安全区") || toy.TextFormat.Contains("SAFE ZONE")))
             .ToArray();
         ctx.Require(labels.Length == 2, $"expected two-sided SCP-914 door text, observed {labels.Length}");
@@ -163,7 +163,7 @@ public sealed class Scp914SafezoneScenario : Scenario
         // side looks along the text's forward axis and reads it unmirrored in front of the panel.
         ctx.Require(labels.All(toy =>
                 Vector3.Dot(door.Transform.position - toy.Position, toy.Rotation * Vector3.forward) > 0.1f
-                && Math.Abs(door.Transform.InverseTransformPoint(toy.Position).z) > 0.55f),
+                && Math.Abs(door.Transform.InverseTransformPoint(toy.Position).z) > 0.65f),
             "SCP-914 panel text is behind its backing or faces away from its viewers");
         List<string> occluded = new();
         foreach (TextToy label in labels)
@@ -191,7 +191,7 @@ public sealed class Scp914SafezoneScenario : Scenario
 
         PrimitiveObjectToy[] backings = PrimitiveObjectToy.List
             .Where(toy => toy.Parent == null
-                && Vector3.Distance(toy.Position, panelCenter) < 0.5f
+                && Vector3.Distance(toy.Position, panelCenter) < 1f
                 && toy.Type == PrimitiveType.Cube
                 && toy.Color.a > 0.9f)
             .ToArray();
@@ -208,7 +208,7 @@ public sealed class Scp914SafezoneScenario : Scenario
                 && Approximately(toy.Scale.y, 0.12f)
                 && Approximately(toy.Scale.z, 0.12f)),
             "SCP-914 panel text did not retain its normal scale");
-        ctx.Require(labels.All(toy => toy.DisplaySize.x >= 40f && toy.DisplaySize.y >= 16f),
+        ctx.Require(labels.All(toy => toy.DisplaySize.x >= 200f && toy.DisplaySize.y >= 40f),
             "SCP-914 panel text area is too small for its two lines");
     }
 

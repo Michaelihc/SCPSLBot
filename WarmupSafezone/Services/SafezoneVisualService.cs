@@ -19,13 +19,15 @@ internal sealed class SafezoneVisualService
     internal const float Scp914PanelScaleMultiplier = 10f;
     internal const float Scp914PanelTextScale = 0.12f;
 
-    // The closed gate leaves extend up to about 0.36 m either side of the gate origin; both faces sit
+    // The closed gate leaves extend up to about 0.36 gate-local units either side of the origin; both faces sit
     // clear of them so the leaves cannot hide the panel text.
     internal const float Scp914PanelFaceOffset = 0.6f;
 
-    // Large enough for the two-line panel text at the normal text scale; a smaller text area
-    // truncates the lines and the panel renders without text.
-    internal static readonly Vector2 Scp914PanelTextDisplaySize = new(60f, 24f);
+    // Wide enough that each configured panel line stays on one line at the normal text scale.
+    internal static readonly Vector2 Scp914PanelTextDisplaySize = new(240f, 60f);
+
+    // Clearance, in gate-local units, between the text and its opaque backing; 0.02 let the backing hide the text.
+    internal const float Scp914PanelTextGap = 0.15f;
 
     private readonly WarmupSafezoneConfig _config;
     private readonly WarmupLocalization _localization;
@@ -174,7 +176,7 @@ internal sealed class SafezoneVisualService
         backing.Spawn();
         _toys.Add(backing);
 
-        float textZ = localZ > 0f ? localZ + 0.02f : localZ - 0.02f;
+        float textZ = localZ > 0f ? localZ + Scp914PanelTextGap : localZ - Scp914PanelTextGap;
         CreateWorldLabel(
             door.TransformPoint(new Vector3(0f, 1.85f, textZ)),
             rotation,
