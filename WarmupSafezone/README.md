@@ -108,7 +108,7 @@ The axis/threshold/minimum-X fields control the restored Surface gameplay volume
 
 The default hint layout keeps HSM's centre alignment and middle anchor while using explicit X/Y values and a transparent 49-column tail on every row. This places visible text in a compact top-left lane without changing HSM's centred text-area model. The localized fixtures, ten 1920x1080 collision-gated renders, and exact measured bounds are under `tests/ui`.
 
-There are no player commands. The read-only RA/server-console command `safezone status` reports the plugin version, which safezones are enabled and the blocked projectile list.
+There are no player commands. The read-only RA/server-console command `safezone status` reports the plugin version, which safezones are enabled, the blocked projectile list, the live visual toy count and the SCP-914 gate position.
 
 ## Build and test
 
@@ -217,7 +217,7 @@ SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置
 
 默认提示保持 HSM 居中对齐和中部锚点，通过明确的 X/Y 坐标，并在每一行末尾加入 49 列透明占位，把可见文字放入紧凑的左上安全区域，同时不破坏 HSM 的居中文本区模型。中英文测试夹具、十张 1920x1080 碰撞检查截图及精确测量结果位于 `tests/ui`。
 
-本插件没有玩家命令。只读的 RA/服务器控制台命令 `safezone status` 会显示插件版本、已启用的安全区以及禁止投掷的抛射物列表。
+本插件没有玩家命令。只读的 RA/服务器控制台命令 `safezone status` 会显示插件版本、已启用的安全区、禁止投掷的抛射物列表、当前可视物体数量以及 SCP-914 大门位置。
 
 ## 构建与测试
 

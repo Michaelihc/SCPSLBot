@@ -29,7 +29,8 @@ public sealed class SafezoneStatusCommand : ICommand
         WarmupSafezoneConfig config = plugin.Config!;
         response = $"WarmupSafezone {plugin.Version} enabled={config.Enabled} scp914={config.Scp914SafezoneEnabled} "
             + $"classd_cells={config.ClassDCellsSafezoneEnabled} visuals={config.SafezoneVisualsEnabled} "
-            + $"blocked_projectiles=[{string.Join(",", config.SafezoneBlockedProjectiles ?? new())}]";
+            + $"blocked_projectiles=[{string.Join(",", config.SafezoneBlockedProjectiles ?? new())}] "
+            + $"visual_toys={plugin.VisualToyCount} scp914_gate={plugin.Scp914GateDescription}";
         return true;
     }
 }

@@ -32,6 +32,21 @@ internal sealed class SafezoneVisualService
         _localization = localization;
     }
 
+    public int LiveToyCount => _toys.Count(toy => toy != null && !toy.IsDestroyed);
+
+    public string Describe914Gate()
+    {
+        Door? gate = Door.Get(DoorName.Lcz914Gate);
+        if (gate == null || gate.IsDestroyed)
+        {
+            return "none";
+        }
+
+        Vector3 p = gate.Transform.position;
+        Vector3 f = gate.Transform.forward;
+        return FormattableString.Invariant($"({p.x:0.##},{p.y:0.##},{p.z:0.##}) forward=({f.x:0.##},{f.y:0.##},{f.z:0.##})");
+    }
+
     public void Ensure()
     {
         if (!_config.Enabled || !_config.SafezoneVisualsEnabled || !CanSpawnVisualToys())

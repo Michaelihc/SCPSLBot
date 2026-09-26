@@ -92,6 +92,8 @@ foreach($i in 1..10) {
 $inside=Actor
 $results.insideDistanceFromGate=Flat $inside.position $gate
 Mark '914-inside'
+$results.statusInside=Server 'safezone status'
+Look-Around '914'
 $null=Set-LabAim -Target @{x=$gate.x;y=$gate.y+1.6;z=$gate.z}
 $null=Invoke-LabInput @{id='914-panel';frames=90;capture=$true}
 $null=Invoke-LabScreenshot -Name '914-panel'
@@ -104,7 +106,7 @@ $null=Invoke-LabInput @{id='914-blocked-shot';frames=120;inputFrames=2;keys=@(32
 $results.blocked=[ordered]@{}
 foreach($case in @(@{id=31;type='SCP018'},@{id=43;type='SCP2176'},@{id=26;type='GrenadeFlash'})) {
     Hold-Only $case.id $case.type 103
-    $null=Invoke-LabInput @{id="914-throw-$($case.type)";frames=150;inputFrames=30;keys=@(323);capture=$true;audio=$true}
+    $null=Invoke-LabInput @{id="914-throw-$($case.type.ToLowerInvariant())";frames=150;inputFrames=30;keys=@(323);capture=$true;audio=$true}
     Start-Sleep -Seconds 1
     $kept=Has-Item $case.type
     $results.blocked[$case.type]=$kept
