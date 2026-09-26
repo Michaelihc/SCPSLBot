@@ -14,6 +14,7 @@
     <Compile Include="..\Core\BlockerDrainCalculator.cs" Link="Core\BlockerDrainCalculator.cs" />
     <Compile Include="..\Core\DamagePolicy.cs" Link="Core\DamagePolicy.cs" />
     <Compile Include="..\Core\ActionPolicy.cs" Link="Core\ActionPolicy.cs" />
+    <Compile Include="..\Core\ProjectileBlockList.cs" Link="Core\ProjectileBlockList.cs" />
     <Compile Include="..\Core\ResilientSchedule.cs" Link="Core\ResilientSchedule.cs" />
     <Compile Include="..\Core\SurfaceSafezoneGeometry.cs" Link="Core\SurfaceSafezoneGeometry.cs" />
   </ItemGroup>

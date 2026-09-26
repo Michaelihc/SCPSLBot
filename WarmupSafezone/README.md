@@ -4,12 +4,13 @@
 
 ## WarmupSafezone
 
-`WarmupSafezone` 1.0.0 provides two independent safezone policies for the SCPSLBot warmup server:
+`WarmupSafezone` 1.0.0 provides three independent safezone policies for the SCPSLBot warmup server:
 
 - The configured Surface escape safezone uses `surface_escape_safezone_axis`, its threshold, and `surface_escape_safezone_min_x`, restoring the original large Surface zone and boundary wall. Current LabAPI `Map.EscapeZones` remain protected as an additional fallback.
 - The SCP-914 safezone uses SCP-914's native calculated room bounds, verified again through native room resolution.
+- The Class-D cells safezone is the native 15 m × 15 m grid cell of the `LczClassDSpawn` room (`RoomUtils.PositionToCoords`), so players respawning in the cells cannot be camped. A translucent non-collidable cyan boundary marks that square with one face just inside and one just outside each edge, so it shows in front of the exit door from either side.
 
-The plugin never enables native godmode and never writes the process-wide `SpawnProtected` settings. Protection is decided synchronously in LabAPI damage/action events. After a player leaves either safezone, a private monotonic per-player expiry temporarily blocks both incoming and outgoing damage.
+The plugin never enables native godmode and never writes the process-wide `SpawnProtected` settings. Protection is decided synchronously in LabAPI damage/action events. After a player leaves any safezone, a private monotonic per-player expiry temporarily blocks both incoming and outgoing damage.
 
 Tutorial is outside safezone participation. It receives no safezone protection, blocker drain, or action restrictions; native game behavior is preserved.
 
@@ -29,7 +30,9 @@ An attempted role change does not erase an existing exit-protection lease; cance
 The explicit action matrix is:
 
 - Firearms and dry-fire: denied while protected.
-- Thrown items, grenades, and projectiles: denied while protected.
+- Tossing ordinary items (keycards, medkits, weapons): allowed.
+- Projectiles listed in `safezone_blocked_projectiles` (default SCP-018, SCP-2176, flashbangs and frag grenades): the throw is cancelled and the item stays in the inventory.
+- Other throwables such as snowballs: allowed, but their damage is blocked by the damage policy above while the thrower is protected.
 - SCP-244 use is denied both at native use start and again at the completion boundary; the 250 ms dangerous-item recovery pass also stops an active use carried across a safezone boundary.
 - Micro H.I.D. and Jailbird charge/fire: denied and an active charge is stopped.
 - SCP-049 attacks, SCP-096 target/charge, SCP-106 player teleport, SCP-173 snap/tantrum, SCP-3114 strangle, and SCP-939 attack/lunge/cloud: denied when the actor or explicit target is protected.
@@ -59,7 +62,7 @@ Player notices use the repository's stable-tag HintDisplayProvider pattern throu
 - `"cn"`: force Chinese.
 - `""`: match the client when a supported server API becomes available; LabAPI 1.1.6/1.1.7 exposes no synchronized client-language property, so the current fallback is Chinese.
 
-The SCP-914 door panel is one shared network object and therefore uses the configured/fallback server language for everyone. Its two non-collidable backing faces render at 10× their original scale while the text retains its normal scale; this visual-only backing scale does not alter the native SCP-914 safezone bounds.
+The SCP-914 door panel is one shared network object and therefore uses the configured/fallback server language for everyone. Its two non-collidable backing faces render at 10× their original width and height with a thin depth, while the text retains its normal scale; this visual-only backing scale does not alter the native SCP-914 safezone bounds.
 
 ## Configuration
 
@@ -71,6 +74,8 @@ enabled: true
 scp914_safezone_enabled: true
 scp914_safezone_panel_text_english: "SAFE ZONE\nDAMAGE BLOCKED"
 scp914_safezone_panel_text_chinese: "安全区\n禁止造成或受到伤害"
+class_d_cells_safezone_enabled: true
+safezone_blocked_projectiles: [SCP018, SCP2176, GrenadeFlash, GrenadeHE]
 safezone_visuals_enabled: true
 
 surface_escape_safezone_health_drain_enabled: false
@@ -103,7 +108,7 @@ The axis/threshold/minimum-X fields control the restored Surface gameplay volume
 
 The default hint layout keeps HSM's centre alignment and middle anchor while using explicit X/Y values and a transparent 49-column tail on every row. This places visible text in a compact top-left lane without changing HSM's centred text-area model. The localized fixtures, ten 1920x1080 collision-gated renders, and exact measured bounds are under `tests/ui`.
 
-There are no player or RA commands.
+There are no player commands. The read-only RA/server-console command `safezone status` reports the plugin version, which safezones are enabled, the blocked projectile list, the live visual toy count, the SCP-914 gate position and the Class-D cells square.
 
 ## Build and test
 
@@ -147,10 +152,11 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 
 ## WarmupSafezone
 
-`WarmupSafezone` 1.0.0 为 SCPSLBot 热身服务器提供两套互相独立的安全区规则：
+`WarmupSafezone` 1.0.0 为 SCPSLBot 热身服务器提供三套互相独立的安全区规则：
 
 - 地表逃生安全区重新使用 `surface_escape_safezone_axis`、阈值与 `surface_escape_safezone_min_x`，恢复原来的大范围地表安全区和边界墙；LabAPI `Map.EscapeZones` 当前登记的边界仍作为额外保护回退。
 - SCP-914 安全区使用 SCP-914 原生计算的房间边界，并再次通过原生房间解析确认玩家确实位于该房间。
+- D 级人员牢房安全区是 `LczClassDSpawn` 房间所在的原生 15 米 × 15 米网格单元（`RoomUtils.PositionToCoords`），防止在牢房重生的玩家被蹲守。半透明、无碰撞的青色边界在每条边内外各有一面，因此从门的任一侧都能在出口门前看到该范围。
 
 插件不会开启原生无敌，也不会写入进程级 `SpawnProtected` 设置。伤害与操作事件会同步判断保护状态。玩家离开任一安全区后，插件使用私有的、基于单调时钟的玩家到期时间，暂时同时阻止其造成和受到伤害。
 
@@ -170,7 +176,9 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 明确的操作矩阵如下：
 
 - 枪械射击与空仓击发：受保护时禁止。
-- 投掷物、手雷与抛射物：受保护时禁止。
+- 扔出普通物品（钥匙卡、医疗包、武器）：允许。
+- `safezone_blocked_projectiles` 中列出的抛射物（默认 SCP-018、SCP-2176、闪光弹与手雷）：投掷被取消，物品保留在背包中。
+- 雪球等其他投掷物：允许投掷，但投掷者受保护期间其伤害会被上述伤害规则阻止。
 - SCP-244 在原生使用开始和完成边界都会被阻止；250 毫秒危险物品恢复检查还会停止跨越安全区边界后仍处于使用状态的 SCP-244。
 - Micro H.I.D. 与 Jailbird 蓄力/攻击：禁止并停止当前蓄力。
 - SCP-049 攻击、SCP-096 添加目标/冲锋、SCP-106 传送玩家、SCP-173 扭颈/污秽、SCP-3114 勒杀、SCP-939 攻击/扑击/迷雾：行为方或明确目标受保护时禁止。
@@ -201,7 +209,7 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 - `"cn"`：强制中文。
 - `""`：在服务端 API 可用时匹配客户端；LabAPI 1.1.6/1.1.7 暂无同步的客户端语言属性，因此当前回退中文。
 
-SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置语言或回退语言。两面的无碰撞背景按原尺寸的 10 倍渲染，文字保持正常尺寸；背景调整只影响视觉，不会改变 SCP-914 原生安全区边界。
+SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置语言或回退语言。两面的无碰撞背景宽度和高度按原尺寸的 10 倍渲染、厚度保持很薄，文字保持正常尺寸；背景调整只影响视觉，不会改变 SCP-914 原生安全区边界。
 
 ## 配置
 
@@ -209,7 +217,7 @@ SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置
 
 默认提示保持 HSM 居中对齐和中部锚点，通过明确的 X/Y 坐标，并在每一行末尾加入 49 列透明占位，把可见文字放入紧凑的左上安全区域，同时不破坏 HSM 的居中文本区模型。中英文测试夹具、十张 1920x1080 碰撞检查截图及精确测量结果位于 `tests/ui`。
 
-本插件没有玩家命令或 RA 命令。
+本插件没有玩家命令。只读的 RA/服务器控制台命令 `safezone status` 会显示插件版本、已启用的安全区、禁止投掷的抛射物列表、当前可视物体数量、SCP-914 大门位置以及 D 级人员牢房安全区范围。
 
 ## 构建与测试
 

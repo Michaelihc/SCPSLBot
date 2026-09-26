@@ -36,7 +36,7 @@ GitHub: [Michaelihc/scpsl-bot-plugin](https://github.com/Michaelihc/scpsl-bot-pl
 - Player teardown never recreates LabAPI wrappers, and SSS arena changes retain the authenticated callback player instead of re-resolving a recyclable numeric ID
 - Managed bots independently clear native `SpawnProtected` after every role assignment
 - During Standard warmup, real players retain native `SpawnProtected` only for their first playable respawn after a confirmed death; other participating-player role/loadout changes clear it
-- WarmupSafezone restores the configured Surface axis/threshold/minimum-X protection and visible boundary with native escape-zone fallback; the SCP-914 backing is 10x while its text remains normal-size
+- WarmupSafezone restores the configured Surface axis/threshold/minimum-X protection and visible boundary with native escape-zone fallback; the SCP-914 backing is 10x while its text remains normal-size; the native grid cell of the Class-D spawn room is a third safezone with a visible cyan boundary; protected players may toss items while configured SCP-018/SCP-2176/flash/frag throws are cancelled; all visual toys are unparented world objects
 - Periodic native overflow cleanup is enabled by default
 - Native reinforcement waves (including mini-waves and forced waves) are suppressed by default during Standard warmup; individual warmup respawns remain enabled
 - Navigation load failures retry within the owning map generation with 1/2/4/8/15-second capped backoff; recovery unblocks managed bot population and clears `nav_error`

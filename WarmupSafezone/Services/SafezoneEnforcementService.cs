@@ -31,6 +31,7 @@ internal sealed class SafezoneEnforcementService
     private readonly WarmupLocalization _localization;
     private readonly Dictionary<int, long> _lastActionHintMilliseconds = new();
     private readonly Core.IMonotonicClock _clock;
+    private readonly ProjectileBlockList _blockedProjectiles;
     private bool _enabled;
 
     public SafezoneEnforcementService(
@@ -51,6 +52,14 @@ internal sealed class SafezoneEnforcementService
         _hints = hints;
         _localization = localization;
         _clock = clock;
+        _blockedProjectiles = new ProjectileBlockList(config.SafezoneBlockedProjectiles);
+        foreach (string name in _blockedProjectiles.Names)
+        {
+            if (!Enum.TryParse(name, ignoreCase: true, out ItemType _))
+            {
+                LabApi.Features.Console.Logger.Warn($"[WarmupSafezone] safezone_blocked_projectiles entry '{name}' is not a native ItemType and is ignored.");
+            }
+        }
     }
 
     public void Enable()
@@ -69,8 +78,6 @@ internal sealed class SafezoneEnforcementService
         PlayerEvents.UsingItem += OnUsingItem;
         PlayerEvents.ItemUsageEffectsApplying += OnItemUsageEffectsApplying;
         PlayerEvents.ProcessingJailbirdMessage += OnProcessingJailbirdMessage;
-        PlayerEvents.DroppingItem += OnDroppingItem;
-        PlayerEvents.ThrowingItem += OnThrowingItem;
         PlayerEvents.ThrowingProjectile += OnThrowingProjectile;
         PlayerEvents.Left += OnLeft;
         PlayerEvents.Dying += OnDying;
@@ -111,8 +118,6 @@ internal sealed class SafezoneEnforcementService
         PlayerEvents.Dying -= OnDying;
         PlayerEvents.Left -= OnLeft;
         PlayerEvents.ThrowingProjectile -= OnThrowingProjectile;
-        PlayerEvents.ThrowingItem -= OnThrowingItem;
-        PlayerEvents.DroppingItem -= OnDroppingItem;
         PlayerEvents.ProcessingJailbirdMessage -= OnProcessingJailbirdMessage;
         PlayerEvents.ItemUsageEffectsApplying -= OnItemUsageEffectsApplying;
         PlayerEvents.UsingItem -= OnUsingItem;
@@ -151,7 +156,7 @@ internal sealed class SafezoneEnforcementService
 
         foreach (Player player in Player.List.Where(SafezoneVolumeService.IsEligible))
         {
-            if ((_occupancy.ResolveAtEvent(player) & (SafezoneMembership.SurfaceEscape | SafezoneMembership.Scp914)) != 0)
+            if (_occupancy.ResolveAtEvent(player) != SafezoneMembership.None)
             {
                 TryEndScp096Rage(player);
             }
@@ -256,20 +261,16 @@ internal sealed class SafezoneEnforcementService
         }
     }
 
-    private void OnDroppingItem(PlayerDroppingItemEventArgs ev)
+    // Plain item tosses and damaging throwables stay allowed: DamagePolicy already cancels their
+    // damage while the thrower is restricted. Only configured projectiles whose effect is not
+    // damage (SCP-018 ricochets, SCP-2176 lights/doors, flash blinding outsiders) are cancelled.
+    private void OnThrowingProjectile(PlayerThrowingProjectileEventArgs ev)
     {
-        if (ev.Throw)
+        if (ev.ThrowableItem != null && _blockedProjectiles.Contains(ev.ThrowableItem.Type.ToString()))
         {
-            CancelRestrictedAction(ev.Player, SafezoneActionKind.Throwable, () =>
-            {
-                ev.IsAllowed = false;
-                ev.Throw = false;
-            });
+            CancelRestrictedAction(ev.Player, SafezoneActionKind.Throwable, () => ev.IsAllowed = false);
         }
     }
-
-    private void OnThrowingItem(PlayerThrowingItemEventArgs ev) => CancelRestrictedAction(ev.Player, SafezoneActionKind.Throwable, () => ev.IsAllowed = false);
-    private void OnThrowingProjectile(PlayerThrowingProjectileEventArgs ev) => CancelRestrictedAction(ev.Player, SafezoneActionKind.Throwable, () => ev.IsAllowed = false);
 
     private void OnScp049Attacking(Scp049AttackingEventArgs ev) =>
         CancelRestrictedOffense(ev.Player, ev.Target, SafezoneActionKind.ScpTargetedOffense, () => ev.IsAllowed = false);
@@ -398,12 +399,7 @@ internal sealed class SafezoneEnforcementService
         Item? item = player.CurrentItem;
         return item is MicroHIDItem
             or JailbirdItem
-            or Scp244Item
-            or ThrowableItem
-            || item?.Type is ItemType.GrenadeHE
-                or ItemType.GrenadeFlash
-                or ItemType.SCP018
-                or ItemType.Snowball;
+            or Scp244Item;
     }
 
     private static void StopDangerousItem(Player player)

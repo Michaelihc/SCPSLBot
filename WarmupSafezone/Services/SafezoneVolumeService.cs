@@ -14,6 +14,7 @@ internal enum SafezoneMembership
     None = 0,
     SurfaceEscape = 1,
     Scp914 = 2,
+    ClassDCells = 4,
 }
 
 internal sealed class SafezoneVolumeService
@@ -38,6 +39,11 @@ internal sealed class SafezoneVolumeService
         if (_config.Scp914SafezoneEnabled && ContainsScp914(player))
         {
             membership |= SafezoneMembership.Scp914;
+        }
+
+        if (_config.ClassDCellsSafezoneEnabled && ContainsClassDCells(player))
+        {
+            membership |= SafezoneMembership.ClassDCells;
         }
 
         return membership;
@@ -95,6 +101,12 @@ internal sealed class SafezoneVolumeService
             && verifiedRoomBounds.Contains(position)
             && Room.GetRoomAtPosition(position)?.Base == room.Base;
     }
+
+    // Membership is exactly the Class-D spawn room's native grid cell (RoomUtils.PositionToCoords),
+    // the same square SafezoneVisualService draws, so the visible bound is the enforced bound.
+    public bool ContainsClassDCells(Player player) => IsEligible(player)
+        && ClassDCellsTile.TryGet(out Vector3Int coords, out _)
+        && RoomUtils.PositionToCoords(player.Position) == coords;
 
     public bool ContainsSurfaceBlocker(Player player)
     {
