@@ -25,7 +25,7 @@ public sealed class Scp914SafezoneScenario : Scenario
     public override string Name => "warmup-safezone-914";
     public override string[] Aliases => ["safezone-914"];
     public override string[] Suites => ["warmup-safezone"];
-    public override string Description => "Proves event-time 914 and Class-D cells damage rules, an allowed damage-neutral frag throw, immediate exit protection, native-state isolation, and restored Surface visuals.";
+    public override string Description => "Proves event-time 914 and Class-D cells damage rules, the Class-D cells boundary, immediate exit protection, native-state isolation, and restored Surface visuals.";
     public override FidelityRange Supported => FidelityRange.Only(Fidelity.Standard);
 
     public override IEnumerator<float> Run(ScenarioContext ctx)
@@ -69,12 +69,6 @@ public sealed class Scp914SafezoneScenario : Scenario
         ctx.Require(!attackerPlayer.IsGodModeEnabled, "WarmupSafezone must not grant attacker godmode inside SCP-914");
         AssertDamageBlocked(ctx, attackerPlayer, victimPlayer, "inside-to-inside");
 
-        IEnumerator<float> fragProbe = ProbeAllowedFragInsideScp914(ctx, attacker, attackerPlayer, victim, victimPlayer);
-        while (fragProbe.MoveNext())
-        {
-            yield return fragProbe.Current;
-        }
-
         yield return victim.GoTo(OutsideRoom);
         AssertDamageBlocked(ctx, attackerPlayer, victimPlayer, "inside-to-outside");
 
@@ -105,6 +99,7 @@ public sealed class Scp914SafezoneScenario : Scenario
         AssertDamageBlocked(ctx, outsiderPlayer, attackerPlayer, "exit-protection-survives-cancelled-role-request");
 
         AssertDoorPanel(ctx);
+        AssertClassDCellsBoundary(ctx);
         AssertSurfaceVisualsAndGround(ctx);
         IEnumerator<float> surfaceProbe = ProbeSurfaceWithSettlingDummy(ctx, victim, victimPlayer);
         while (surfaceProbe.MoveNext())
@@ -126,31 +121,6 @@ public sealed class Scp914SafezoneScenario : Scenario
         yield return attacker.GoTo(OutsideRoom);
         ctx.Require(attackerPlayer.IsGodModeEnabled, "WarmupSafezone modified godmode owned by an admin or another plugin");
         ctx.Arrange("clean up admin godmode probe", () => attackerPlayer.IsGodModeEnabled = false);
-    }
-
-    private static IEnumerator<float> ProbeAllowedFragInsideScp914(
-        ScenarioContext ctx,
-        Actor thrower,
-        Player throwerPlayer,
-        Actor bystander,
-        Player bystanderPlayer)
-    {
-        // Frags are no longer cancelled inside a safezone: the native throw must complete, and the
-        // explosion must still hurt nobody while thrower and bystander are protected.
-        ctx.Arrange("restore health and give the frag probe grenade", () =>
-        {
-            throwerPlayer.Health = throwerPlayer.MaxHealth;
-            bystanderPlayer.Health = bystanderPlayer.MaxHealth;
-            thrower.GiveItem(ItemType.GrenadeHE);
-        });
-        yield return thrower.Equip(ItemType.GrenadeHE);
-        yield return thrower.ThrowHeldItemAt(bystander, fullForce: false);
-        yield return ctx.Wait(7f); // native frag fuse plus explosion settle
-        ctx.Info($"safezone frag probe thrower={throwerPlayer.Health:0.##}/{throwerPlayer.MaxHealth:0.##} bystander={bystanderPlayer.Health:0.##}/{bystanderPlayer.MaxHealth:0.##}");
-        ctx.Require(bystanderPlayer.IsAlive && bystanderPlayer.Health >= bystanderPlayer.MaxHealth - 0.01f,
-            "frag thrown inside SCP-914 damaged a protected bystander");
-        ctx.Require(throwerPlayer.IsAlive && throwerPlayer.Health >= throwerPlayer.MaxHealth - 0.01f,
-            "frag thrown inside SCP-914 damaged its protected thrower");
     }
 
     private static void AssertDamageAllowed(ScenarioContext ctx, Player attacker, Player victim, string label)
@@ -181,8 +151,11 @@ public sealed class Scp914SafezoneScenario : Scenario
     {
         Door door = Door.Get(DoorName.Lcz914Gate)
             ?? throw new RequireException("SCP-914 gate wrapper is unavailable");
+        // Panel toys are unparented world objects beside the gate; parented toys are not rendered by clients.
+        Vector3 panelCenter = door.Transform.TransformPoint(new Vector3(0f, 1.85f, 0f));
         TextToy[] labels = TextToy.List
-            .Where(toy => toy.Parent == door.Transform
+            .Where(toy => toy.Parent == null
+                && Vector3.Distance(toy.Position, panelCenter) < 0.5f
                 && (toy.TextFormat.Contains("安全区") || toy.TextFormat.Contains("SAFE ZONE")))
             .ToArray();
         ctx.Require(labels.Length == 2, $"expected two-sided SCP-914 door text, observed {labels.Length}");
@@ -190,7 +163,8 @@ public sealed class Scp914SafezoneScenario : Scenario
             && !toy.TextFormat.Contains("无敌")), "SCP-914 panel still advertises removed godmode behavior");
 
         PrimitiveObjectToy[] backings = PrimitiveObjectToy.List
-            .Where(toy => toy.Parent == door.Transform
+            .Where(toy => toy.Parent == null
+                && Vector3.Distance(toy.Position, panelCenter) < 0.5f
                 && toy.Type == PrimitiveType.Cube
                 && toy.Color.a > 0.9f)
             .ToArray();
@@ -207,6 +181,25 @@ public sealed class Scp914SafezoneScenario : Scenario
                 && Approximately(toy.Scale.y, 0.12f)
                 && Approximately(toy.Scale.z, 0.12f)),
             "SCP-914 panel text did not retain its normal scale");
+    }
+
+    private static void AssertClassDCellsBoundary(ScenarioContext ctx)
+    {
+        Room cells = Room.List.FirstOrDefault(room => room.Name == RoomName.LczClassDSpawn)
+            ?? throw new RequireException("Class-D spawn room is unavailable");
+        Vector3 center = RoomUtils.CoordsToCenterPos(cells.Base.MainCoords);
+        float half = RoomIdentifier.GridScale.x * 0.5f;
+        PrimitiveObjectToy[] faces = PrimitiveObjectToy.List
+            .Where(toy => toy.Parent == null
+                && toy.Type == PrimitiveType.Cube
+                && Math.Abs(toy.Color.b - 1f) < 0.02f
+                && Math.Abs(toy.Position.y - cells.Position.y) < 5f
+                && (Approximately(Math.Abs(toy.Position.x - center.x), half) && Math.Abs(toy.Position.z - center.z) < 0.1f
+                    || Approximately(Math.Abs(toy.Position.z - center.z), half) && Math.Abs(toy.Position.x - center.x) < 0.1f))
+            .ToArray();
+        ctx.Info($"safezone classd cells boundary faces={faces.Length} tileCenter=({center.x:0.##},{center.z:0.##})");
+        ctx.Require(faces.Length == 4, $"expected four Class-D cells boundary faces on the native grid cell, observed {faces.Length}");
+        ctx.Require(faces.All(toy => (toy.Flags & PrimitiveFlags.Collidable) == 0), "Class-D cells boundary must not collide");
     }
 
     private static void AssertSurfaceVisualsAndGround(ScenarioContext ctx)
@@ -235,7 +228,7 @@ public sealed class Scp914SafezoneScenario : Scenario
                 && (toy.TextFormat.Contains("安全区") || toy.TextFormat.Contains("SAFE ZONE")))
             .Where(toy => Approximately(toy.Position.x, 136.45f) && Approximately(toy.Position.z, -16.86f))
             .ToArray();
-        ctx.Require(labels.Length == 3, $"expected three restored Surface labels, observed {labels.Length}");
+        ctx.Require(labels.Length == 1, $"expected one Surface boundary label, observed {labels.Length}");
         ctx.Require(labels.All(toy => Approximately(toy.Scale.x, 0.32f)
                 && Approximately(toy.Scale.y, 0.32f)
                 && Approximately(toy.Scale.z, 0.32f)),

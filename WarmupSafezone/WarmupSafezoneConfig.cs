@@ -12,11 +12,11 @@ public sealed class WarmupSafezoneConfig
 
     public bool Scp914SafezoneEnabled { get; set; } = true;
 
-    [Description("Treats the native LCZ Class-D cell block room as a safezone so respawning players cannot be camped.")]
+    [Description("Treats the native grid cell of the LCZ Class-D spawn room as a safezone, with a visible boundary, so respawning players cannot be camped.")]
     public bool ClassDCellsSafezoneEnabled { get; set; } = true;
 
-    [Description("Native ItemType names of projectiles a safezone-restricted player may not throw. Other throws are allowed; their damage is still blocked by the safezone damage policy.")]
-    public List<string> SafezoneBlockedProjectiles { get; set; } = new() { "SCP018", "SCP2176", "GrenadeFlash" };
+    [Description("Native ItemType names of projectiles a safezone-restricted player may not throw. Other throws and item tosses are allowed; their damage is still blocked by the safezone damage policy.")]
+    public List<string> SafezoneBlockedProjectiles { get; set; } = new() { "SCP018", "SCP2176", "GrenadeFlash", "GrenadeHE" };
 
     public string Scp914SafezonePanelTextEnglish { get; set; } = "SAFE ZONE\nDAMAGE BLOCKED";
 

@@ -55,12 +55,14 @@ internal sealed class SafezoneVisualService
             return;
         }
 
-        string surfaceSignature = SurfaceSignature();
-        int expectedSurfaceToys = SurfaceSafezoneGeometry.NormalizeAxis(_config.SurfaceEscapeSafezoneAxis) == "z" ? 5 : 4;
         Door? scp914Gate = _config.Scp914SafezoneEnabled ? Door.Get(DoorName.Lcz914Gate) : null;
         int expected914Toys = scp914Gate != null && !scp914Gate.IsDestroyed ? 4 : 0;
+        bool hasCellsTile = _config.ClassDCellsSafezoneEnabled && ClassDCellsTile.TryGet(out _, out _);
+        int expectedCellsToys = hasCellsTile ? 4 : 0;
+        string surfaceSignature = SurfaceSignature() + "|" + CellsSignature(hasCellsTile);
+        int expectedSurfaceToys = SurfaceSafezoneGeometry.NormalizeAxis(_config.SurfaceEscapeSafezoneAxis) == "z" ? 3 : 4;
         bool geometryChanged = !string.Equals(_renderedSurfaceSignature, surfaceSignature, StringComparison.Ordinal);
-        bool toysMissing = _toys.Count != expectedSurfaceToys + expected914Toys
+        bool toysMissing = _toys.Count != expectedSurfaceToys + expected914Toys + expectedCellsToys
             || _toys.Any(toy => toy == null || toy.IsDestroyed);
         if (!geometryChanged && !toysMissing)
         {
@@ -73,6 +75,11 @@ internal sealed class SafezoneVisualService
         if (scp914Gate != null && !scp914Gate.IsDestroyed)
         {
             CreateScp914Panel(scp914Gate);
+        }
+
+        if (hasCellsTile)
+        {
+            CreateClassDCellsBoundary();
         }
 
         _renderedSurfaceSignature = surfaceSignature;
@@ -120,10 +127,7 @@ internal sealed class SafezoneVisualService
                 float centerX = minX + (width * 0.5f);
                 CreateWall(new Vector3(centerX, 295f, _config.SurfaceEscapeSafezoneMaxZ - 0.05f), new Vector3(width, 36f, thickness), color);
                 CreateWall(new Vector3(centerX, 295f, _config.SurfaceEscapeSafezoneMaxZ + 0.05f), new Vector3(width, 36f, thickness), color);
-                Vector3 labelCenter = new(136.45f, 295.8f, _config.SurfaceEscapeSafezoneMaxZ + 0.14f);
-                CreateSurfaceLabel(labelCenter + Vector3.up * 0.6f, Quaternion.identity, label);
-                CreateSurfaceLabel(labelCenter, Quaternion.identity, label);
-                CreateSurfaceLabel(labelCenter - Vector3.up * 0.6f, Quaternion.identity, label);
+                CreateSurfaceLabel(new Vector3(136.45f, 295.8f, _config.SurfaceEscapeSafezoneMaxZ + 0.14f), Quaternion.identity, label);
                 break;
         }
     }
@@ -140,13 +144,16 @@ internal sealed class SafezoneVisualService
         CreatePanelFace(door.Transform, -0.16f, Quaternion.Euler(0f, 180f, 0f), text);
     }
 
-    private void CreatePanelFace(Transform parent, float localZ, Quaternion rotation, string text)
+    // Faces are spawned unparented at world poses derived from the static gate: toys parented to
+    // the door transform exist on the server but are not rendered by clients.
+    private void CreatePanelFace(Transform door, float localZ, Quaternion localRotation, string text)
     {
+        Quaternion rotation = door.rotation * localRotation;
         PrimitiveObjectToy backing = PrimitiveObjectToy.Create(
-            new Vector3(0f, 1.85f, localZ),
+            door.TransformPoint(new Vector3(0f, 1.85f, localZ)),
             rotation,
             new Vector3(1.15f, 0.55f, 0.025f) * Scp914PanelScaleMultiplier,
-            parent,
+            null,
             false);
         backing.Type = PrimitiveType.Cube;
         backing.Flags = PrimitiveFlags.Visible;
@@ -158,13 +165,50 @@ internal sealed class SafezoneVisualService
 
         float textZ = localZ > 0f ? localZ + 0.02f : localZ - 0.02f;
         CreateWorldLabel(
-            new Vector3(0f, 1.85f, textZ),
+            door.TransformPoint(new Vector3(0f, 1.85f, textZ)),
             rotation,
             text,
-            parent,
+            null,
             new Vector3(Scp914PanelTextScale, Scp914PanelTextScale, Scp914PanelTextScale),
             new Vector2(12f, 4f));
     }
+
+    private void CreateClassDCellsBoundary()
+    {
+        if (!ClassDCellsTile.TryGet(out Vector3Int coords, out Room? room) || room == null)
+        {
+            return;
+        }
+
+        const float height = 5f;
+        const float thickness = 0.06f;
+        Color color = new(0.25f, 0.85f, 1f, 0.35f);
+        Bounds tile = ClassDCellsTile.FloorBounds(coords, room.Position.y);
+        float y = room.Position.y + (height * 0.5f) - 0.2f;
+        CreateWall(new Vector3(tile.center.x, y, tile.min.z), new Vector3(tile.size.x, height, thickness), color);
+        CreateWall(new Vector3(tile.center.x, y, tile.max.z), new Vector3(tile.size.x, height, thickness), color);
+        CreateWall(new Vector3(tile.min.x, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
+        CreateWall(new Vector3(tile.max.x, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
+    }
+
+    public string DescribeClassDCells()
+    {
+        if (!ClassDCellsTile.TryGet(out Vector3Int coords, out Room? room) || room == null)
+        {
+            return "none";
+        }
+
+        Bounds tile = ClassDCellsTile.FloorBounds(coords, room.Position.y);
+        IEnumerable<string> exits = room.Doors
+            .Where(door => door != null && !door.IsDestroyed)
+            .Select(door => door.Position)
+            .Where(p => Mathf.Min(Mathf.Abs(p.x - tile.min.x), Mathf.Abs(p.x - tile.max.x), Mathf.Abs(p.z - tile.min.z), Mathf.Abs(p.z - tile.max.z)) < 1f)
+            .Select(p => FormattableString.Invariant($"({p.x:0.##},{p.y:0.##},{p.z:0.##})"));
+        return FormattableString.Invariant($"x={tile.min.x:0.##}..{tile.max.x:0.##} z={tile.min.z:0.##}..{tile.max.z:0.##} floor={room.Position.y:0.##} exits=[{string.Join(";", exits)}]");
+    }
+
+    private string CellsSignature(bool hasCellsTile) =>
+        hasCellsTile && ClassDCellsTile.TryGet(out Vector3Int coords, out _) ? coords.ToString() : "none";
 
     private void CreateWall(Vector3 position, Vector3 scale, Color color)
     {
