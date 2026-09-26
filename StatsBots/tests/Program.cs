@@ -137,6 +137,9 @@ internal static class Program
         var config = new SkillRatingConfig();
         config.Validate();
         False(SkillMath.Evaluate(new SkillSample(5, 1, 40, 100, 60), config).Ranked);
+        SkillResult shotsOnly = SkillMath.Evaluate(new SkillSample(0, 0, 6, 40, 9), config);
+        True(!shotsOnly.Ranked && shotsOnly.PlacementProgress > 0.1 && shotsOnly.PlacementProgress < 0.2);
+        False(SkillMath.Evaluate(new SkillSample(40, 10, 100, 149, 600), config).Ranked);
         SkillResult strong = SkillMath.Evaluate(new SkillSample(400, 40, 1200, 2000, 3600), config);
         SkillResult weak = SkillMath.Evaluate(new SkillSample(40, 40, 200, 2000, 3600), config);
         True(strong.Ranked && weak.Ranked && strong.Rating > weak.Rating && strong.Rating <= 1000);

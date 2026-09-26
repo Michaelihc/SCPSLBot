@@ -49,8 +49,11 @@ internal static class SkillMath
             : 0d;
         double confidence = 1d - Math.Exp(-events / config.ConfidenceEvents);
 
-        double placement = Math.Min(1d, Math.Min(s.Shots / config.MinimumShots, events / config.MinimumEvents));
-        bool ranked = placement >= 1d;
+        double shotProgress = Math.Min(1d, s.Shots / config.MinimumShots);
+        double eventProgress = Math.Min(1d, events / config.MinimumEvents);
+        bool ranked = shotProgress >= 1d && eventProgress >= 1d;
+        // Displayed progress averages both requirements so shooting alone visibly advances placement.
+        double placement = ranked ? 1d : (shotProgress + eventProgress) / 2d;
         int rating = ranked ? (int)Math.Round(1000d * skill * confidence) : 0;
         return new SkillResult(ranked, rating, accuracy, killShare, kpm, confidence, placement);
     }
