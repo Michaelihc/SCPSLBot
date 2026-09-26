@@ -10,6 +10,13 @@ if (!$dir) { throw 'Cannot locate .tests/offline-clients/tools/host-aim.ps1 from
 $me = $Context.Actor.id
 $uid = '76561190000000001@steam'
 function Log($name, $value) { @{step=$name;value=$value} | ConvertTo-Json -Depth 8 -Compress | Add-Content "$($Context.Evidence)/skill.jsonl" }
+# Observe hides dummies; bot targets come from the raw read-only observer snapshot.
+function ObserveBots {
+    $text = & "$($Context.Root)\LocalAdmin\LocalAdmin.exe" ctl $Context.Port console labobserve 2>&1
+    $line = @($text | Where-Object { $_.ToString().StartsWith('OFFLINE_LAB_SNAPSHOT ') })[0]
+    if (!$line) { throw 'Missing server observer snapshot' }
+    return @(($line.ToString().Substring(21) | ConvertFrom-Json).players | Where-Object { $_.dummy -and $_.role -like 'Chaos*' -and $_.health -gt 0 })
+}
 function Status { $r = Invoke-LabServer "/statsbots status $uid"; Log 'status' $r; return "$r" }
 function Field($text, $name) {
     $m = [regex]::Match($text, "(?<![A-Za-z])$name=([0-9.]+)")
@@ -36,14 +43,14 @@ $before = Status
 $engagements = 0
 for ($round = 0; $round -lt 14 -and $engagements -lt 8; $round++) {
     $self = @(Observe | Where-Object id -eq $me)[0]
-    $bots = @(Observe | Where-Object { $_.dummy -and $_.role -like 'Chaos*' -and $_.health -gt 0 })
+    $bots = @(ObserveBots)
     $target = $bots | Sort-Object { [Math]::Pow($_.position.x - $self.position.x, 2) + [Math]::Pow($_.position.z - $self.position.z, 2) } | Select-Object -First 1
     if (!$target) { $null = Invoke-LabInput @{frames=120}; continue }
     $dist = [Math]::Sqrt([Math]::Pow($target.position.x - $self.position.x, 2) + [Math]::Pow($target.position.z - $self.position.z, 2))
     Log 'target' @{id=$target.id;distance=$dist}
     try { $null = Set-LabAim -Target @{x=$target.position.x; y=$target.position.y + 0.2; z=$target.position.z} }
     catch { Log 'aim-failed' "$_"; $null = Invoke-LabInput @{frames=60}; continue }
-    $receipt = Invoke-LabInput @{id="fire-$round";frames=120;keys=@(323);capture=$true;audio=$true;expectAudio=$true}
+    $receipt = Invoke-LabInput @{id="fire-$round";frames=180;keys=@(323);capture=$true;audio=$true;expectAudio=$true}
     Log 'fire' $receipt
     $engagements++
 }
