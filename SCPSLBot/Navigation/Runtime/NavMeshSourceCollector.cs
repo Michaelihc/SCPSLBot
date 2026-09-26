@@ -35,6 +35,9 @@ namespace SCPSLBot.Navigation.Runtime
         private const float CheckpointGateWidth = 10f;
         private readonly List<Collider> colliderScratch = new();
         private readonly HashSet<Collider> doorLeafScratch = new();
+        private readonly List<NavMeshBuildSource> customSourceScratch = new();
+        private readonly HashSet<int> sourceIds = new();
+        private readonly HashSet<int> customSourceIds = new();
         private static readonly int GlassLayer = LayerMask.NameToLayer("Glass");
 
         public DoorAreaRegistry Areas { get; } = new();
@@ -48,6 +51,7 @@ namespace SCPSLBot.Navigation.Runtime
         public int TriggerSources { get; private set; }
 
         public int IgnoredRoots { get; private set; }
+        public int CustomSources { get; private set; }
 
         public int FallbackFloorRooms => fallbackFloors.Count;
 
@@ -82,6 +86,10 @@ namespace SCPSLBot.Navigation.Runtime
             UnusableMeshSources = 0;
             ModifierBoxes = 0;
             IgnoredRoots = 0;
+            CustomSources = 0;
+            customSourceScratch.Clear();
+            sourceIds.Clear();
+            customSourceIds.Clear();
         }
 
         public void SetFallbackFloor(RoomIdentifier room, UnityEngine.Mesh floor)
@@ -98,7 +106,7 @@ namespace SCPSLBot.Navigation.Runtime
         /// Fills <paramref name="sources"/> for <paramref name="bounds"/>. Returns a hash of the
         /// collected geometry so callers can skip unchanged rebuilds.
         /// </summary>
-        public ulong Collect(Bounds bounds, bool keycardAreaRouting, List<NavMeshBuildSource> sources)
+        public ulong Collect(Bounds bounds, bool keycardAreaRouting, List<NavMeshBuildSource> sources, Bounds? customBounds = null)
         {
             sources.Clear();
             RoomsWithUnusableMeshes.Clear();
@@ -107,6 +115,26 @@ namespace SCPSLBot.Navigation.Runtime
 
             CollectMarkups();
             NavMeshBuilder.CollectSources(bounds, SourceLayerMask, NavMeshCollectGeometry.PhysicsColliders, DoorAreaRegistry.WalkableArea, markups, sources);
+            CustomSources = 0;
+            customSourceIds.Clear();
+            if (customBounds.HasValue)
+            {
+                // Collect the two volumes separately: the empty span between an off-map level and
+                // the facility must not bring unrelated geometry into the bake. The same actor and
+                // moving-object exclusions apply to both, and overlapping colliders are included once.
+                sourceIds.Clear();
+                foreach (var source in sources)
+                    if (source.component != null) sourceIds.Add(source.component.GetInstanceID());
+                customSourceScratch.Clear();
+                NavMeshBuilder.CollectSources(customBounds.Value, SourceLayerMask, NavMeshCollectGeometry.PhysicsColliders,
+                    DoorAreaRegistry.WalkableArea, markups, customSourceScratch);
+                foreach (var source in customSourceScratch)
+                {
+                    if (source.component != null && !sourceIds.Add(source.component.GetInstanceID())) continue;
+                    sources.Add(source);
+                    if (source.component != null) customSourceIds.Add(source.component.GetInstanceID());
+                }
+            }
 
             // Drop trigger volumes (the builder collects them like solid colliders) and mesh sources
             // the builder cannot read; remember the latter's rooms for the floor probe.
@@ -179,6 +207,8 @@ namespace SCPSLBot.Navigation.Runtime
             }
 
             RecordComponents(sources);
+            foreach (var source in sources)
+                if (source.component != null && customSourceIds.Contains(source.component.GetInstanceID())) CustomSources++;
             return Hash(sources);
         }
 
@@ -411,10 +441,13 @@ namespace SCPSLBot.Navigation.Runtime
                 }
             }
 
-            // Admin toys flagged non-collidable never block anyone.
-            foreach (var toy in UnityEngine.Object.FindObjectsByType<PrimitiveObjectToy>(FindObjectsSortMode.None))
+            // A non-static waypoint can carry static child primitives (aircraft or boats). Exclude
+            // the entire moving hierarchy so those colliders never become floors or churn tiles.
+            // Stationary platforms must mark their complete toy hierarchy static.
+            foreach (var toy in UnityEngine.Object.FindObjectsByType<AdminToyBase>(FindObjectsSortMode.None))
             {
-                if (toy != null && (toy.PrimitiveFlags & PrimitiveFlags.Collidable) == 0)
+                if (toy != null && (!toy.IsStatic
+                    || toy is PrimitiveObjectToy primitive && (primitive.PrimitiveFlags & PrimitiveFlags.Collidable) == 0))
                 {
                     Ignore(toy.transform);
                 }

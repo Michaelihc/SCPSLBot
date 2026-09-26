@@ -25,6 +25,8 @@
              Link="MovementPolicy\StuckRecoveryPolicy.cs" />
     <Compile Include="..\SCPSLBot\Navigation\Policy\*.cs"
              Link="NavigationPolicy\%(Filename)%(Extension)" />
+    <Compile Include="..\SCPSLBot\Navigation\Runtime\RuntimeNavigationTiming.cs"
+             Link="NavigationRuntime\RuntimeNavigationTiming.cs" />
     <Compile Include="..\SCPSLBot\Warmup\Controls\Policy\*.cs"
              Link="Policy\%(Filename)%(Extension)" />
     <Compile Include="..\SCPSLBot\Warmup\Policy\*.cs"

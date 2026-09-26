@@ -47,6 +47,7 @@ namespace SCPSLBot.AI
         public static ReferenceHub SpawnBot(string nickname, RoleTypeId role)
             => BotManager.Instance.AddBotPlayer(nickname, role);
 
+        /// <summary>Walks to a world position; runtime navigation accepts floor or native standing-root coordinates.</summary>
         public static bool MoveTo(ReferenceHub hub, Vector3 worldPosition)
             => BotManager.Instance.IssueMoveOrder(hub, worldPosition, BotOrderKind.MoveTo, $"world:{Format(worldPosition)}");
 

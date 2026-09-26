@@ -41,6 +41,8 @@ namespace SCPSLBot.Navigation.Runtime
         private NavMeshDataInstance instance;
         private NavMeshBuildSettings settings;
         private Bounds bounds;
+        private Bounds facilityBounds;
+        private Bounds? customBounds;
         private ulong sourceHash;
         private AsyncOperation pendingUpdate;
         private bool eventsSubscribed;
@@ -81,9 +83,10 @@ namespace SCPSLBot.Navigation.Runtime
         /// The iterator never throws: every engine step is wrapped so the caller's retry ladder
         /// stays in charge.
         /// </summary>
-        public IEnumerator<float> BuildAsync(NavigationConfig navigationConfig, int generation)
+        public IEnumerator<float> BuildAsync(NavigationConfig navigationConfig, int generation, Bounds? additionalBounds = null)
         {
             Clear();
+            customBounds = additionalBounds;
             config = navigationConfig ?? new NavigationConfig();
             owningGeneration = generation;
             LastError = string.Empty;
@@ -186,6 +189,7 @@ namespace SCPSLBot.Navigation.Runtime
             Triangles = 0;
             Vertices = 0;
             reconcileRequested = false;
+            customBounds = null;
         }
 
         /// <summary>Asks for a reconciliation soon (geometry event); coalesced with a short delay.</summary>
@@ -221,7 +225,8 @@ namespace SCPSLBot.Navigation.Runtime
             return $"backend=runtime built={IsBuilt} generation={owningGeneration} surface_generation={SurfaceGeneration} bake_ms={LastBakeMs} sources={SourceCount} triangles={Triangles} vertices={Vertices} "
                    + $"links={links.Count} passage_links={links.PassageLinks} sealed_connectors={links.SealedConnectors} door_classes={Areas.ClassCount} modifier_boxes={ModifierBoxes} unreadable_meshes={UnreadableMeshes} fallback_rooms={FallbackFloorRooms} "
                    + $"rooms={rooms.NavigableRooms.Count} samples={rooms.SampleCount} islands={rooms.IslandSamples} entries={rooms.EntryCount} index_ms={rooms.LastRebuildMs} uncovered_rooms={rooms.UncoveredRooms.Count} uncovered=[{string.Join(",", rooms.UncoveredRooms)}] "
-                   + $"reconciles={ReconcileCount} reconcile_rebuilds={ReconcileRebuilds} last_reconcile_ms={LastReconcileMs} reconciling={IsReconciling} obstacles={obstacles.Count} error={(string.IsNullOrEmpty(LastError) ? "none" : LastError)}";
+                   + $"reconciles={ReconcileCount} reconcile_rebuilds={ReconcileRebuilds} last_reconcile_ms={LastReconcileMs} reconciling={IsReconciling} obstacles={obstacles.Count} "
+                   + $"custom_region={(customBounds.HasValue ? customBounds.Value.ToString() : "none")} custom_sources={collector.CustomSources} error={(string.IsNullOrEmpty(LastError) ? "none" : LastError)}";
         }
 
         private bool TryPrepare()
@@ -241,7 +246,9 @@ namespace SCPSLBot.Navigation.Runtime
                 settings.overrideTileSize = true;
                 settings.tileSize = TileSizeVoxels;
                 settings.minRegionArea = 1f;
-                bounds = ComputeFacilityBounds();
+                facilityBounds = ComputeFacilityBounds();
+                bounds = facilityBounds;
+                if (customBounds.HasValue) bounds.Encapsulate(customBounds.Value);
 
                 var issues = settings.ValidationReport(bounds);
                 if (issues != null && issues.Length > 0)
@@ -268,10 +275,8 @@ namespace SCPSLBot.Navigation.Runtime
         {
             try
             {
-                var stopwatch = Stopwatch.StartNew();
-                sourceHash = collector.Collect(bounds, config.KeycardAreaRouting, sources);
+                sourceHash = CollectSources(out var collectMs);
                 SourceCount = sources.Count;
-                stopwatch.Stop();
                 if (sources.Count == 0)
                 {
                     Fail("no navmesh sources were collected");
@@ -279,7 +284,7 @@ namespace SCPSLBot.Navigation.Runtime
                 }
 
                 pendingUpdate = NavMeshBuilder.UpdateNavMeshDataAsync(data, settings, sources, bounds);
-                LabLogger.Info($"[SCPSLBot] NAV_BAKE_START generation={owningGeneration} sources={sources.Count} collectMs={stopwatch.ElapsedMilliseconds} unreadableMeshes={UnreadableMeshes} modifierBoxes={ModifierBoxes} triggersDropped={collector.TriggerSources} ignoredRoots={collector.IgnoredRoots} bounds={bounds.size}");
+                LabLogger.Info($"[SCPSLBot] NAV_BAKE_START generation={owningGeneration} sources={sources.Count} collectMs={collectMs} unreadableMeshes={UnreadableMeshes} modifierBoxes={ModifierBoxes} triggersDropped={collector.TriggerSources} ignoredRoots={collector.IgnoredRoots} bounds={bounds.size}");
                 return pendingUpdate;
             }
             catch (Exception exception)
@@ -422,13 +427,12 @@ namespace SCPSLBot.Navigation.Runtime
         private AsyncOperation TryStartReconcile(out bool changed)
         {
             changed = false;
+            var observation = RuntimeNavigationTiming.Begin("ReconcileStart", Time.frameCount);
             try
             {
                 ReconcileCount++;
-                var stopwatch = Stopwatch.StartNew();
-                var hash = collector.Collect(bounds, config.KeycardAreaRouting, sources);
-                stopwatch.Stop();
-                LastReconcileMs = stopwatch.ElapsedMilliseconds;
+                var hash = CollectSources(out var collectMs);
+                LastReconcileMs = collectMs;
                 if (hash == sourceHash)
                 {
                     return null;
@@ -447,6 +451,25 @@ namespace SCPSLBot.Navigation.Runtime
                 LabLogger.Warn($"[SCPSLBot] NAV_RECONCILE_FAILED {exception.GetType().Name}: {exception.Message}");
                 return null;
             }
+            finally { observation.Complete(sources.Count, changed); }
+        }
+
+        private ulong CollectSources(out long elapsedMilliseconds)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var observation = RuntimeNavigationTiming.Begin("SourceCollection", Time.frameCount);
+            ulong hash = sourceHash;
+            try
+            {
+                hash = collector.Collect(facilityBounds, config.KeycardAreaRouting, sources, customBounds);
+                return hash;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+                observation.Complete(sources.Count, hash != sourceHash);
+            }
         }
 
         private void FinishReconcile(float started, bool changed)
@@ -457,6 +480,7 @@ namespace SCPSLBot.Navigation.Runtime
                 return;
             }
 
+            var observation = RuntimeNavigationTiming.Begin("ReconcileFinish", Time.frameCount);
             try
             {
                 links.Rebuild(settings.agentTypeID);
@@ -469,6 +493,7 @@ namespace SCPSLBot.Navigation.Runtime
             {
                 LabLogger.Warn($"[SCPSLBot] NAV_RECONCILE_FAILED index {exception.GetType().Name}: {exception.Message}");
             }
+            finally { observation.Complete(sources.Count, changed); }
         }
 
         private void Subscribe()
