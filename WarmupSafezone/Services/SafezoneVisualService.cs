@@ -167,7 +167,8 @@ internal sealed class SafezoneVisualService
             false);
         backing.Type = PrimitiveType.Cube;
         backing.Flags = PrimitiveFlags.Visible;
-        backing.Color = new Color(0.02f, 0.14f, 0.17f, 0.96f);
+        // Fully opaque: a translucent backing is sorted with the transparent text and can draw over it.
+        backing.Color = new Color(0.02f, 0.14f, 0.17f, 1f);
         backing.IsStatic = true;
         backing.SyncInterval = 0f;
         backing.Spawn();
