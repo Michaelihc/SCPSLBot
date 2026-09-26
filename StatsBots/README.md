@@ -29,6 +29,17 @@ Reserved default-store keys are:
 
 `Warmup.BotKills`, `Warmup.BotDeaths`, `Warmup.Score`, `Warmup.CurrentStreak`, `Warmup.BestStreak`, `Warmup.TagUnlocked.<id>`, and `Warmup.SelectedTagCode`.
 
+### Skill rating
+
+Alongside the score tier, StatsBots keeps a combat skill rating that only samples engagements with managed bots:
+
+- Inputs are firearm accuracy (hitting shots / shots), kill share (kills / (kills + deaths)) and firearm kills per combat minute, weighted by `skill_rating` config. Particle Disruptor, MicroHID, grenades and other non-firearm kills are not rating kills.
+- Combat time accrues only between bot interactions (a firearm hit on a bot, being hurt by a bot, a kill or a death) at most `combat_window_seconds` apart. A missed shot counts only when a bot interaction happens within that window, so idle time, safe-zone time and stray shots never lower the rating. Any player-versus-player damage suspends sampling for one window; SCP roles are not sampled.
+- Totals are stored as `Warmup.Skill.*` counters that decay with a configurable half-life (default 7 days). Rating = 1000 × skill × confidence, where confidence grows with the decayed number of kills plus deaths, so returning players rebuild quickly and long-inactive players fade to unranked.
+- Until a player reaches the decayed placement minimums (default 150 shots and 20 kills plus deaths) the HUD shows placement progress; afterwards it shows the configured rank and rating. `statsbots status` reports every component, the decayed sample and unsaved shots.
+
+Samples are persisted every `flush_seconds` (default 30), on leave and on disable. Rank thresholds are initial estimates; calibrate them from `statsbots status` data after a week of play.
+
 ### HUD, titles, and settings
 
 The HSM profile owns only these stable entries. Every entry still uses HSM `Center` alignment, but X `-800` plus a transparent tail places visible ink in the left safe lane without the banned HSM left-alignment mode:
@@ -67,7 +78,7 @@ An uncached offline MySQL record is hydrated on a worker thread so an RA lookup 
 
 ### Important defaults and limitations
 
-The audit specified behavior but not score amount, tier thresholds, or title catalog. Defaults are therefore explicit config, not hidden constants: 10 points per bot kill; tiers at 0/100/500/1500/5000; titles at 0/100/500/1500. Edit them in the generated StatsBots config.
+The audit specified behavior but not score amount, tier thresholds, or title catalog. Defaults are therefore explicit config, not hidden constants: 10 points per bot kill; tiers at 0/100/500/1500/5000/15000/40000; titles at 0/100/500/1500/5000/15000/40000. Edit them in the generated StatsBots config.
 
 LabAPI currently exposes no authenticated client-language value. With `language: ""`, StatsBots attempts a future public `ClientLanguage`/`Language` wrapper property and otherwise falls back to Chinese; `cn` and `en` force one language. The static two-button SSS captions use the forced language or Chinese fallback for the same reason.
 
@@ -90,6 +101,17 @@ StatsBots 是 SCPSLBot 热身模式的玩家端配套插件。它复用 StatsSys
 - 机器人互杀、真人互杀、世界伤害、自杀及同阵营击杀：不记录热身积分。
 
 只有完整 `账号@平台` UserId 可以写入；`ID_Dummy` 永远被拒绝。机器人身份只接受 SCPSLBot 公开所有权契约，绝不只凭 `IsDummy` 判断。所有持久键均使用 `Warmup.*` 命名空间。
+
+### 技术评分
+
+在积分段位之外，StatsBots 还会计算只针对托管机器人交战的技术评分：
+
+- 评分由枪械命中率（命中射击 / 射击）、击杀占比（击杀 /（击杀 + 死亡））和每分钟交战枪械击杀数组成，权重在 `skill_rating` 配置中调整。粒子干扰器、MicroHID、手雷等非枪械击杀不计入评分。
+- 只有相邻两次机器人交互（枪械命中机器人、被机器人伤害、击杀或死亡）间隔不超过 `combat_window_seconds` 时才累计交战时间；未命中的射击只有在该窗口内发生机器人交互时才计入。因此挂机、待在安全区和乱射都不会拉低评分。任何玩家之间的伤害会暂停采样一个窗口；SCP 角色不采样。
+- 数据以 `Warmup.Skill.*` 计数器保存，并按可配置的半衰期（默认 7 天）衰减。评分 = 1000 × 技术 × 置信度，置信度随衰减后的击杀加死亡次数增长：回归玩家很快恢复，长期不玩的玩家会逐渐变为未定级。
+- 达到衰减后的定级门槛（默认 150 次射击和 20 次击杀加死亡）前，HUD 显示定级进度；之后显示配置的段位与评分。`statsbots status` 会列出所有分项、衰减样本和未保存的射击数。
+
+采样每 `flush_seconds`（默认 30 秒）、玩家离开及插件停用时保存。段位阈值为初始估计，请在运行一周后根据 `statsbots status` 数据校准。
 
 ### HUD、称号与设置
 
@@ -115,7 +137,7 @@ statsbots revoke <完整UserId> <称号ID>
 
 未缓存的离线 MySQL 记录会在工作线程水合，避免 RA 查询阻塞 Unity 游戏线程。第一次命令会回复“加载中”，水合完成后重试即可；等待期间不会创建空记录。
 
-审计没有规定每次击杀分数、段位阈值和称号目录，因此这些值均明确放入配置：默认每次 10 分，段位阈值 0/100/500/1500/5000，称号阈值 0/100/500/1500。`language: ""` 在可获得客户端语言时匹配；当前 LabAPI 不提供该值，因此回退中文；`cn`/`en` 可强制语言。
+审计没有规定每次击杀分数、段位阈值和称号目录，因此这些值均明确放入配置：默认每次 10 分，段位阈值 0/100/500/1500/5000/15000/40000，称号阈值 0/100/500/1500/5000/15000/40000。`language: ""` 在可获得客户端语言时匹配；当前 LabAPI 不提供该值，因此回退中文；`cn`/`en` 可强制语言。
 
 缩写后的左侧安全区布局已通过物品轮盘、公告/状态条、观察者、等待玩家和出生闪屏五种原生背景的 EN/CN 碰撞检查。静态结果记录于 `tests/ui/20260830-results.md`，上线后仍需确认真实 TextMeshPro 显示。
 
