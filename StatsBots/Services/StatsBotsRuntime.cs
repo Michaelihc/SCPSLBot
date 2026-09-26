@@ -34,6 +34,7 @@ internal sealed class StatsBotsRuntime
     private readonly IHintDisplayProvider _hints;
     private readonly Localization _text;
     private readonly PlayerPreferences _preferences;
+    private readonly SkillTracker _skill;
     private readonly DeathEventDeduplicator _duplicates;
     private readonly Dictionary<ReferenceHub, double> _joinedAt = new();
     private readonly Dictionary<ReferenceHub, AnnouncementSession> _announcements = new();
@@ -49,6 +50,7 @@ internal sealed class StatsBotsRuntime
     public StatsBotsRuntime(StatsBotsConfig config, StatsSystemAdapter stats, ScpslBotAdapter bots, IHintDisplayProvider hints,
         Localization text, PlayerPreferences preferences)
     {
+        _skill = new SkillTracker(config.SkillRating, stats, bots, IsAuthenticatedReal);
         _config = config;
         _stats = stats;
         _bots = bots;
@@ -73,6 +75,7 @@ internal sealed class StatsBotsRuntime
         PlayerEvents.Death += OnDeath;
         ServerEvents.RoundStarted += OnRoundStarted;
         ServerEvents.RoundRestarted += OnRoundRestarted;
+        _skill.Enable();
         foreach (Player player in Player.ReadyList.Where(IsAuthenticatedReal)) AddSession(player);
         _loop = Timing.RunCoroutine(Run());
     }
@@ -92,6 +95,8 @@ internal sealed class StatsBotsRuntime
             PlayerEvents.Joined -= OnJoined;
         }
         catch (Exception ex) { Logger.Warn("[StatsBots] Event cleanup failed: " + ex.GetBaseException().Message); }
+        try { _skill.Disable(); }
+        catch (Exception ex) { Logger.Warn("[StatsBots] Skill cleanup failed: " + ex.GetBaseException().Message); }
         try
         {
             foreach (Player player in Player.ReadyList.ToArray())
@@ -252,7 +257,19 @@ internal sealed class StatsBotsRuntime
         string unlocked = string.Join(", ", _config.Titles
             .Where(title => TitleCatalog.IsUnlocked(title, score, record.Counter(StatsKeys.TagUnlocked(title.Id))))
             .Select(title => title.Id));
-        return $"user={userId} provider=ready score={score} kills={record.Counter(StatsKeys.BotKills)} deaths={record.Counter(StatsKeys.BotDeaths)} streak={record.Counter(StatsKeys.CurrentStreak)} best={record.Counter(StatsKeys.BestStreak)} selected={selectedLabel} unlocked=[{unlocked}]";
+        return $"user={userId} provider=ready score={score} kills={record.Counter(StatsKeys.BotKills)} deaths={record.Counter(StatsKeys.BotDeaths)} streak={record.Counter(StatsKeys.CurrentStreak)} best={record.Counter(StatsKeys.BestStreak)} selected={selectedLabel} unlocked=[{unlocked}] {SkillStatus(Player.Get(userId), record)}";
+    }
+
+    private string SkillStatus(Player? online, StatsRecord record)
+    {
+        if (!_skill.Enabled) return "skill=disabled";
+        SkillSample sample = _skill.Current(online, record, out SkillSample pending);
+        SkillResult skill = _skill.Evaluate(online, record);
+        string rank = skill.Ranked ? _skill.Rank(skill).Id : "unranked";
+        return string.Format(CultureInfo.InvariantCulture,
+            "skill={0} rank={1} placement={2:0.###} accuracy={3:0.###} killShare={4:0.###} kpm={5:0.##} confidence={6:0.###} sample=[kills={7:0.##} deaths={8:0.##} hits={9:0.##} shots={10:0.##} combatSeconds={11:0.#}] pendingShots={12:0}",
+            skill.Rating, rank, skill.PlacementProgress, skill.Accuracy, skill.KillShare, skill.KillsPerMinute, skill.Confidence,
+            sample.Kills, sample.Deaths, sample.Hits, sample.Shots, sample.CombatSeconds, pending.Shots);
     }
 
     public ProviderState TryGetUnlockedTitles(Player player, out IReadOnlyList<TitleConfig> titles, out long selectedCode)
@@ -321,9 +338,10 @@ internal sealed class StatsBotsRuntime
                 ? Localization.EscapeRichText(ShortLabel(_text.Chinese(player) ? selected!.Chinese : selected!.English, 8))
                 : "—";
             string targets = _bots.LiveBotCount.HasValue ? Compact(_bots.LiveBotCount.Value) : "--";
+            string skill = SkillLabel(player, record);
             hero = _text.Pick(player,
-                $"<color=#4fcbff>{tierShort}</color> · <color=#e7ecf3>{titleShort}</color> · {progress}\nK{Compact(record.Counter(StatsKeys.BotKills))} D{Compact(record.Counter(StatsKeys.BotDeaths))} · S{Compact(record.Counter(StatsKeys.CurrentStreak))}/{Compact(record.Counter(StatsKeys.BestStreak))} · B{targets} · {difficulty}",
-                $"<color=#4fcbff>{tierShort}</color> · <color=#e7ecf3>{titleShort}</color> · {progress}\n杀{Compact(record.Counter(StatsKeys.BotKills))} 死{Compact(record.Counter(StatsKeys.BotDeaths))} · 连{Compact(record.Counter(StatsKeys.CurrentStreak))}/{Compact(record.Counter(StatsKeys.BestStreak))} · {targets}机 · {difficulty}");
+                $"<color=#4fcbff>{tierShort}</color> · <color=#e7ecf3>{titleShort}</color> · {progress}{skill}\nK{Compact(record.Counter(StatsKeys.BotKills))} D{Compact(record.Counter(StatsKeys.BotDeaths))} · S{Compact(record.Counter(StatsKeys.CurrentStreak))}/{Compact(record.Counter(StatsKeys.BestStreak))} · B{targets} · {difficulty}",
+                $"<color=#4fcbff>{tierShort}</color> · <color=#e7ecf3>{titleShort}</color> · {progress}{skill}\n杀{Compact(record.Counter(StatsKeys.BotKills))} 死{Compact(record.Counter(StatsKeys.BotDeaths))} · 连{Compact(record.Counter(StatsKeys.CurrentStreak))}/{Compact(record.Counter(StatsKeys.BestStreak))} · {targets}机 · {difficulty}");
             footer = _text.Pick(player, "SSS · Choose an unlocked title", "SSS · 选择已解锁称号" );
         }
 
@@ -346,6 +364,7 @@ internal sealed class StatsBotsRuntime
             try
             {
                 FlushPending();
+                _skill.Tick();
                 double now = NowSeconds;
                 foreach (Player player in Player.ReadyList.Where(IsAuthenticatedReal).ToArray())
                 {
@@ -373,6 +392,7 @@ internal sealed class StatsBotsRuntime
     private void OnLeft(PlayerLeftEventArgs ev)
     {
         if (ev.Player?.ReferenceHub == null) return;
+        _skill.OnLeft(ev.Player);
         _joinedAt.Remove(ev.Player.ReferenceHub);
         _announcements.Remove(ev.Player.ReferenceHub);
         _lastHero.Remove(ev.Player.ReferenceHub);
@@ -403,6 +423,8 @@ internal sealed class StatsBotsRuntime
         if (!mutation.HasChanges) return;
         var fingerprint = new DeathFingerprint(ev.Player.NetworkId, RuntimeHelpers.GetHashCode(ev.DamageHandler));
         if (!_duplicates.TryAccept(fingerprint, Stopwatch.GetTimestamp())) return;
+        if (mutation.BotKillsDelta > 0) _skill.RecordKill(ev.Attacker!, ev.DamageHandler);
+        else if (mutation.BotDeathsDelta > 0) _skill.RecordDeath(ev.Player, ev.OldRole);
 
         Player beneficiary = attackerKind == CombatActorKind.RealAuthenticated ? ev.Attacker! : ev.Player;
         if (!AuthenticatedIdentity.TryNormalize(beneficiary.UserId, out string userId)) return;
@@ -532,6 +554,20 @@ internal sealed class StatsBotsRuntime
         };
     }
 
+    private string SkillLabel(Player player, StatsRecord record)
+    {
+        if (!_skill.Enabled) return string.Empty;
+        SkillResult skill = _skill.Evaluate(player, record);
+        if (!skill.Ranked)
+        {
+            int percent = (int)Math.Floor(skill.PlacementProgress * 100d);
+            return _text.Pick(player, $" · <color=#b89cff>PLACE {percent}%</color>", $" · <color=#b89cff>定级 {percent}%</color>");
+        }
+        TierConfig rank = _skill.Rank(skill);
+        string label = Localization.EscapeRichText(ShortLabel(_text.Chinese(player) ? rank.Chinese : rank.English, 8));
+        return $" · <color=#b89cff>{label} {skill.Rating.ToString(CultureInfo.InvariantCulture)}</color>";
+    }
+
     private static string PadRows(string message)
         => string.Join("\n", (message ?? string.Empty).Split('\n').Select(static row => row + GhostTail));
 
@@ -592,7 +628,7 @@ internal sealed class StatsBotsRuntime
 
     private ProviderState ReadRecord(string userId, out StatsRecord? record)
     {
-        IEnumerable<string> keys = SnapshotKeys.Concat(_config.Titles.Select(title => StatsKeys.TagUnlocked(title.Id)));
+        IEnumerable<string> keys = SnapshotKeys.Concat(SkillKeys.All).Concat(_config.Titles.Select(title => StatsKeys.TagUnlocked(title.Id)));
         return _stats.TryRead(userId, keys, out record);
     }
 

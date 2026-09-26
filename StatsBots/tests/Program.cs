@@ -18,7 +18,8 @@ internal static class Program
         Run("playtime boundary and bounded notice cadence", Cadence);
         Run("tip rotation has no immediate repeats", TipCadence);
         Run("provider loading/failure never becomes a fake zero", ProviderFailure);
-        Console.WriteLine($"StatsBots pure tests: {_passed}/7 passed");
+        Run("skill decay, combat-only sampling and rating", Skill);
+        Console.WriteLine($"StatsBots pure tests: {_passed}/8 passed");
         return 0;
     }
 
@@ -95,6 +96,53 @@ internal static class Program
         True(TitleCatalog.IsUnlocked(titles[0], 9, 1));
         False(TitleCatalog.IsUnlocked(titles[0], 99, -1));
         Equal(null, TitleCatalog.ByCode(titles, 999));
+    }
+
+    private static void Skill()
+    {
+        // Half-life decay and fixed-point storage.
+        var sample = new SkillSample(100, 20, 300, 1000, 600);
+        SkillSample halved = SkillMath.Decay(sample, 7 * 86400, 7 * 86400);
+        True(Math.Abs(halved.Kills - 50) < 1e-9 && Math.Abs(halved.CombatSeconds - 300) < 1e-9);
+        Equal(12345L, SkillMath.ToFixed(12.345));
+        var stored = new Dictionary<string, long>();
+        foreach (var entry in SkillKeys.Write(sample, 1000)) stored[entry.Key] = entry.Value;
+        SkillSample later = SkillKeys.Current(k => stored.TryGetValue(k, out long v) ? v : 0, 1000 + 14 * 86400, 7 * 86400);
+        True(Math.Abs(later.Shots - 250) < 0.01);
+
+        // Idle stray shots never count; misses just before a bot interaction do; PvP suspends sampling.
+        var sampler = new CombatSampler(10, 3);
+        sampler.Shot(0, false);
+        sampler.Shot(1, false);
+        False(sampler.HasPending);
+        sampler.Shot(100, false);
+        sampler.BotInteraction(105);
+        Equal(1d, sampler.Pending.Shots);
+        True(Math.Abs(sampler.Pending.CombatSeconds - 8) < 1e-9); // 3s episode start + 5s gap
+        sampler.Shot(106, true);
+        sampler.Kill(106);
+        Equal(2d, sampler.Pending.Shots);
+        Equal(1d, sampler.Pending.Hits);
+        Equal(1d, sampler.Pending.Kills);
+        sampler.Shot(200, false); // long after combat, never confirmed
+        sampler.PlayerVersusPlayer(300);
+        sampler.Death(305);
+        sampler.Shot(306, true);
+        SkillSample taken = sampler.TakePending();
+        Equal(2d, taken.Shots);
+        Equal(0d, taken.Deaths);
+        False(sampler.HasPending);
+
+        // Placement gate, confidence and bounded components.
+        var config = new SkillRatingConfig();
+        config.Validate();
+        False(SkillMath.Evaluate(new SkillSample(5, 1, 40, 100, 60), config).Ranked);
+        SkillResult strong = SkillMath.Evaluate(new SkillSample(400, 40, 1200, 2000, 3600), config);
+        SkillResult weak = SkillMath.Evaluate(new SkillSample(40, 40, 200, 2000, 3600), config);
+        True(strong.Ranked && weak.Ranked && strong.Rating > weak.Rating && strong.Rating <= 1000);
+        SkillResult faded = SkillMath.Evaluate(SkillMath.Decay(new SkillSample(400, 40, 1200, 2000, 3600), 21 * 86400, config.HalfLifeSeconds), config);
+        True(faded.Rating < strong.Rating);
+        Equal("master", TierCatalog.Resolve(config.Ranks, 800).Id);
     }
 
     private static void Cadence()

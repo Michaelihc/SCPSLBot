@@ -60,6 +60,9 @@ public sealed class StatsBotsConfig
 
     public HintDisplayConfig HintDisplay { get; set; } = new();
 
+    [Description("Decayed combat skill rating shown beside the score tier. Only engagements with managed bots are sampled.")]
+    public SkillRatingConfig SkillRating { get; set; } = new();
+
     internal void Validate()
     {
         ScorePerBotKill = System.Math.Max(0, ScorePerBotKill);
@@ -80,6 +83,8 @@ public sealed class StatsBotsConfig
         if (Tips == null || Tips.Count == 0) Tips = LocalizedTextConfig.DefaultTips();
         Tips.RemoveAll(static tip => tip == null || string.IsNullOrWhiteSpace(tip.English) || string.IsNullOrWhiteSpace(tip.Chinese));
         if (Tips.Count == 0) Tips = LocalizedTextConfig.DefaultTips();
+        SkillRating ??= new SkillRatingConfig();
+        SkillRating.Validate();
         HintDisplay ??= new HintDisplayConfig();
         HintDisplay.GroupName = "statsbots.warmup";
         HintDisplay.TagPrefix = "statsbots.warmup.";
@@ -102,6 +107,8 @@ public sealed class TierConfig
         new() { Id = "veteran", MinimumScore = 500, English = "Veteran", Chinese = "老兵" },
         new() { Id = "elite", MinimumScore = 1500, English = "Elite", Chinese = "精英" },
         new() { Id = "legend", MinimumScore = 5000, English = "Legend", Chinese = "传奇" },
+        new() { Id = "mythic", MinimumScore = 15000, English = "Mythic", Chinese = "神话" },
+        new() { Id = "immortal", MinimumScore = 40000, English = "Immortal", Chinese = "不朽" },
     };
 }
 
@@ -119,7 +126,89 @@ public sealed class TitleConfig
         new() { Id = "bot-hunter", Code = 2, MinimumScore = 100, English = "Bot Hunter", Chinese = "机器人猎手" },
         new() { Id = "streak-master", Code = 3, MinimumScore = 500, English = "Streak Master", Chinese = "连杀大师" },
         new() { Id = "warmup-ace", Code = 4, MinimumScore = 1500, English = "Warmup Ace", Chinese = "热身王牌" },
+        new() { Id = "bot-legend", Code = 5, MinimumScore = 5000, English = "Bot Legend", Chinese = "猎机传奇" },
+        new() { Id = "mythic-gunner", Code = 6, MinimumScore = 15000, English = "Mythic Gunner", Chinese = "神话枪手" },
+        new() { Id = "immortal", Code = 7, MinimumScore = 40000, English = "Immortal", Chinese = "不朽战神" },
     };
+}
+
+public sealed class SkillRatingConfig
+{
+    [Description("Enable combat skill sampling, persistence and the HUD rank.")]
+    public bool Enabled { get; set; } = true;
+
+    [Description("Half-life of stored combat totals in days. Recent fights dominate; inactive players lose sample confidence and eventually become unranked.")]
+    public double HalfLifeDays { get; set; } = 7;
+
+    [Description("Seconds after a bot interaction during which a player counts as in combat. Missed shots outside this window around a bot interaction are ignored.")]
+    public double CombatWindowSeconds { get; set; } = 10;
+
+    [Description("Combat seconds credited when a new engagement starts.")]
+    public double CombatEpisodeSeconds { get; set; } = 3;
+
+    [Description("Decayed firearm shots required before a player is ranked.")]
+    public double MinimumShots { get; set; } = 150;
+
+    [Description("Decayed kills plus deaths required before a player is ranked.")]
+    public double MinimumEvents { get; set; } = 20;
+
+    [Description("Decayed kills plus deaths at which rating confidence reaches 63%. Rating = 1000 x skill x confidence.")]
+    public double ConfidenceEvents { get; set; } = 40;
+
+    [Description("Weight of firearm accuracy (hitting shots / shots).")]
+    public double AccuracyWeight { get; set; } = 0.35;
+
+    [Description("Weight of kill share (kills / (kills + deaths)).")]
+    public double KillShareWeight { get; set; } = 0.35;
+
+    [Description("Weight of firearm kills per combat minute, scored as kpm / (kpm + kill_rate_reference).")]
+    public double KillRateWeight { get; set; } = 0.30;
+
+    [Description("Kills per combat minute that scores half of the kill-rate component.")]
+    public double KillRateReference { get; set; } = 6;
+
+    [Description("How often online players' pending combat samples are persisted.")]
+    public int FlushSeconds { get; set; } = 30;
+
+    [Description("Skill ranks by rating, in ascending threshold order. minimum_score is the rating threshold.")]
+    public List<TierConfig> Ranks { get; set; } = DefaultRanks();
+
+    public static List<TierConfig> DefaultRanks() => new()
+    {
+        new() { Id = "bronze", MinimumScore = 0, English = "Bronze", Chinese = "青铜" },
+        new() { Id = "silver", MinimumScore = 300, English = "Silver", Chinese = "白银" },
+        new() { Id = "gold", MinimumScore = 450, English = "Gold", Chinese = "黄金" },
+        new() { Id = "platinum", MinimumScore = 550, English = "Platinum", Chinese = "铂金" },
+        new() { Id = "diamond", MinimumScore = 650, English = "Diamond", Chinese = "钻石" },
+        new() { Id = "master", MinimumScore = 750, English = "Master", Chinese = "大师" },
+    };
+
+    internal void Validate()
+    {
+        HalfLifeDays = Clamp(HalfLifeDays, 0.5, 365, 7);
+        CombatWindowSeconds = Clamp(CombatWindowSeconds, 2, 60, 10);
+        CombatEpisodeSeconds = Clamp(CombatEpisodeSeconds, 0.5, 30, 3);
+        MinimumShots = Clamp(MinimumShots, 1, 100000, 150);
+        MinimumEvents = Clamp(MinimumEvents, 1, 100000, 20);
+        ConfidenceEvents = Clamp(ConfidenceEvents, 1, 100000, 40);
+        AccuracyWeight = Clamp(AccuracyWeight, 0, 1, 0.35);
+        KillShareWeight = Clamp(KillShareWeight, 0, 1, 0.35);
+        KillRateWeight = Clamp(KillRateWeight, 0, 1, 0.30);
+        if (AccuracyWeight + KillShareWeight + KillRateWeight <= 0)
+        {
+            AccuracyWeight = 0.35;
+            KillShareWeight = 0.35;
+            KillRateWeight = 0.30;
+        }
+        KillRateReference = Clamp(KillRateReference, 0.1, 120, 6);
+        FlushSeconds = System.Math.Max(5, System.Math.Min(600, FlushSeconds));
+        Ranks = Core.TierCatalog.Normalize(Ranks == null || Ranks.Count == 0 ? DefaultRanks() : Ranks);
+    }
+
+    internal double HalfLifeSeconds => HalfLifeDays * 86400d;
+
+    private static double Clamp(double value, double min, double max, double fallback)
+        => double.IsNaN(value) || double.IsInfinity(value) ? fallback : System.Math.Max(min, System.Math.Min(max, value));
 }
 
 public sealed class LocalizedTextConfig
