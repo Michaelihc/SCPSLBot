@@ -58,7 +58,7 @@ internal sealed class SafezoneVisualService
         Door? scp914Gate = _config.Scp914SafezoneEnabled ? Door.Get(DoorName.Lcz914Gate) : null;
         int expected914Toys = scp914Gate != null && !scp914Gate.IsDestroyed ? 4 : 0;
         bool hasCellsTile = _config.ClassDCellsSafezoneEnabled && ClassDCellsTile.TryGet(out _, out _);
-        int expectedCellsToys = hasCellsTile ? 4 : 0;
+        int expectedCellsToys = hasCellsTile ? 8 : 0;
         string surfaceSignature = SurfaceSignature() + "|" + CellsSignature(hasCellsTile);
         int expectedSurfaceToys = SurfaceSafezoneGeometry.NormalizeAxis(_config.SurfaceEscapeSafezoneAxis) == "z" ? 3 : 4;
         bool geometryChanged = !string.Equals(_renderedSurfaceSignature, surfaceSignature, StringComparison.Ordinal);
@@ -144,15 +144,15 @@ internal sealed class SafezoneVisualService
         CreatePanelFace(door.Transform, -0.16f, Quaternion.Euler(0f, 180f, 0f), text);
     }
 
-    // Faces are spawned unparented at world poses derived from the static gate: toys parented to
-    // the door transform exist on the server but are not rendered by clients.
+    // Faces are unparented world objects posed from the static gate. Only the backing's face size
+    // is scaled; its depth stays thin so the text in front of it is not buried inside the box.
     private void CreatePanelFace(Transform door, float localZ, Quaternion localRotation, string text)
     {
         Quaternion rotation = door.rotation * localRotation;
         PrimitiveObjectToy backing = PrimitiveObjectToy.Create(
             door.TransformPoint(new Vector3(0f, 1.85f, localZ)),
             rotation,
-            new Vector3(1.15f, 0.55f, 0.025f) * Scp914PanelScaleMultiplier,
+            new Vector3(1.15f * Scp914PanelScaleMultiplier, 0.55f * Scp914PanelScaleMultiplier, 0.025f),
             null,
             false);
         backing.Type = PrimitiveType.Cube;
@@ -180,15 +180,21 @@ internal sealed class SafezoneVisualService
             return;
         }
 
+        // One face just inside and one just outside each edge, so the bound shows in front of a
+        // closed door that sits exactly on the grid edge from either side.
         const float height = 5f;
-        const float thickness = 0.06f;
+        const float thickness = 0.04f;
+        const float offset = 0.25f;
         Color color = new(0.25f, 0.85f, 1f, 0.35f);
         Bounds tile = ClassDCellsTile.FloorBounds(coords, room.Position.y);
         float y = room.Position.y + (height * 0.5f) - 0.2f;
-        CreateWall(new Vector3(tile.center.x, y, tile.min.z), new Vector3(tile.size.x, height, thickness), color);
-        CreateWall(new Vector3(tile.center.x, y, tile.max.z), new Vector3(tile.size.x, height, thickness), color);
-        CreateWall(new Vector3(tile.min.x, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
-        CreateWall(new Vector3(tile.max.x, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
+        foreach (float side in new[] { -offset, offset })
+        {
+            CreateWall(new Vector3(tile.center.x, y, tile.min.z - side), new Vector3(tile.size.x, height, thickness), color);
+            CreateWall(new Vector3(tile.center.x, y, tile.max.z + side), new Vector3(tile.size.x, height, thickness), color);
+            CreateWall(new Vector3(tile.min.x - side, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
+            CreateWall(new Vector3(tile.max.x + side, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
+        }
     }
 
     public string DescribeClassDCells()

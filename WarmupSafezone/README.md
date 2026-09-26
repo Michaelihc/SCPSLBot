@@ -8,7 +8,7 @@
 
 - The configured Surface escape safezone uses `surface_escape_safezone_axis`, its threshold, and `surface_escape_safezone_min_x`, restoring the original large Surface zone and boundary wall. Current LabAPI `Map.EscapeZones` remain protected as an additional fallback.
 - The SCP-914 safezone uses SCP-914's native calculated room bounds, verified again through native room resolution.
-- The Class-D cells safezone is the native 15 m × 15 m grid cell of the `LczClassDSpawn` room (`RoomUtils.PositionToCoords`), so players respawning in the cells cannot be camped. A translucent non-collidable cyan boundary marks exactly that square; it shows in the doorways where players cross it.
+- The Class-D cells safezone is the native 15 m × 15 m grid cell of the `LczClassDSpawn` room (`RoomUtils.PositionToCoords`), so players respawning in the cells cannot be camped. A translucent non-collidable cyan boundary marks that square with one face just inside and one just outside each edge, so it shows in front of the exit door from either side.
 
 The plugin never enables native godmode and never writes the process-wide `SpawnProtected` settings. Protection is decided synchronously in LabAPI damage/action events. After a player leaves any safezone, a private monotonic per-player expiry temporarily blocks both incoming and outgoing damage.
 
@@ -62,7 +62,7 @@ Player notices use the repository's stable-tag HintDisplayProvider pattern throu
 - `"cn"`: force Chinese.
 - `""`: match the client when a supported server API becomes available; LabAPI 1.1.6/1.1.7 exposes no synchronized client-language property, so the current fallback is Chinese.
 
-The SCP-914 door panel is one shared network object and therefore uses the configured/fallback server language for everyone. Its two non-collidable backing faces render at 10× their original scale while the text retains its normal scale; this visual-only backing scale does not alter the native SCP-914 safezone bounds.
+The SCP-914 door panel is one shared network object and therefore uses the configured/fallback server language for everyone. Its two non-collidable backing faces render at 10× their original width and height with a thin depth, while the text retains its normal scale; this visual-only backing scale does not alter the native SCP-914 safezone bounds.
 
 ## Configuration
 
@@ -156,7 +156,7 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 
 - 地表逃生安全区重新使用 `surface_escape_safezone_axis`、阈值与 `surface_escape_safezone_min_x`，恢复原来的大范围地表安全区和边界墙；LabAPI `Map.EscapeZones` 当前登记的边界仍作为额外保护回退。
 - SCP-914 安全区使用 SCP-914 原生计算的房间边界，并再次通过原生房间解析确认玩家确实位于该房间。
-- D 级人员牢房安全区是 `LczClassDSpawn` 房间所在的原生 15 米 × 15 米网格单元（`RoomUtils.PositionToCoords`），防止在牢房重生的玩家被蹲守。半透明、无碰撞的青色边界准确标出该范围，玩家穿过门口时可以看到。
+- D 级人员牢房安全区是 `LczClassDSpawn` 房间所在的原生 15 米 × 15 米网格单元（`RoomUtils.PositionToCoords`），防止在牢房重生的玩家被蹲守。半透明、无碰撞的青色边界在每条边内外各有一面，因此从门的任一侧都能在出口门前看到该范围。
 
 插件不会开启原生无敌，也不会写入进程级 `SpawnProtected` 设置。伤害与操作事件会同步判断保护状态。玩家离开任一安全区后，插件使用私有的、基于单调时钟的玩家到期时间，暂时同时阻止其造成和受到伤害。
 
@@ -209,7 +209,7 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 - `"cn"`：强制中文。
 - `""`：在服务端 API 可用时匹配客户端；LabAPI 1.1.6/1.1.7 暂无同步的客户端语言属性，因此当前回退中文。
 
-SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置语言或回退语言。两面的无碰撞背景按原尺寸的 10 倍渲染，文字保持正常尺寸；背景调整只影响视觉，不会改变 SCP-914 原生安全区边界。
+SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置语言或回退语言。两面的无碰撞背景宽度和高度按原尺寸的 10 倍渲染、厚度保持很薄，文字保持正常尺寸；背景调整只影响视觉，不会改变 SCP-914 原生安全区边界。
 
 ## 配置
 

@@ -174,8 +174,8 @@ public sealed class Scp914SafezoneScenario : Scenario
         ctx.Require(backings.All(toy =>
                 Approximately(toy.Scale.x, 11.5f)
                 && Approximately(toy.Scale.y, 5.5f)
-                && Approximately(toy.Scale.z, 0.25f)),
-            "SCP-914 panel backing is not scaled to 10x");
+                && Approximately(toy.Scale.z, 0.025f)),
+            "SCP-914 panel backing face is not scaled to 10x with a thin depth");
         ctx.Require(labels.All(toy =>
                 Approximately(toy.Scale.x, 0.12f)
                 && Approximately(toy.Scale.y, 0.12f)
@@ -194,11 +194,11 @@ public sealed class Scp914SafezoneScenario : Scenario
                 && toy.Type == PrimitiveType.Cube
                 && Math.Abs(toy.Color.b - 1f) < 0.02f
                 && Math.Abs(toy.Position.y - cells.Position.y) < 5f
-                && (Approximately(Math.Abs(toy.Position.x - center.x), half) && Math.Abs(toy.Position.z - center.z) < 0.1f
-                    || Approximately(Math.Abs(toy.Position.z - center.z), half) && Math.Abs(toy.Position.x - center.x) < 0.1f))
+                && (Math.Abs(Math.Abs(toy.Position.x - center.x) - half) < 0.4f && Math.Abs(toy.Position.z - center.z) < 0.1f
+                    || Math.Abs(Math.Abs(toy.Position.z - center.z) - half) < 0.4f && Math.Abs(toy.Position.x - center.x) < 0.1f))
             .ToArray();
         ctx.Info($"safezone classd cells boundary faces={faces.Length} tileCenter=({center.x:0.##},{center.z:0.##})");
-        ctx.Require(faces.Length == 4, $"expected four Class-D cells boundary faces on the native grid cell, observed {faces.Length}");
+        ctx.Require(faces.Length == 8, $"expected inner and outer Class-D cells boundary faces on all four grid edges, observed {faces.Length}");
         ctx.Require(faces.All(toy => (toy.Flags & PrimitiveFlags.Collidable) == 0), "Class-D cells boundary must not collide");
     }
 
