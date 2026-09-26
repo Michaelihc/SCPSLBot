@@ -1,0 +1,31 @@
+{
+  "status": "WarmupSafezone 1.0.0 enabled=True scp914=True classd_cells=True visuals=True blocked_projectiles=[SCP018,SCP2176,GrenadeFlash,GrenadeHE] visual_toys=15 scp914_gate=(90,100,102.23) forward=(0,0,-1) classd_cells_tile=x=52.5..67.5 z=52.5..67.5 floor=100 exits=[(67.5,99.98,60)]",
+  "cellsRoom": "LczClassDSpawn",
+  "cellsTile": "classd_cells_tile=x=52.5..67.5 z=52.5..67.5 floor=100 exits=[(67.5,99.98,60)]",
+  "cellsExit": {
+    "y": 99.98,
+    "x": 67.5,
+    "z": 60.0
+  },
+  "gateRoom": "Lcz914",
+  "insideDistanceFromGate": 3.8879929999999945,
+  "statusInside": "WarmupSafezone 1.0.0 enabled=True scp914=True classd_cells=True visuals=True blocked_projectiles=[SCP018,SCP2176,GrenadeFlash,GrenadeHE] visual_toys=15 scp914_gate=(90,100,102.23) forward=(0,0,-1) classd_cells_tile=x=52.5..67.5 z=52.5..67.5 floor=100 exits=[(67.5,99.98,60)]",
+  "blocked": {
+    "SCP018": true,
+    "SCP2176": true,
+    "GrenadeFlash": true,
+    "GrenadeHE": true
+  },
+  "medkitTossed": true,
+  "surfaceDoor": "ESCAPE_PRIMARY",
+  "surfaceStart": {
+    "x": 136.389435,
+    "y": 295.693726,
+    "z": -24.837
+  },
+  "surfaceEnd": {
+    "x": 136.432343,
+    "y": 295.693726,
+    "z": -18.8822689
+  }
+}

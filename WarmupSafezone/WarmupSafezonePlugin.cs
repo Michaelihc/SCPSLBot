@@ -22,8 +22,12 @@ public sealed class WarmupSafezonePlugin : Plugin<WarmupSafezoneConfig>
 
     public static WarmupSafezonePlugin? Instance { get; private set; }
 
+    internal int VisualToyCount => _visuals?.LiveToyCount ?? 0;
+    internal string Scp914GateDescription => _visuals?.Describe914Gate() ?? "none";
+    internal string ClassDCellsDescription => _visuals?.DescribeClassDCells() ?? "none";
+
     public override string Name => "WarmupSafezone";
-    public override string Description => "Surface escape and SCP-914 safezone rules and visuals.";
+    public override string Description => "Surface escape, SCP-914 and Class-D cells safezone rules and visuals.";
     public override string Author => "Michael";
     public override Version Version => new(1, 0, 0);
     public override Version RequiredApiVersion => new(1, 1, 6);
