@@ -136,7 +136,7 @@ $results.insideDistanceFromGate=Flat $inside.position $gate
 Mark '914-inside'
 $results.statusInside=Server 'safezone status'
 Look-Around '914'
-$null=Set-LabAim -Target @{x=$gate.x;y=$gate.y+1.6;z=$gate.z}
+$null=Set-LabAim -Target @{x=$gate.x;y=$gate.y+0.9;z=$gate.z}
 $null=Invoke-LabInput @{id='914-panel';frames=90;capture=$true}
 $null=Invoke-LabScreenshot -Name '914-panel'
 Mark '914-panel'
@@ -169,9 +169,9 @@ Mark '914-medkit-toss'
 # Gate panel from the corridor side: walk back through the open gate and turn around.
 $away=@{x=$gate.x-$origin.x;z=$gate.z-$origin.z}
 $len=[Math]::Sqrt($away.x*$away.x+$away.z*$away.z)
-$outside=@{x=$gate.x+2.5*$away.x/$len;z=$gate.z+2.5*$away.z/$len}
+$outside=@{x=$gate.x+3.5*$away.x/$len;z=$gate.z+3.5*$away.z/$len}
 $null=Fly-To $outside 0.8
-$null=Set-LabAim -Target @{x=$gate.x;y=$gate.y+1.6;z=$gate.z}
+$null=Set-LabAim -Target @{x=$gate.x;y=$gate.y+0.9;z=$gate.z}
 $null=Invoke-LabInput @{id='914-panel-outside';frames=90;capture=$true}
 $null=Invoke-LabScreenshot -Name '914-panel-outside'
 Mark '914-panel-outside'

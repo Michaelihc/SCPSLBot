@@ -187,6 +187,8 @@ public sealed class Scp914SafezoneScenario : Scenario
                 && Approximately(toy.Scale.y, 0.12f)
                 && Approximately(toy.Scale.z, 0.12f)),
             "SCP-914 panel text did not retain its normal scale");
+        ctx.Require(labels.All(toy => toy.DisplaySize.x >= 40f && toy.DisplaySize.y >= 16f),
+            "SCP-914 panel text area is too small for its two lines");
     }
 
     private static void AssertClassDCellsBoundary(ScenarioContext ctx)

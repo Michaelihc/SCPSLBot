@@ -19,6 +19,10 @@ internal sealed class SafezoneVisualService
     internal const float Scp914PanelScaleMultiplier = 10f;
     internal const float Scp914PanelTextScale = 0.12f;
 
+    // Large enough for the two-line panel text at the normal text scale; a smaller text area
+    // truncates the lines and the panel renders without text.
+    internal static readonly Vector2 Scp914PanelTextDisplaySize = new(60f, 24f);
+
     private readonly WarmupSafezoneConfig _config;
     private readonly WarmupLocalization _localization;
     private readonly List<AdminToy> _toys = new();
@@ -172,7 +176,7 @@ internal sealed class SafezoneVisualService
             text,
             null,
             new Vector3(Scp914PanelTextScale, Scp914PanelTextScale, Scp914PanelTextScale),
-            new Vector2(12f, 4f));
+            Scp914PanelTextDisplaySize);
     }
 
     private void CreateClassDCellsBoundary()
