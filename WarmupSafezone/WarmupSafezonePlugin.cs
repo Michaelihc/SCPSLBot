@@ -23,7 +23,7 @@ public sealed class WarmupSafezonePlugin : Plugin<WarmupSafezoneConfig>
     public static WarmupSafezonePlugin? Instance { get; private set; }
 
     public override string Name => "WarmupSafezone";
-    public override string Description => "Surface escape and SCP-914 safezone rules and visuals.";
+    public override string Description => "Surface escape, SCP-914 and Class-D cells safezone rules and visuals.";
     public override string Author => "Michael";
     public override Version Version => new(1, 0, 0);
     public override Version RequiredApiVersion => new(1, 1, 6);

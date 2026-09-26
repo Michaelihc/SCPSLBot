@@ -12,6 +12,7 @@ internal static class Program
         TestBlockerFirstPostGraceDamageIsExact();
         TestDamageMatrix();
         TestActionMatrix();
+        TestProjectileBlockList();
         TestConfiguredSurfaceSafezoneGeometry();
         TestRecurringFaultIsolation();
         Console.WriteLine($"WarmupSafezone deterministic logic tests passed: {_assertions}/{_assertions}");
@@ -73,6 +74,15 @@ internal static class Program
         Require(DamagePolicy.ShouldBlock(DamageActorKind.Other, false, true, false, false, false), "exit-protected outgoing damage is blocked");
         Require(DamagePolicy.ShouldBlock(DamageActorKind.None, false, false, false, true, false), "exit-protected incoming damage is blocked");
         Require(!DamagePolicy.ShouldBlock(DamageActorKind.None, false, false, true, true, true), "plugin-owned drains bypass protection synchronously");
+    }
+
+    private static void TestProjectileBlockList()
+    {
+        ProjectileBlockList list = new(new[] { "SCP018", " scp2176 ", "", null! });
+        Require(list.Contains("SCP018"), "configured projectile is blocked");
+        Require(list.Contains("SCP2176"), "names match case-insensitively after trimming");
+        Require(!list.Contains("GrenadeHE"), "unlisted damaging throwables stay allowed");
+        Require(!new ProjectileBlockList(null).Contains("SCP018"), "a missing list blocks nothing");
     }
 
     private static void TestRecurringFaultIsolation()

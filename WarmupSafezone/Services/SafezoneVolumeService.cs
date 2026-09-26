@@ -14,6 +14,7 @@ internal enum SafezoneMembership
     None = 0,
     SurfaceEscape = 1,
     Scp914 = 2,
+    ClassDCells = 4,
 }
 
 internal sealed class SafezoneVolumeService
@@ -38,6 +39,11 @@ internal sealed class SafezoneVolumeService
         if (_config.Scp914SafezoneEnabled && ContainsScp914(player))
         {
             membership |= SafezoneMembership.Scp914;
+        }
+
+        if (_config.ClassDCellsSafezoneEnabled && ContainsClassDCells(player))
+        {
+            membership |= SafezoneMembership.ClassDCells;
         }
 
         return membership;
@@ -95,6 +101,9 @@ internal sealed class SafezoneVolumeService
             && verifiedRoomBounds.Contains(position)
             && Room.GetRoomAtPosition(position)?.Base == room.Base;
     }
+
+    public bool ContainsClassDCells(Player player) => IsEligible(player)
+        && Room.GetRoomAtPosition(player.Position)?.Name == RoomName.LczClassDSpawn;
 
     public bool ContainsSurfaceBlocker(Player player)
     {

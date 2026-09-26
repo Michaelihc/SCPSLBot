@@ -20,11 +20,12 @@ namespace WarmupSafezone.Playtests;
 public sealed class Scp914SafezoneScenario : Scenario
 {
     private const float ProbeDamage = 17f;
+    private const RoomName OutsideRoom = RoomName.LczArmory; // Class-D cells are now a safezone
 
     public override string Name => "warmup-safezone-914";
     public override string[] Aliases => ["safezone-914"];
     public override string[] Suites => ["warmup-safezone"];
-    public override string Description => "Proves event-time 914 damage rules, immediate exit protection, native-state isolation, and restored Surface visuals.";
+    public override string Description => "Proves event-time 914 and Class-D cells damage rules, an allowed damage-neutral frag throw, immediate exit protection, native-state isolation, and restored Surface visuals.";
     public override FidelityRange Supported => FidelityRange.Only(Fidelity.Standard);
 
     public override IEnumerator<float> Run(ScenarioContext ctx)
@@ -45,12 +46,18 @@ public sealed class Scp914SafezoneScenario : Scenario
         bool nativeProtectionEnabled = SpawnProtected.IsProtectionEnabled;
         float nativeProtectionDuration = SpawnProtected.SpawnDuration;
 
-        yield return attacker.GoTo(RoomName.LczClassDSpawn);
-        yield return victim.GoTo(RoomName.LczClassDSpawn);
-        yield return outsider.GoTo(RoomName.LczClassDSpawn);
-        yield return ctx.Wait(5f); // allow any native role-spawn protection to expire
+        yield return attacker.GoTo(OutsideRoom);
+        yield return victim.GoTo(OutsideRoom);
+        yield return outsider.GoTo(OutsideRoom);
+        // Native Class-D spawns start inside the cells safezone; wait out native spawn protection
+        // and the configured exit protection granted on leaving the cells.
+        yield return ctx.Wait(11f);
         AssertDamageAllowed(ctx, attackerPlayer, victimPlayer, "outside-to-outside");
         RestoreHealth(ctx, victimPlayer);
+
+        yield return victim.GoTo(RoomName.LczClassDSpawn);
+        ctx.Require(victim.RoomName == nameof(RoomName.LczClassDSpawn), "victim did not settle inside the Class-D cells");
+        AssertDamageBlocked(ctx, attackerPlayer, victimPlayer, "outside-to-classd-cells");
 
         yield return victim.GoTo(RoomName.Lcz914);
         ctx.Require(victim.RoomName == nameof(RoomName.Lcz914), "victim did not settle inside SCP-914");
@@ -62,10 +69,16 @@ public sealed class Scp914SafezoneScenario : Scenario
         ctx.Require(!attackerPlayer.IsGodModeEnabled, "WarmupSafezone must not grant attacker godmode inside SCP-914");
         AssertDamageBlocked(ctx, attackerPlayer, victimPlayer, "inside-to-inside");
 
-        yield return victim.GoTo(RoomName.LczClassDSpawn);
+        IEnumerator<float> fragProbe = ProbeAllowedFragInsideScp914(ctx, attacker, attackerPlayer, victim, victimPlayer);
+        while (fragProbe.MoveNext())
+        {
+            yield return fragProbe.Current;
+        }
+
+        yield return victim.GoTo(OutsideRoom);
         AssertDamageBlocked(ctx, attackerPlayer, victimPlayer, "inside-to-outside");
 
-        yield return attacker.GoTo(RoomName.LczClassDSpawn);
+        yield return attacker.GoTo(OutsideRoom);
         AssertDamageBlocked(ctx, attackerPlayer, victimPlayer, "immediate-egress-exit-protection");
 
         bool roleRequestObserved = false;
@@ -110,9 +123,34 @@ public sealed class Scp914SafezoneScenario : Scenario
 
         ctx.Arrange("pre-existing admin godmode ownership probe", () => attackerPlayer.IsGodModeEnabled = true);
         yield return attacker.GoTo(RoomName.Lcz914);
-        yield return attacker.GoTo(RoomName.LczClassDSpawn);
+        yield return attacker.GoTo(OutsideRoom);
         ctx.Require(attackerPlayer.IsGodModeEnabled, "WarmupSafezone modified godmode owned by an admin or another plugin");
         ctx.Arrange("clean up admin godmode probe", () => attackerPlayer.IsGodModeEnabled = false);
+    }
+
+    private static IEnumerator<float> ProbeAllowedFragInsideScp914(
+        ScenarioContext ctx,
+        Actor thrower,
+        Player throwerPlayer,
+        Actor bystander,
+        Player bystanderPlayer)
+    {
+        // Frags are no longer cancelled inside a safezone: the native throw must complete, and the
+        // explosion must still hurt nobody while thrower and bystander are protected.
+        ctx.Arrange("restore health and give the frag probe grenade", () =>
+        {
+            throwerPlayer.Health = throwerPlayer.MaxHealth;
+            bystanderPlayer.Health = bystanderPlayer.MaxHealth;
+            thrower.GiveItem(ItemType.GrenadeHE);
+        });
+        yield return thrower.Equip(ItemType.GrenadeHE);
+        yield return thrower.ThrowHeldItemAt(bystander, fullForce: false);
+        yield return ctx.Wait(7f); // native frag fuse plus explosion settle
+        ctx.Info($"safezone frag probe thrower={throwerPlayer.Health:0.##}/{throwerPlayer.MaxHealth:0.##} bystander={bystanderPlayer.Health:0.##}/{bystanderPlayer.MaxHealth:0.##}");
+        ctx.Require(bystanderPlayer.IsAlive && bystanderPlayer.Health >= bystanderPlayer.MaxHealth - 0.01f,
+            "frag thrown inside SCP-914 damaged a protected bystander");
+        ctx.Require(throwerPlayer.IsAlive && throwerPlayer.Health >= throwerPlayer.MaxHealth - 0.01f,
+            "frag thrown inside SCP-914 damaged its protected thrower");
     }
 
     private static void AssertDamageAllowed(ScenarioContext ctx, Player attacker, Player victim, string label)

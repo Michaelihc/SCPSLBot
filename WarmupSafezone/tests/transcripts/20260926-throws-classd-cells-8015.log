@@ -1,0 +1,13 @@
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 safezone damage label=outside-to-outside allowed expected=true health=100->83 applied=True
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 safezone damage label=outside-to-classd-cells blocked expected=true health=100->100 applied=False
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 safezone damage label=outside-to-inside blocked expected=true health=100->100 applied=False
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 safezone damage label=inside-to-inside blocked expected=true health=100->100 applied=False
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 ARRANGE (standard): restore health and give the frag probe grenade
+[INFO] [PlaytestHarness] [Playtest] STEP tracked scenario world item serial=434 type=GrenadeHE reason='pending native throw by safezone-attacker'
+[INFO] [PlaytestHarness] [Playtest] STEP native throw actor=safezone-attacker type=GrenadeHE serial=434 fullForce=False arm=1.1s releaseDelay=0.32s target=(75.01,100.84,-0.03)
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 safezone frag probe thrower=100/100 bystander=100/100
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 safezone damage label=inside-to-outside blocked expected=true health=100->100 applied=False
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 safezone damage label=immediate-egress-exit-protection blocked expected=true health=100->100 applied=False
+[INFO] [PlaytestHarness] [Playtest] STEP scenario=warmup-safezone-914 safezone damage label=exit-protection-survives-cancelled-role-request blocked expected=true health=100->100 applied=False
+[INFO] [PlaytestHarness] [Playtest] RESULT scenario=warmup-safezone-914 outcome=PASS duration=43.12s
+[INFO] [PlaytestHarness] [Playtest] RUN_RESULT level=standard passed=1 failed=0 skipped=0 summary=C:\Users\Michael\AppData\Roaming\SCP Secret Laboratory\LabAPI\configs\8015\PlaytestHarness\runs\20260926-212523-standard.summary.json

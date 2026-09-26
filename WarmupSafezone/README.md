@@ -4,12 +4,13 @@
 
 ## WarmupSafezone
 
-`WarmupSafezone` 1.0.0 provides two independent safezone policies for the SCPSLBot warmup server:
+`WarmupSafezone` 1.0.0 provides three independent safezone policies for the SCPSLBot warmup server:
 
 - The configured Surface escape safezone uses `surface_escape_safezone_axis`, its threshold, and `surface_escape_safezone_min_x`, restoring the original large Surface zone and boundary wall. Current LabAPI `Map.EscapeZones` remain protected as an additional fallback.
 - The SCP-914 safezone uses SCP-914's native calculated room bounds, verified again through native room resolution.
+- The Class-D cells safezone covers the native `LczClassDSpawn` room, so players respawning in the cells cannot be camped. It has no sign or boundary wall.
 
-The plugin never enables native godmode and never writes the process-wide `SpawnProtected` settings. Protection is decided synchronously in LabAPI damage/action events. After a player leaves either safezone, a private monotonic per-player expiry temporarily blocks both incoming and outgoing damage.
+The plugin never enables native godmode and never writes the process-wide `SpawnProtected` settings. Protection is decided synchronously in LabAPI damage/action events. After a player leaves any safezone, a private monotonic per-player expiry temporarily blocks both incoming and outgoing damage.
 
 Tutorial is outside safezone participation. It receives no safezone protection, blocker drain, or action restrictions; native game behavior is preserved.
 
@@ -29,7 +30,9 @@ An attempted role change does not erase an existing exit-protection lease; cance
 The explicit action matrix is:
 
 - Firearms and dry-fire: denied while protected.
-- Thrown items, grenades, and projectiles: denied while protected.
+- Tossing ordinary items (keycards, medkits, weapons): allowed.
+- Frag grenades and snowballs: allowed, but their damage is blocked by the damage policy above while the thrower is protected.
+- Projectiles listed in `safezone_blocked_projectiles` (default SCP-018, SCP-2176 and flashbangs, whose effects are not damage): the throw is cancelled and the item stays in the inventory.
 - SCP-244 use is denied both at native use start and again at the completion boundary; the 250 ms dangerous-item recovery pass also stops an active use carried across a safezone boundary.
 - Micro H.I.D. and Jailbird charge/fire: denied and an active charge is stopped.
 - SCP-049 attacks, SCP-096 target/charge, SCP-106 player teleport, SCP-173 snap/tantrum, SCP-3114 strangle, and SCP-939 attack/lunge/cloud: denied when the actor or explicit target is protected.
@@ -71,6 +74,8 @@ enabled: true
 scp914_safezone_enabled: true
 scp914_safezone_panel_text_english: "SAFE ZONE\nDAMAGE BLOCKED"
 scp914_safezone_panel_text_chinese: "安全区\n禁止造成或受到伤害"
+class_d_cells_safezone_enabled: true
+safezone_blocked_projectiles: [SCP018, SCP2176, GrenadeFlash]
 safezone_visuals_enabled: true
 
 surface_escape_safezone_health_drain_enabled: false
@@ -147,10 +152,11 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 
 ## WarmupSafezone
 
-`WarmupSafezone` 1.0.0 为 SCPSLBot 热身服务器提供两套互相独立的安全区规则：
+`WarmupSafezone` 1.0.0 为 SCPSLBot 热身服务器提供三套互相独立的安全区规则：
 
 - 地表逃生安全区重新使用 `surface_escape_safezone_axis`、阈值与 `surface_escape_safezone_min_x`，恢复原来的大范围地表安全区和边界墙；LabAPI `Map.EscapeZones` 当前登记的边界仍作为额外保护回退。
 - SCP-914 安全区使用 SCP-914 原生计算的房间边界，并再次通过原生房间解析确认玩家确实位于该房间。
+- D 级人员牢房安全区覆盖原生 `LczClassDSpawn` 房间，防止在牢房重生的玩家被蹲守。该区域没有标牌或边界墙。
 
 插件不会开启原生无敌，也不会写入进程级 `SpawnProtected` 设置。伤害与操作事件会同步判断保护状态。玩家离开任一安全区后，插件使用私有的、基于单调时钟的玩家到期时间，暂时同时阻止其造成和受到伤害。
 
@@ -170,7 +176,9 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 明确的操作矩阵如下：
 
 - 枪械射击与空仓击发：受保护时禁止。
-- 投掷物、手雷与抛射物：受保护时禁止。
+- 扔出普通物品（钥匙卡、医疗包、武器）：允许。
+- 手雷与雪球：允许投掷，但投掷者受保护期间其伤害会被上述伤害规则阻止。
+- `safezone_blocked_projectiles` 中列出的抛射物（默认 SCP-018、SCP-2176 与闪光弹，其效果不是伤害）：投掷被取消，物品保留在背包中。
 - SCP-244 在原生使用开始和完成边界都会被阻止；250 毫秒危险物品恢复检查还会停止跨越安全区边界后仍处于使用状态的 SCP-244。
 - Micro H.I.D. 与 Jailbird 蓄力/攻击：禁止并停止当前蓄力。
 - SCP-049 攻击、SCP-096 添加目标/冲锋、SCP-106 传送玩家、SCP-173 扭颈/污秽、SCP-3114 勒杀、SCP-939 攻击/扑击/迷雾：行为方或明确目标受保护时禁止。
