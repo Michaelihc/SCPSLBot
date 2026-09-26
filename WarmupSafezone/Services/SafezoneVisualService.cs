@@ -19,6 +19,10 @@ internal sealed class SafezoneVisualService
     internal const float Scp914PanelScaleMultiplier = 10f;
     internal const float Scp914PanelTextScale = 0.12f;
 
+    // The closed gate leaves extend up to about 0.36 m either side of the gate origin; both faces sit
+    // clear of them so the leaves cannot hide the panel text.
+    internal const float Scp914PanelFaceOffset = 0.6f;
+
     // Large enough for the two-line panel text at the normal text scale; a smaller text area
     // truncates the lines and the panel renders without text.
     internal static readonly Vector2 Scp914PanelTextDisplaySize = new(60f, 24f);
@@ -146,8 +150,8 @@ internal sealed class SafezoneVisualService
         string text = _localization.Shared(english, chinese);
         // Text reads correctly when the camera looks along its forward axis, so each face's text
         // sits on its outer side and points back toward the gate.
-        CreatePanelFace(door.Transform, 0.16f, Quaternion.Euler(0f, 180f, 0f), text);
-        CreatePanelFace(door.Transform, -0.16f, Quaternion.identity, text);
+        CreatePanelFace(door.Transform, Scp914PanelFaceOffset, Quaternion.Euler(0f, 180f, 0f), text);
+        CreatePanelFace(door.Transform, -Scp914PanelFaceOffset, Quaternion.identity, text);
     }
 
     // Faces are unparented world objects posed from the static gate. Only the backing's face size

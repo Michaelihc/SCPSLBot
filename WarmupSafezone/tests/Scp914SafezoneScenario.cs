@@ -163,8 +163,29 @@ public sealed class Scp914SafezoneScenario : Scenario
         // side looks along the text's forward axis and reads it unmirrored in front of the panel.
         ctx.Require(labels.All(toy =>
                 Vector3.Dot(door.Transform.position - toy.Position, toy.Rotation * Vector3.forward) > 0.1f
-                && Math.Abs(door.Transform.InverseTransformPoint(toy.Position).z) > 0.17f),
+                && Math.Abs(door.Transform.InverseTransformPoint(toy.Position).z) > 0.55f),
             "SCP-914 panel text is behind its backing or faces away from its viewers");
+        List<string> occluded = new();
+        foreach (TextToy label in labels)
+        {
+            Vector3 forward = label.Rotation * Vector3.forward;
+            Vector3 viewer = label.Position - forward * 3f;
+            Vector3 toText = label.Position - viewer;
+            RaycastHit[] hits = Physics.RaycastAll(viewer, toText.normalized, toText.magnitude + 0.5f, ~0, QueryTriggerInteraction.Collide)
+                .OrderBy(hit => hit.distance)
+                .ToArray();
+            string hitList = string.Join("; ", hits.Select(hit =>
+                $"{hit.collider.name}@{hit.distance:0.00}m layer={LayerMask.LayerToName(hit.collider.gameObject.layer)} root={hit.collider.transform.root.name}"));
+            ctx.Info($"safezone 914 text raycast text=({label.Position.x:0.00},{label.Position.y:0.00},{label.Position.z:0.00}) forward=({forward.x:0.00},{forward.y:0.00},{forward.z:0.00}) "
+                + $"scale={label.Scale.x:0.00} display={label.DisplaySize} active={label.GameObject.activeInHierarchy} static={label.IsStatic} textDistance={toText.magnitude:0.00} hits=[{hitList}]");
+            if (hits.Any(hit => hit.distance < toText.magnitude - 0.005f))
+            {
+                occluded.Add($"({label.Position.x:0.00},{label.Position.y:0.00},{label.Position.z:0.00}) by {hits[0].collider.name}");
+            }
+        }
+
+        ctx.Require(occluded.Count == 0, $"SCP-914 panel text is occluded from its viewing side: {string.Join(", ", occluded)}");
+
         ctx.Require(labels.All(toy => toy.TextFormat.IndexOf("godmode", StringComparison.OrdinalIgnoreCase) < 0
             && !toy.TextFormat.Contains("无敌")), "SCP-914 panel still advertises removed godmode behavior");
 
