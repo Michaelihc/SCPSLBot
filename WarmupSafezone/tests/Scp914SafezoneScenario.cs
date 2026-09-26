@@ -159,6 +159,12 @@ public sealed class Scp914SafezoneScenario : Scenario
                 && (toy.TextFormat.Contains("安全区") || toy.TextFormat.Contains("SAFE ZONE")))
             .ToArray();
         ctx.Require(labels.Length == 2, $"expected two-sided SCP-914 door text, observed {labels.Length}");
+        // Each text must sit outside its backing and face back toward the gate, so a viewer on that
+        // side looks along the text's forward axis and reads it unmirrored in front of the panel.
+        ctx.Require(labels.All(toy =>
+                Vector3.Dot(door.Transform.position - toy.Position, toy.Rotation * Vector3.forward) > 0.1f
+                && Math.Abs(door.Transform.InverseTransformPoint(toy.Position).z) > 0.17f),
+            "SCP-914 panel text is behind its backing or faces away from its viewers");
         ctx.Require(labels.All(toy => toy.TextFormat.IndexOf("godmode", StringComparison.OrdinalIgnoreCase) < 0
             && !toy.TextFormat.Contains("无敌")), "SCP-914 panel still advertises removed godmode behavior");
 

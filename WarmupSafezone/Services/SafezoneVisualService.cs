@@ -140,8 +140,10 @@ internal sealed class SafezoneVisualService
         string english = NormalizeLegacyPanelText(_config.Scp914SafezonePanelTextEnglish, false);
         string chinese = NormalizeLegacyPanelText(_config.Scp914SafezonePanelTextChinese, true);
         string text = _localization.Shared(english, chinese);
-        CreatePanelFace(door.Transform, 0.16f, Quaternion.identity, text);
-        CreatePanelFace(door.Transform, -0.16f, Quaternion.Euler(0f, 180f, 0f), text);
+        // Text reads correctly when the camera looks along its forward axis, so each face's text
+        // sits on its outer side and points back toward the gate.
+        CreatePanelFace(door.Transform, 0.16f, Quaternion.Euler(0f, 180f, 0f), text);
+        CreatePanelFace(door.Transform, -0.16f, Quaternion.identity, text);
     }
 
     // Faces are unparented world objects posed from the static gate. Only the backing's face size
