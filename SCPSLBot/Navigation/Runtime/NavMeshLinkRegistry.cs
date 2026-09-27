@@ -59,18 +59,18 @@ namespace SCPSLBot.Navigation.Runtime
         {
             foreach (var link in links)
             {
-                if (link.Instance.valid)
+                if (NavMesh.IsLinkValid(link.Instance))
                 {
-                    link.Instance.Remove();
+                    NavMesh.RemoveLink(link.Instance);
                 }
             }
 
             links.Clear();
             foreach (var instance in passageLinks)
             {
-                if (instance.valid)
+                if (NavMesh.IsLinkValid(instance))
                 {
-                    instance.Remove();
+                    NavMesh.RemoveLink(instance);
                 }
             }
 
@@ -88,9 +88,9 @@ namespace SCPSLBot.Navigation.Runtime
         {
             foreach (var instance in passageLinks)
             {
-                if (instance.valid)
+                if (NavMesh.IsLinkValid(instance))
                 {
-                    instance.Remove();
+                    NavMesh.RemoveLink(instance);
                 }
             }
 
@@ -155,7 +155,7 @@ namespace SCPSLBot.Navigation.Runtime
                     area = DoorAreaRegistry.JumpArea,
                     agentTypeID = agentTypeId,
                 });
-                if (!instance.valid)
+                if (!NavMesh.IsLinkValid(instance))
                 {
                     SealedConnectors++;
                     continue;
@@ -193,7 +193,7 @@ namespace SCPSLBot.Navigation.Runtime
                     area = DoorAreaRegistry.ElevatorArea,
                     agentTypeID = agentTypeId,
                 });
-                if (!instance.valid)
+                if (!NavMesh.IsLinkValid(instance))
                 {
                     LabLogger.Warn($"[SCPSLBot] NAV_LINK_SKIPPED group={group} reason=add-link-failed");
                     continue;
