@@ -158,6 +158,9 @@ $null=Set-LabAim -Target @{x=$gate.x;y=$gate.y+0.9;z=$gate.z}
 $null=Invoke-LabInput @{id='914-panel';frames=90;capture=$true}
 $null=Invoke-LabScreenshot -Name '914-panel'
 Mark '914-panel'
+$results.panelStatus=Server 'safezone status'
+$results.panelCamera=(Actor)
+Save
 
 # Throws face the room interior so nothing leaves the room.
 $null=Set-LabAim -Target @{x=$origin.x;y=((Actor).position.y+0.6);z=$origin.z}
