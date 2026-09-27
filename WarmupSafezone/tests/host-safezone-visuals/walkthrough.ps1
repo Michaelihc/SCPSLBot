@@ -1,7 +1,7 @@
 param($Context)
 # Real-client walkthrough of WarmupSafezone visuals and the narrowed throw policy.
 # 1. Class-D cells: native ClassD spawn; look around; a pistol shot shows the blocked-action hint;
-#    noclip to the exit and film the cyan boundary from both sides; the far end of the room (outside
+#    noclip to the exit and film the cyan boundary and the name plates above the door from both sides; the far end of the room (outside
 #    its main grid cell) must still report ClassDCells membership.
 # 2. SCP-914: gate panel from inside the room; blocked shot hint; SCP-018, SCP-2176, flash and frag
 #    throws and SCP-018/SCP-2176 T tosses are cancelled and kept; a medkit toss completes.
@@ -93,6 +93,9 @@ $spawn=(Actor).position
 $exits=@([regex]::Matches($tile.Groups[10].Value,'\(([-\d.]+),([-\d.]+),([-\d.]+)\)') | ForEach-Object { @{x=[double]$_.Groups[1].Value;y=[double]$_.Groups[2].Value;z=[double]$_.Groups[3].Value} })
 $results.cellsTile=$tile.Value
 if($exits.Count -eq 0) { throw 'No Class-D cells exit found on the safezone cell edge' }
+$cellsPanels=@([regex]::Matches($results.status,'(plate|text)=\(([-\d.]+),([-\d.]+),([-\d.]+)\)') | Where-Object { $results.status.IndexOf('panels=') -ge 0 -and $_.Index -gt $results.status.LastIndexOf('panels=') })
+$results.cellsPanels=$cellsPanels.Count
+if($cellsPanels.Count -ne 4*$exits.Count) { throw "Expected a plate and label on both sides of each cells exit, found $($cellsPanels.Count) parts for $($exits.Count) exit(s)" }
 $exit=$exits | Sort-Object { Flat $_ $spawn } | Select-Object -First 1
 $dx=$exit.x-$center.x; $dz=$exit.z-$center.z
 if([Math]::Abs($dx) -ge [Math]::Abs($dz)) { $dir=@{x=[Math]::Sign($dx);z=0} } else { $dir=@{x=0;z=[Math]::Sign($dz)} }
@@ -107,11 +110,18 @@ $null=Set-LabAim -Target @{x=$exit.x;y=$floor+1.3;z=$exit.z}
 $null=Invoke-LabInput @{frames=20;inputFrames=2;keys=@(101)}
 $null=Invoke-LabInput @{id='cells-boundary-inside';frames=90;capture=$true}
 $null=Invoke-LabScreenshot -Name 'cells-boundary-inside'
+$null=Set-LabAim -Target @{x=$exit.x;y=$floor+2.6;z=$exit.z}
+$null=Invoke-LabInput @{frames=30}
+$null=Invoke-LabScreenshot -Name 'cells-plate-inside'
+$null=Set-LabAim -Target @{x=$exit.x;y=$floor+1.3;z=$exit.z}
 $null=Invoke-LabInput @{id='cells-boundary-cross';frames=90;keys=@(119);inputFrames=45;capture=$true}
 $null=Fly-To $outsidePoint
 $null=Set-LabAim -Target @{x=$exit.x;y=$floor+1.3;z=$exit.z}
 $null=Invoke-LabInput @{id='cells-boundary-outside';frames=90;capture=$true}
 $null=Invoke-LabScreenshot -Name 'cells-boundary-outside'
+$null=Set-LabAim -Target @{x=$exit.x;y=$floor+2.6;z=$exit.z}
+$null=Invoke-LabInput @{frames=30}
+$null=Invoke-LabScreenshot -Name 'cells-plate-outside'
 
 # The safezone is the whole cells room, not only its main grid cell: fly to the far end of the room
 # (outside the main cell) and require ClassDCells membership there.
