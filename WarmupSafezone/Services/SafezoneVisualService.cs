@@ -37,6 +37,10 @@ internal sealed class SafezoneVisualService
     internal const float CellsPanelTextOffset = 0.4f;
     internal const float CellsPanelHeight = 3.1f;
 
+    // The corridor on the cells side of the exit has a low ceiling; each plate is kept this far below the ceiling
+    // found by a native raycast a metre from the edge (clear of the door lintel).
+    internal const float CellsPanelCeilingClearance = 0.45f;
+
     private readonly WarmupSafezoneConfig _config;
     private readonly WarmupLocalization _localization;
     private readonly List<AdminToy> _toys = new();
@@ -239,11 +243,10 @@ internal sealed class SafezoneVisualService
         foreach (Vector3 exit in exits)
         {
             Vector3 outward = ExitNormal(exit, tile);
-            Vector3 anchor = new(exit.x, room.Position.y + CellsPanelHeight, exit.z);
             // Text reads correctly when the camera looks along its forward axis: the outer label faces a player
             // walking in, the inner label a player walking out.
-            CreateCellsPanelFace(anchor, outward, Quaternion.LookRotation(-outward), text);
-            CreateCellsPanelFace(anchor, -outward, Quaternion.LookRotation(outward), text);
+            CreateCellsPanelFace(CellsPanelAnchor(exit, outward, room.Position.y), outward, Quaternion.LookRotation(-outward), text);
+            CreateCellsPanelFace(CellsPanelAnchor(exit, -outward, room.Position.y), -outward, Quaternion.LookRotation(outward), text);
         }
     }
 
@@ -269,6 +272,18 @@ internal sealed class SafezoneVisualService
             null,
             new Vector3(Scp914PanelTextScale, Scp914PanelTextScale, Scp914PanelTextScale),
             Scp914PanelTextDisplaySize);
+    }
+
+    private static Vector3 CellsPanelAnchor(Vector3 exit, Vector3 side, float floorY)
+    {
+        float height = CellsPanelHeight;
+        Vector3 probe = new Vector3(exit.x, floorY + 1.5f, exit.z) + side;
+        if (Physics.Raycast(probe, Vector3.up, out RaycastHit hit, 5f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            height = Mathf.Min(height, hit.point.y - floorY - CellsPanelCeilingClearance);
+        }
+
+        return new Vector3(exit.x, floorY + height, exit.z);
     }
 
     private static Vector3 ExitNormal(Vector3 exit, Bounds tile)
