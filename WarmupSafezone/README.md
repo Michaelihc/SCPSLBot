@@ -63,7 +63,7 @@ Player notices use the repository's stable-tag HintDisplayProvider pattern throu
 - `"cn"`: force Chinese.
 - `""`: match the client when a supported server API becomes available; LabAPI 1.1.6/1.1.7 exposes no synchronized client-language property, so the current fallback is Chinese.
 
-The SCP-914 door panel is one shared network object and therefore uses the configured/fallback server language for everyone. Its two non-collidable backing faces render at 10× their original width and height with a thin depth, while the text retains its normal scale; this visual-only backing scale does not alter the native SCP-914 safezone bounds.
+The SCP-914 door panel is one shared network object and therefore uses the configured/fallback server language for everyone. Each of its two faces has a thin, opaque, non-collidable plate just behind the text (4 m × 1.6 m), so the gate stays visible around it and the plate hides the mirrored text of the opposite face; the plate does not alter the native SCP-914 safezone bounds.
 
 ## Configuration
 
@@ -131,7 +131,7 @@ ptest run warmup-safezone-914 standard
 ptest run warmup-safezone-actions standard
 ```
 
-The playtests check the four-way SCP-914 damage policy, immediate-egress protection that survives a cancelled native role request, unchanged native spawn-protection statics, untouched externally owned godmode, non-collidable 10× panels, native surface-bound alignment, a downward ground raycast at every escape-zone centre, SCP-class blocker drain through Hume Shield, a real SCP-173 utility ability, and native SCP-244 start cancellation with the exact item retained. A real client is still required to verify sign readability and input feel.
+The playtests check the four-way SCP-914 damage policy, immediate-egress protection that survives a cancelled native role request, unchanged native spawn-protection statics, untouched externally owned godmode, non-collidable text-sized panel plates, native surface-bound alignment, a downward ground raycast at every escape-zone centre, SCP-class blocker drain through Hume Shield, a real SCP-173 utility ability, and native SCP-244 start cancellation with the exact item retained. A real client is still required to verify sign readability and input feel.
 
 ## Known conflicts
 
@@ -212,7 +212,7 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 - `"cn"`：强制中文。
 - `""`：在服务端 API 可用时匹配客户端；LabAPI 1.1.6/1.1.7 暂无同步的客户端语言属性，因此当前回退中文。
 
-SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置语言或回退语言。两面的无碰撞背景宽度和高度按原尺寸的 10 倍渲染、厚度保持很薄，文字保持正常尺寸；背景调整只影响视觉，不会改变 SCP-914 原生安全区边界。
+SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置语言或回退语言。两面各在文字正后方放一块薄的不透明无碰撞底板（4 米 × 1.6 米），门的其余部分保持可见，底板也会挡住另一面的镜像文字；底板只影响视觉，不会改变 SCP-914 原生安全区边界。
 
 ## 配置
 
@@ -232,7 +232,7 @@ ptest run warmup-safezone-914 standard
 ptest run warmup-safezone-actions standard
 ```
 
-场景检查 SCP-914 四向伤害矩阵、取消原生角色请求后仍有效的立即离区保护、原生出生保护静态值未改变、外部无敌未被改写、10 倍门牌无碰撞、地表视觉与原生边界一致、每个逃生区中心的向下地面射线、SCP 穿过 Hume 护盾的防堵生命流失、SCP-914 内真实的 SCP-173 工具型能力，以及 SCP-244 原生使用开始被取消且原物品仍保留。标牌可读性和真实输入手感仍需真实客户端确认。
+场景检查 SCP-914 四向伤害矩阵、取消原生角色请求后仍有效的立即离区保护、原生出生保护静态值未改变、外部无敌未被改写、门牌底板无碰撞、地表视觉与原生边界一致、每个逃生区中心的向下地面射线、SCP 穿过 Hume 护盾的防堵生命流失、SCP-914 内真实的 SCP-173 工具型能力，以及 SCP-244 原生使用开始被取消且原物品仍保留。标牌可读性和真实输入手感仍需真实客户端确认。
 
 ## 已知冲突
 

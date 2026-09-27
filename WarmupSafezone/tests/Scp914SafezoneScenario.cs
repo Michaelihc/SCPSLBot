@@ -191,7 +191,7 @@ public sealed class Scp914SafezoneScenario : Scenario
 
         PrimitiveObjectToy[] backings = PrimitiveObjectToy.List
             .Where(toy => toy.Parent == null
-                && Vector3.Distance(toy.Position, panelCenter) < 1f
+                && Vector3.Distance(toy.Position, panelCenter) < 2.5f
                 && toy.Type == PrimitiveType.Cube
                 && toy.Color.a > 0.9f)
             .ToArray();
@@ -199,10 +199,10 @@ public sealed class Scp914SafezoneScenario : Scenario
         ctx.Require(backings.All(toy => (toy.Flags & PrimitiveFlags.Collidable) == 0),
             "SCP-914 panel must not alter the gate collision path");
         ctx.Require(backings.All(toy =>
-                Approximately(toy.Scale.x, 11.5f)
-                && Approximately(toy.Scale.y, 5.5f)
+                Approximately(toy.Scale.x, 4f)
+                && Approximately(toy.Scale.y, 1.6f)
                 && Approximately(toy.Scale.z, 0.025f)),
-            "SCP-914 panel backing face is not scaled to 10x with a thin depth");
+            "SCP-914 panel backing is not the thin text-sized plate");
         ctx.Require(labels.All(toy =>
                 Approximately(toy.Scale.x, 0.12f)
                 && Approximately(toy.Scale.y, 0.12f)
