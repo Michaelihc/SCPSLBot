@@ -25,6 +25,7 @@ public sealed class WarmupSafezonePlugin : Plugin<WarmupSafezoneConfig>
     internal int VisualToyCount => _visuals?.LiveToyCount ?? 0;
     internal string Scp914GateDescription => _visuals?.Describe914Gate() ?? "none";
     internal string ClassDCellsDescription => _visuals?.DescribeClassDCells() ?? "none";
+    internal SafezoneVolumeService? Volumes { get; private set; }
 
     public override string Name => "WarmupSafezone";
     public override string Description => "Surface escape, SCP-914 and Class-D cells safezone rules and visuals.";
@@ -51,6 +52,7 @@ public sealed class WarmupSafezonePlugin : Plugin<WarmupSafezoneConfig>
             WarmupLocalization localization = new(Config.Language);
             Config.HintDisplay ??= new HintDisplayConfig();
             SafezoneVolumeService volumes = new(Config);
+            Volumes = volumes;
             ExitProtectionService exitProtection = new(Config, clock);
             _occupancy = new SafezoneOccupancyService(volumes, exitProtection);
             _ownedDamage = new OwnedDamageRegistry();

@@ -1,7 +1,8 @@
 param($Context)
 # Real-client walkthrough of WarmupSafezone visuals and the narrowed throw policy.
 # 1. Class-D cells: native ClassD spawn; look around; a pistol shot shows the blocked-action hint;
-#    noclip to the nearest exit on the safezone grid cell and film the cyan boundary from both sides.
+#    noclip to the exit and film the cyan boundary from both sides; the far end of the room (outside
+#    its main grid cell) must still report ClassDCells membership.
 # 2. SCP-914: gate panel from inside the room; blocked shot hint; SCP-018, SCP-2176, flash and frag
 #    throws and SCP-018/SCP-2176 T tosses are cancelled and kept; a medkit toss completes.
 # 3. Surface: the configured boundary wall and label, then walking across it.
@@ -84,12 +85,12 @@ Mark 'cells-shot'
 
 # Cells boundary: noclip from the spawn to the exit nearest the cell, film the boundary from inside,
 # cross it and film it from outside.
-$tile=[regex]::Match($results.status,'classd_cells_tile=x=([-\d.]+)\.\.([-\d.]+) z=([-\d.]+)\.\.([-\d.]+) floor=([-\d.]+) exits=\[([^\]]*)\]')
+$tile=[regex]::Match($results.status,'classd_cells_tile=x=([-\d.]+)\.\.([-\d.]+) z=([-\d.]+)\.\.([-\d.]+) floor=([-\d.]+) room_bounds=x=([-\d.]+)\.\.([-\d.]+),z=([-\d.]+)\.\.([-\d.]+) exits=\[([^\]]*)\]')
 if(-not $tile.Success) { throw "Class-D cells tile missing from status: $($results.status)" }
 $center=@{x=([double]$tile.Groups[1].Value+[double]$tile.Groups[2].Value)/2;z=([double]$tile.Groups[3].Value+[double]$tile.Groups[4].Value)/2}
 $floor=[double]$tile.Groups[5].Value
 $spawn=(Actor).position
-$exits=@([regex]::Matches($tile.Groups[6].Value,'\(([-\d.]+),([-\d.]+),([-\d.]+)\)') | ForEach-Object { @{x=[double]$_.Groups[1].Value;y=[double]$_.Groups[2].Value;z=[double]$_.Groups[3].Value} })
+$exits=@([regex]::Matches($tile.Groups[10].Value,'\(([-\d.]+),([-\d.]+),([-\d.]+)\)') | ForEach-Object { @{x=[double]$_.Groups[1].Value;y=[double]$_.Groups[2].Value;z=[double]$_.Groups[3].Value} })
 $results.cellsTile=$tile.Value
 if($exits.Count -eq 0) { throw 'No Class-D cells exit found on the safezone cell edge' }
 $exit=$exits | Sort-Object { Flat $_ $spawn } | Select-Object -First 1
@@ -111,6 +112,23 @@ $null=Fly-To $outsidePoint
 $null=Set-LabAim -Target @{x=$exit.x;y=$floor+1.3;z=$exit.z}
 $null=Invoke-LabInput @{id='cells-boundary-outside';frames=90;capture=$true}
 $null=Invoke-LabScreenshot -Name 'cells-boundary-outside'
+
+# The safezone is the whole cells room, not only its main grid cell: fly to the far end of the room
+# (outside the main cell) and require ClassDCells membership there.
+$roomMin=@{x=[double]$tile.Groups[6].Value;z=[double]$tile.Groups[8].Value}
+$roomMax=@{x=[double]$tile.Groups[7].Value;z=[double]$tile.Groups[9].Value}
+if($dir.x -ne 0) { $far=@{x=$(if($dir.x -gt 0){$roomMin.x+4}else{$roomMax.x-4});z=$center.z} } else { $far=@{x=$center.x;z=$(if($dir.z -gt 0){$roomMin.z+4}else{$roomMax.z-4})} }
+$results.cellsFarPoint=$far
+$null=Fly-To $far 1.0
+$farActor=Actor
+$farPlace=Place $farActor.position
+$results.cellsFarRoom=$farPlace.room.name
+$results.cellsFarStatus=Server "safezone status $id"
+Save
+if($farPlace.room.name -ne 'LczClassDSpawn') { throw "Far point is not inside the Class-D cells room: $($farPlace.room.name)" }
+if($results.cellsFarStatus -notmatch 'membership=[^ ]*ClassDCells') { throw "Far end of the Class-D cells is not a safezone: $($results.cellsFarStatus)" }
+if([Math]::Abs($farActor.position.x-$center.x) -lt 7.5 -and [Math]::Abs($farActor.position.z-$center.z) -lt 7.5) { throw 'Far point stayed inside the main grid cell; it does not prove whole-room coverage' }
+$null=Invoke-LabScreenshot -Name 'cells-far-end'
 $null=Invoke-LabInput @{frames=20;inputFrames=2;keys=@(308)}
 $null=Server "/noclip $id 0"
 Mark 'cells-boundary'

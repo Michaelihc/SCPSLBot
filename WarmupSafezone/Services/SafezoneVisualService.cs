@@ -194,22 +194,33 @@ internal sealed class SafezoneVisualService
             return;
         }
 
-        // One face just inside and one just outside each edge, so the bound shows in front of a
-        // closed door that sits exactly on the grid edge from either side.
+        // The safezone is the whole room, so the bound is drawn only across main-tile edges that hold an
+        // exit door. One face just inside and one just outside, so it shows in front of a closed door that
+        // sits exactly on the grid edge from either side.
         const float height = 5f;
         const float thickness = 0.04f;
         const float offset = 0.25f;
         Color color = new(0.25f, 0.85f, 1f, 0.35f);
         Bounds tile = ClassDCellsTile.FloorBounds(coords, room.Position.y);
         float y = room.Position.y + (height * 0.5f) - 0.2f;
+        List<Vector3> exits = ExitDoorPositions(room, tile).ToList();
         foreach (float side in new[] { -offset, offset })
         {
-            CreateWall(new Vector3(tile.center.x, y, tile.min.z - side), new Vector3(tile.size.x, height, thickness), color);
-            CreateWall(new Vector3(tile.center.x, y, tile.max.z + side), new Vector3(tile.size.x, height, thickness), color);
-            CreateWall(new Vector3(tile.min.x - side, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
-            CreateWall(new Vector3(tile.max.x + side, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
+            if (exits.Any(p => Mathf.Abs(p.z - tile.min.z) < 1f))
+                CreateWall(new Vector3(tile.center.x, y, tile.min.z - side), new Vector3(tile.size.x, height, thickness), color);
+            if (exits.Any(p => Mathf.Abs(p.z - tile.max.z) < 1f))
+                CreateWall(new Vector3(tile.center.x, y, tile.max.z + side), new Vector3(tile.size.x, height, thickness), color);
+            if (exits.Any(p => Mathf.Abs(p.x - tile.min.x) < 1f))
+                CreateWall(new Vector3(tile.min.x - side, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
+            if (exits.Any(p => Mathf.Abs(p.x - tile.max.x) < 1f))
+                CreateWall(new Vector3(tile.max.x + side, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
         }
     }
+
+    private static IEnumerable<Vector3> ExitDoorPositions(Room room, Bounds tile) => room.Doors
+        .Where(door => door != null && !door.IsDestroyed)
+        .Select(door => door.Position)
+        .Where(p => Mathf.Min(Mathf.Abs(p.x - tile.min.x), Mathf.Abs(p.x - tile.max.x), Mathf.Abs(p.z - tile.min.z), Mathf.Abs(p.z - tile.max.z)) < 1f);
 
     public string DescribeClassDCells()
     {
@@ -219,12 +230,10 @@ internal sealed class SafezoneVisualService
         }
 
         Bounds tile = ClassDCellsTile.FloorBounds(coords, room.Position.y);
-        IEnumerable<string> exits = room.Doors
-            .Where(door => door != null && !door.IsDestroyed)
-            .Select(door => door.Position)
-            .Where(p => Mathf.Min(Mathf.Abs(p.x - tile.min.x), Mathf.Abs(p.x - tile.max.x), Mathf.Abs(p.z - tile.min.z), Mathf.Abs(p.z - tile.max.z)) < 1f)
+        Bounds whole = ClassDCellsTile.RoomBounds();
+        IEnumerable<string> exits = ExitDoorPositions(room, tile)
             .Select(p => FormattableString.Invariant($"({p.x:0.##},{p.y:0.##},{p.z:0.##})"));
-        return FormattableString.Invariant($"x={tile.min.x:0.##}..{tile.max.x:0.##} z={tile.min.z:0.##}..{tile.max.z:0.##} floor={room.Position.y:0.##} exits=[{string.Join(";", exits)}]");
+        return FormattableString.Invariant($"x={tile.min.x:0.##}..{tile.max.x:0.##} z={tile.min.z:0.##}..{tile.max.z:0.##} floor={room.Position.y:0.##} room_bounds=x={whole.min.x:0.##}..{whole.max.x:0.##},z={whole.min.z:0.##}..{whole.max.z:0.##} exits=[{string.Join(";", exits)}]");
     }
 
     private string CellsSignature(bool hasCellsTile) =>

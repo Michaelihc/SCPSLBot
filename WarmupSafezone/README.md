@@ -8,7 +8,7 @@
 
 - The configured Surface escape safezone uses `surface_escape_safezone_axis`, its threshold, and `surface_escape_safezone_min_x`, restoring the original large Surface zone and boundary wall. Current LabAPI `Map.EscapeZones` remain protected as an additional fallback.
 - The SCP-914 safezone uses SCP-914's native calculated room bounds, verified again through native room resolution.
-- The Class-D cells safezone is the native 15 m × 15 m grid cell of the `LczClassDSpawn` room (`RoomUtils.PositionToCoords`), so players respawning in the cells cannot be camped. A translucent non-collidable cyan boundary marks that square with one face just inside and one just outside each edge, so it shows in front of the exit door from either side.
+- The Class-D cells safezone is the whole `LczClassDSpawn` room, resolved with the native `RoomUtils.TryGetRoom` (grid coordinates, then the room's own floor/ceiling raycast), because the cells extend past the room's main 15 m grid cell. Players respawning in any cell cannot be camped. A translucent non-collidable cyan boundary is drawn across each main-cell edge that holds an exit door, with one face just inside and one just outside, so it shows in front of the exit door from either side.
 
 The plugin never enables native godmode and never writes the process-wide `SpawnProtected` settings. Protection is decided synchronously in LabAPI damage/action events. After a player leaves any safezone, a private monotonic per-player expiry temporarily blocks both incoming and outgoing damage.
 
@@ -110,7 +110,7 @@ The axis/threshold/minimum-X fields control the restored Surface gameplay volume
 
 The default hint layout keeps HSM's centre alignment and middle anchor while using explicit X/Y values and a transparent 49-column tail on every row. This places visible text in a compact top-left lane without changing HSM's centred text-area model. The localized fixtures, ten 1920x1080 collision-gated renders, and exact measured bounds are under `tests/ui`.
 
-There are no player commands. The read-only RA/server-console command `safezone status` reports the plugin version, which safezones are enabled, the blocked projectile list, the live visual toy count, the SCP-914 gate position and the Class-D cells square.
+There are no player commands. The read-only RA/server-console command `safezone status [playerId]` reports the plugin version, which safezones are enabled, the blocked projectile and drop lists, the live visual toy count, the SCP-914 gate position and the Class-D cells room; with a player ID it also reports that player's position and current safezone membership.
 
 ## Build and test
 
@@ -158,7 +158,7 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 
 - 地表逃生安全区重新使用 `surface_escape_safezone_axis`、阈值与 `surface_escape_safezone_min_x`，恢复原来的大范围地表安全区和边界墙；LabAPI `Map.EscapeZones` 当前登记的边界仍作为额外保护回退。
 - SCP-914 安全区使用 SCP-914 原生计算的房间边界，并再次通过原生房间解析确认玩家确实位于该房间。
-- D 级人员牢房安全区是 `LczClassDSpawn` 房间所在的原生 15 米 × 15 米网格单元（`RoomUtils.PositionToCoords`），防止在牢房重生的玩家被蹲守。半透明、无碰撞的青色边界在每条边内外各有一面，因此从门的任一侧都能在出口门前看到该范围。
+- D 级人员牢房安全区是整个 `LczClassDSpawn` 房间，使用原生 `RoomUtils.TryGetRoom`（先按网格坐标，再对房间自身地板/天花板射线检测）判定，因为牢房超出了该房间主 15 米网格单元。在任意牢房重生的玩家都不会被蹲守。半透明、无碰撞的青色边界只画在含出口门的主网格边上，内外各一面，因此从门的任一侧都能在出口门前看到。
 
 插件不会开启原生无敌，也不会写入进程级 `SpawnProtected` 设置。伤害与操作事件会同步判断保护状态。玩家离开任一安全区后，插件使用私有的、基于单调时钟的玩家到期时间，暂时同时阻止其造成和受到伤害。
 
@@ -220,7 +220,7 @@ SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置
 
 默认提示保持 HSM 居中对齐和中部锚点，通过明确的 X/Y 坐标，并在每一行末尾加入 49 列透明占位，把可见文字放入紧凑的左上安全区域，同时不破坏 HSM 的居中文本区模型。中英文测试夹具、十张 1920x1080 碰撞检查截图及精确测量结果位于 `tests/ui`。
 
-本插件没有玩家命令。只读的 RA/服务器控制台命令 `safezone status` 会显示插件版本、已启用的安全区、禁止投掷的抛射物列表、当前可视物体数量、SCP-914 大门位置以及 D 级人员牢房安全区范围。
+本插件没有玩家命令。只读的 RA/服务器控制台命令 `safezone status [玩家ID]` 会显示插件版本、已启用的安全区、禁止投掷与丢弃的物品列表、当前可视物体数量、SCP-914 大门位置以及 D 级人员牢房房间范围；指定玩家 ID 时还会显示该玩家的位置和当前所属安全区。
 
 ## 构建与测试
 

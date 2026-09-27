@@ -226,8 +226,17 @@ public sealed class Scp914SafezoneScenario : Scenario
                 && (Math.Abs(Math.Abs(toy.Position.x - center.x) - half) < 0.4f && Math.Abs(toy.Position.z - center.z) < 0.1f
                     || Math.Abs(Math.Abs(toy.Position.z - center.z) - half) < 0.4f && Math.Abs(toy.Position.x - center.x) < 0.1f))
             .ToArray();
-        ctx.Info($"safezone classd cells boundary faces={faces.Length} tileCenter=({center.x:0.##},{center.z:0.##})");
-        ctx.Require(faces.Length == 8, $"expected inner and outer Class-D cells boundary faces on all four grid edges, observed {faces.Length}");
+        int exitEdges = cells.Doors
+            .Where(door => door != null && !door.IsDestroyed)
+            .Select(door => door.Position)
+            .Select(p => Math.Abs(Math.Abs(p.x - center.x) - half) < 1f ? (p.x > center.x ? "+x" : "-x")
+                : Math.Abs(Math.Abs(p.z - center.z) - half) < 1f ? (p.z > center.z ? "+z" : "-z") : null)
+            .Where(edge => edge != null)
+            .Distinct()
+            .Count();
+        ctx.Info($"safezone classd cells boundary faces={faces.Length} exitEdges={exitEdges} tileCenter=({center.x:0.##},{center.z:0.##})");
+        ctx.Require(exitEdges > 0, "Class-D cells room has no exit door on its main grid cell edge");
+        ctx.Require(faces.Length == 2 * exitEdges, $"expected inner and outer Class-D cells boundary faces on each exit edge only, observed {faces.Length} for {exitEdges} exit edge(s)");
         ctx.Require(faces.All(toy => (toy.Flags & PrimitiveFlags.Collidable) == 0), "Class-D cells boundary must not collide");
     }
 

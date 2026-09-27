@@ -105,8 +105,7 @@ internal sealed class SafezoneVolumeService
     // Membership is exactly the Class-D spawn room's native grid cell (RoomUtils.PositionToCoords),
     // the same square SafezoneVisualService draws, so the visible bound is the enforced bound.
     public bool ContainsClassDCells(Player player) => IsEligible(player)
-        && ClassDCellsTile.TryGet(out Vector3Int coords, out _)
-        && RoomUtils.PositionToCoords(player.Position) == coords;
+        && ClassDCellsTile.Contains(player.Position);
 
     public bool ContainsSurfaceBlocker(Player player)
     {

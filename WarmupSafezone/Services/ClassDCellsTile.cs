@@ -34,6 +34,13 @@ internal static class ClassDCellsTile
         return true;
     }
 
+    // The Class-D spawn room extends past its main grid tile, so membership uses the native room lookup
+    // (grid coords, then the room's own floor/ceiling raycast) rather than the main tile alone.
+    public static bool Contains(Vector3 position)
+        => TryGet(out _, out _) && RoomUtils.TryGetRoom(position, out RoomIdentifier found) && found == _cached;
+
+    public static Bounds RoomBounds() => _cached != null ? _cached.WorldspaceBounds : default;
+
     public static Bounds FloorBounds(Vector3Int coords, float floorY)
     {
         Vector3 center = RoomUtils.CoordsToCenterPos(coords);

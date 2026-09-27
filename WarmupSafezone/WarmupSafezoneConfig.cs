@@ -12,7 +12,7 @@ public sealed class WarmupSafezoneConfig
 
     public bool Scp914SafezoneEnabled { get; set; } = true;
 
-    [Description("Treats the native grid cell of the LCZ Class-D spawn room as a safezone, with a visible boundary, so respawning players cannot be camped.")]
+    [Description("Treats the whole LCZ Class-D spawn room as a safezone, with a visible boundary at its exit, so respawning players cannot be camped.")]
     public bool ClassDCellsSafezoneEnabled { get; set; } = true;
 
     [Description("Native ItemType names of projectiles a safezone-restricted player may not throw. Other throws and item tosses are allowed; their damage is still blocked by the safezone damage policy.")]
