@@ -43,6 +43,9 @@
     <Reference Include="UnityEngine.CoreModule">
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <Private>false</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="netstandard" />
     <Reference Include="System" />
