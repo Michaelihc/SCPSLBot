@@ -3,7 +3,7 @@ param($Context)
 # 1. Class-D cells: native ClassD spawn; look around; a pistol shot shows the blocked-action hint;
 #    noclip to the nearest exit on the safezone grid cell and film the cyan boundary from both sides.
 # 2. SCP-914: gate panel from inside the room; blocked shot hint; SCP-018, SCP-2176, flash and frag
-#    throws are cancelled and kept; a medkit toss completes.
+#    throws and SCP-018/SCP-2176 T tosses are cancelled and kept; a medkit toss completes.
 # 3. Surface: the configured boundary wall and label, then walking across it.
 . 'C:/Users/Michael/source-from-fsp9-2026-08-15/scpsl-plugins-metarepo/.tests/offline-clients/tools/host-aim.ps1'
 $id=$Context.Actor.id
@@ -156,6 +156,19 @@ foreach($case in @(@{id=31;type='SCP018'},@{id=43;type='SCP2176'},@{id=26;type='
     if(-not $kept) { throw "$($case.type) throw from SCP-914 was not cancelled" }
 }
 Mark '914-blocked-throws'
+
+# Native T toss (the drop path) of SCP-018 and SCP-2176 is also cancelled.
+$results.blockedToss=[ordered]@{}
+foreach($case in @(@{id=31;type='SCP018'},@{id=43;type='SCP2176'})) {
+    Hold-Only $case.id $case.type 103
+    $null=Invoke-LabInput @{id="914-toss-$($case.type.ToLowerInvariant())";frames=120;inputFrames=2;keys=@(116);capture=$true;audio=$true}
+    Start-Sleep -Seconds 1
+    $kept=Has-Item $case.type
+    $results.blockedToss[$case.type]=$kept
+    Save
+    if(-not $kept) { throw "$($case.type) T toss from SCP-914 was not cancelled" }
+}
+Mark '914-blocked-tosses'
 
 Hold-Only 14 'Medkit' 120
 $null=Invoke-LabInput @{id='914-toss-medkit';frames=120;inputFrames=2;keys=@(116);capture=$true;audio=$true}

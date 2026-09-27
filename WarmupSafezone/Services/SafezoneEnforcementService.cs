@@ -32,6 +32,7 @@ internal sealed class SafezoneEnforcementService
     private readonly Dictionary<int, long> _lastActionHintMilliseconds = new();
     private readonly Core.IMonotonicClock _clock;
     private readonly ProjectileBlockList _blockedProjectiles;
+    private readonly ProjectileBlockList _blockedDrops;
     private bool _enabled;
 
     public SafezoneEnforcementService(
@@ -53,13 +54,9 @@ internal sealed class SafezoneEnforcementService
         _localization = localization;
         _clock = clock;
         _blockedProjectiles = new ProjectileBlockList(config.SafezoneBlockedProjectiles);
-        foreach (string name in _blockedProjectiles.Names)
-        {
-            if (!Enum.TryParse(name, ignoreCase: true, out ItemType _))
-            {
-                LabApi.Features.Console.Logger.Warn($"[WarmupSafezone] safezone_blocked_projectiles entry '{name}' is not a native ItemType and is ignored.");
-            }
-        }
+        _blockedDrops = new ProjectileBlockList(config.SafezoneBlockedDrops);
+        WarnUnknownItemTypes("safezone_blocked_projectiles", _blockedProjectiles);
+        WarnUnknownItemTypes("safezone_blocked_drops", _blockedDrops);
     }
 
     public void Enable()
@@ -79,6 +76,7 @@ internal sealed class SafezoneEnforcementService
         PlayerEvents.ItemUsageEffectsApplying += OnItemUsageEffectsApplying;
         PlayerEvents.ProcessingJailbirdMessage += OnProcessingJailbirdMessage;
         PlayerEvents.ThrowingProjectile += OnThrowingProjectile;
+        PlayerEvents.DroppingItem += OnDroppingItem;
         PlayerEvents.Left += OnLeft;
         PlayerEvents.Dying += OnDying;
         PlayerEvents.ChangingRole += OnChangingRole;
@@ -117,6 +115,7 @@ internal sealed class SafezoneEnforcementService
         PlayerEvents.ChangedRole -= OnChangedRole;
         PlayerEvents.Dying -= OnDying;
         PlayerEvents.Left -= OnLeft;
+        PlayerEvents.DroppingItem -= OnDroppingItem;
         PlayerEvents.ThrowingProjectile -= OnThrowingProjectile;
         PlayerEvents.ProcessingJailbirdMessage -= OnProcessingJailbirdMessage;
         PlayerEvents.ItemUsageEffectsApplying -= OnItemUsageEffectsApplying;
@@ -269,6 +268,27 @@ internal sealed class SafezoneEnforcementService
         if (ev.ThrowableItem != null && _blockedProjectiles.Contains(ev.ThrowableItem.Type.ToString()))
         {
             CancelRestrictedAction(ev.Player, SafezoneActionKind.Throwable, () => ev.IsAllowed = false);
+        }
+    }
+
+    // Native drop and T toss share CmdDropItem -> PlayerDroppingItem (tryThrow selects the toss), so one
+    // cancellation covers both. A tossed SCP-018 or SCP-2176 pickup still activates on impact.
+    private void OnDroppingItem(PlayerDroppingItemEventArgs ev)
+    {
+        if (ev.Item != null && _blockedDrops.Contains(ev.Item.Type.ToString()))
+        {
+            CancelRestrictedAction(ev.Player, SafezoneActionKind.Throwable, () => ev.IsAllowed = false);
+        }
+    }
+
+    private static void WarnUnknownItemTypes(string key, ProjectileBlockList list)
+    {
+        foreach (string name in list.Names)
+        {
+            if (!Enum.TryParse(name, ignoreCase: true, out ItemType _))
+            {
+                LabApi.Features.Console.Logger.Warn($"[WarmupSafezone] {key} entry '{name}' is not a native ItemType and is ignored.");
+            }
         }
     }
 

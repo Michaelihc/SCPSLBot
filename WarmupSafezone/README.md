@@ -32,6 +32,7 @@ The explicit action matrix is:
 - Firearms and dry-fire: denied while protected.
 - Tossing ordinary items (keycards, medkits, weapons): allowed.
 - Projectiles listed in `safezone_blocked_projectiles` (default SCP-018, SCP-2176, flashbangs and frag grenades): the throw is cancelled and the item stays in the inventory.
+- Items listed in `safezone_blocked_drops` (default SCP-018 and SCP-2176): dropping or tossing them with T is cancelled and the item stays in the inventory.
 - Other throwables such as snowballs: allowed, but their damage is blocked by the damage policy above while the thrower is protected.
 - SCP-244 use is denied both at native use start and again at the completion boundary; the 250 ms dangerous-item recovery pass also stops an active use carried across a safezone boundary.
 - Micro H.I.D. and Jailbird charge/fire: denied and an active charge is stopped.
@@ -76,6 +77,7 @@ scp914_safezone_panel_text_english: "SAFE ZONE\nDAMAGE BLOCKED"
 scp914_safezone_panel_text_chinese: "安全区\n禁止造成或受到伤害"
 class_d_cells_safezone_enabled: true
 safezone_blocked_projectiles: [SCP018, SCP2176, GrenadeFlash, GrenadeHE]
+safezone_blocked_drops: [SCP018, SCP2176]
 safezone_visuals_enabled: true
 
 surface_escape_safezone_health_drain_enabled: false
@@ -178,6 +180,7 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 - 枪械射击与空仓击发：受保护时禁止。
 - 扔出普通物品（钥匙卡、医疗包、武器）：允许。
 - `safezone_blocked_projectiles` 中列出的抛射物（默认 SCP-018、SCP-2176、闪光弹与手雷）：投掷被取消，物品保留在背包中。
+- `safezone_blocked_drops` 中列出的物品（默认 SCP-018 与 SCP-2176）：丢弃或按 T 抛出均被取消，物品保留在背包中。
 - 雪球等其他投掷物：允许投掷，但投掷者受保护期间其伤害会被上述伤害规则阻止。
 - SCP-244 在原生使用开始和完成边界都会被阻止；250 毫秒危险物品恢复检查还会停止跨越安全区边界后仍处于使用状态的 SCP-244。
 - Micro H.I.D. 与 Jailbird 蓄力/攻击：禁止并停止当前蓄力。

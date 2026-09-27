@@ -18,6 +18,9 @@ public sealed class WarmupSafezoneConfig
     [Description("Native ItemType names of projectiles a safezone-restricted player may not throw. Other throws and item tosses are allowed; their damage is still blocked by the safezone damage policy.")]
     public List<string> SafezoneBlockedProjectiles { get; set; } = new() { "SCP018", "SCP2176", "GrenadeFlash", "GrenadeHE" };
 
+    [Description("Native ItemType names a safezone-restricted player may not drop or toss (T). The item stays in the inventory.")]
+    public List<string> SafezoneBlockedDrops { get; set; } = new() { "SCP018", "SCP2176" };
+
     public string Scp914SafezonePanelTextEnglish { get; set; } = "SAFE ZONE\nDAMAGE BLOCKED";
 
     public string Scp914SafezonePanelTextChinese { get; set; } = "安全区\n禁止造成或受到伤害";
