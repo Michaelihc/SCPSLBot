@@ -170,8 +170,9 @@ internal sealed class SafezoneVisualService
         backing.Type = PrimitiveType.Cube;
         backing.Flags = PrimitiveFlags.Visible;
         // Translucent so the gate stays visible through the panel. Transparent toys sort by centre distance, so the
-        // text must stay Scp914PanelTextGap in front of the backing to draw over it.
-        backing.Color = new Color(0.02f, 0.14f, 0.17f, 0.45f);
+        // text must stay Scp914PanelTextGap in front of the backing to draw over it. 0.45 let the mirrored far-side
+        // text show through both backings; at 0.75 two layers pass about 6% of it.
+        backing.Color = new Color(0.02f, 0.14f, 0.17f, 0.75f);
         backing.IsStatic = true;
         backing.SyncInterval = 0f;
         backing.Spawn();
