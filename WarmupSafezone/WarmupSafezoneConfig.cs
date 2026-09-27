@@ -21,6 +21,7 @@ public sealed class WarmupSafezoneConfig
     [Description("Native ItemType names a safezone-restricted player may not drop or toss (T). The item stays in the inventory.")]
     public List<string> SafezoneBlockedDrops { get; set; } = new() { "SCP018", "SCP2176" };
 
+    [Description("Panel text shown on the SCP-914 gate and above the Class-D cells exits.")]
     public string Scp914SafezonePanelTextEnglish { get; set; } = "SAFE ZONE\nDAMAGE BLOCKED";
 
     public string Scp914SafezonePanelTextChinese { get; set; } = "安全区\n禁止造成或受到伤害";

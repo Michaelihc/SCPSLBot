@@ -31,10 +31,17 @@ internal sealed class SafezoneVisualService
     // Clearance, in gate-local units, between the text and its backing; 0.02 let the backing hide the text.
     internal const float Scp914PanelTextGap = 0.15f;
 
+    // Cells name plates reuse the 914 plate and text size. Each exit gets one plate and label per side, just
+    // outside the boundary faces (0.25 m either side of the edge) and above the door, so the doorway stays clear.
+    internal const float CellsPanelPlateOffset = 0.3f;
+    internal const float CellsPanelTextOffset = 0.4f;
+    internal const float CellsPanelHeight = 3.1f;
+
     private readonly WarmupSafezoneConfig _config;
     private readonly WarmupLocalization _localization;
     private readonly List<AdminToy> _toys = new();
     private readonly List<(string Kind, Vector3 Position)> _panelParts = new();
+    private readonly List<(string Kind, Vector3 Position)> _cellsPanelParts = new();
     private string _renderedSurfaceSignature = string.Empty;
 
     public SafezoneVisualService(
@@ -73,7 +80,7 @@ internal sealed class SafezoneVisualService
         Door? scp914Gate = _config.Scp914SafezoneEnabled ? Door.Get(DoorName.Lcz914Gate) : null;
         int expected914Toys = scp914Gate != null && !scp914Gate.IsDestroyed ? 4 : 0;
         bool hasCellsTile = _config.ClassDCellsSafezoneEnabled && ClassDCellsTile.TryGet(out _, out _);
-        int expectedCellsToys = hasCellsTile ? 8 : 0;
+        int expectedCellsToys = hasCellsTile ? ExpectedCellsToys() : 0;
         string surfaceSignature = SurfaceSignature() + "|" + CellsSignature(hasCellsTile);
         int expectedSurfaceToys = SurfaceSafezoneGeometry.NormalizeAxis(_config.SurfaceEscapeSafezoneAxis) == "z" ? 3 : 4;
         bool geometryChanged = !string.Equals(_renderedSurfaceSignature, surfaceSignature, StringComparison.Ordinal);
@@ -112,6 +119,7 @@ internal sealed class SafezoneVisualService
 
         _toys.Clear();
         _panelParts.Clear();
+        _cellsPanelParts.Clear();
         _renderedSurfaceSignature = string.Empty;
     }
 
@@ -151,11 +159,14 @@ internal sealed class SafezoneVisualService
     private void CreateSurfaceLabel(Vector3 position, Quaternion rotation, string text) =>
         CreateWorldLabel(position, rotation, text, null, new Vector3(0.32f, 0.32f, 0.32f), new Vector2(80f, 4f));
 
+    // The cells follow the same damage rule as SCP-914, so both panels show the same configured text.
+    private string SafezonePanelText() => _localization.Shared(
+        NormalizeLegacyPanelText(_config.Scp914SafezonePanelTextEnglish, false),
+        NormalizeLegacyPanelText(_config.Scp914SafezonePanelTextChinese, true));
+
     private void CreateScp914Panel(Door door)
     {
-        string english = NormalizeLegacyPanelText(_config.Scp914SafezonePanelTextEnglish, false);
-        string chinese = NormalizeLegacyPanelText(_config.Scp914SafezonePanelTextChinese, true);
-        string text = _localization.Shared(english, chinese);
+        string text = SafezonePanelText();
         // Text reads correctly when the camera looks along its forward axis, so each face's text
         // sits on its outer side and points back toward the gate.
         CreatePanelFace(door.Transform, Scp914PanelFaceOffset, Quaternion.Euler(0f, 180f, 0f), text);
@@ -223,6 +234,67 @@ internal sealed class SafezoneVisualService
             if (exits.Any(p => Mathf.Abs(p.x - tile.max.x) < 1f))
                 CreateWall(new Vector3(tile.max.x + side, y, tile.center.z), new Vector3(thickness, height, tile.size.z), color);
         }
+
+        string text = SafezonePanelText();
+        foreach (Vector3 exit in exits)
+        {
+            Vector3 outward = ExitNormal(exit, tile);
+            Vector3 anchor = new(exit.x, room.Position.y + CellsPanelHeight, exit.z);
+            // Text reads correctly when the camera looks along its forward axis: the outer label faces a player
+            // walking in, the inner label a player walking out.
+            CreateCellsPanelFace(anchor, outward, Quaternion.LookRotation(-outward), text);
+            CreateCellsPanelFace(anchor, -outward, Quaternion.LookRotation(outward), text);
+        }
+    }
+
+    private void CreateCellsPanelFace(Vector3 anchor, Vector3 side, Quaternion rotation, string text)
+    {
+        PrimitiveObjectToy plate = PrimitiveObjectToy.Create(anchor + side * CellsPanelPlateOffset, rotation, Scp914PanelPlateSize, null, false);
+        plate.Type = PrimitiveType.Cube;
+        plate.Flags = PrimitiveFlags.Visible;
+        // Opaque for the same reason as the 914 plate: it hides the mirrored label on the other side.
+        plate.Color = new Color(0.02f, 0.14f, 0.17f, 1f);
+        plate.IsStatic = true;
+        plate.SyncInterval = 0f;
+        plate.Spawn();
+        _toys.Add(plate);
+        _cellsPanelParts.Add(("plate", plate.Position));
+
+        Vector3 textPosition = anchor + side * CellsPanelTextOffset;
+        _cellsPanelParts.Add(("text", textPosition));
+        CreateWorldLabel(
+            textPosition,
+            rotation,
+            text,
+            null,
+            new Vector3(Scp914PanelTextScale, Scp914PanelTextScale, Scp914PanelTextScale),
+            Scp914PanelTextDisplaySize);
+    }
+
+    private static Vector3 ExitNormal(Vector3 exit, Bounds tile)
+    {
+        (float distance, Vector3 normal)[] edges =
+        {
+            (Mathf.Abs(exit.x - tile.min.x), Vector3.left),
+            (Mathf.Abs(exit.x - tile.max.x), Vector3.right),
+            (Mathf.Abs(exit.z - tile.min.z), Vector3.back),
+            (Mathf.Abs(exit.z - tile.max.z), Vector3.forward),
+        };
+        return edges.OrderBy(edge => edge.distance).First().normal;
+    }
+
+    // Two boundary faces per exit edge plus a plate and label on each side of every exit.
+    private static int ExpectedCellsToys()
+    {
+        if (!ClassDCellsTile.TryGet(out Vector3Int coords, out Room? room) || room == null)
+        {
+            return 0;
+        }
+
+        Bounds tile = ClassDCellsTile.FloorBounds(coords, room.Position.y);
+        List<Vector3> exits = ExitDoorPositions(room, tile).ToList();
+        int edges = exits.Select(exit => ExitNormal(exit, tile)).Distinct().Count();
+        return (2 * edges) + (4 * exits.Count);
     }
 
     private static IEnumerable<Vector3> ExitDoorPositions(Room room, Bounds tile) => room.Doors
@@ -241,7 +313,9 @@ internal sealed class SafezoneVisualService
         Bounds whole = ClassDCellsTile.RoomBounds();
         IEnumerable<string> exits = ExitDoorPositions(room, tile)
             .Select(p => FormattableString.Invariant($"({p.x:0.##},{p.y:0.##},{p.z:0.##})"));
-        return FormattableString.Invariant($"x={tile.min.x:0.##}..{tile.max.x:0.##} z={tile.min.z:0.##}..{tile.max.z:0.##} floor={room.Position.y:0.##} room_bounds=x={whole.min.x:0.##}..{whole.max.x:0.##},z={whole.min.z:0.##}..{whole.max.z:0.##} exits=[{string.Join(";", exits)}]");
+        IEnumerable<string> panels = _cellsPanelParts
+            .Select(part => FormattableString.Invariant($"{part.Kind}=({part.Position.x:0.##},{part.Position.y:0.##},{part.Position.z:0.##})"));
+        return FormattableString.Invariant($"x={tile.min.x:0.##}..{tile.max.x:0.##} z={tile.min.z:0.##}..{tile.max.z:0.##} floor={room.Position.y:0.##} room_bounds=x={whole.min.x:0.##}..{whole.max.x:0.##},z={whole.min.z:0.##}..{whole.max.z:0.##} exits=[{string.Join(";", exits)}] panels=[{string.Join(";", panels)}]");
     }
 
     private string CellsSignature(bool hasCellsTile) =>
