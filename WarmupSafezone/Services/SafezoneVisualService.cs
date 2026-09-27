@@ -26,7 +26,7 @@ internal sealed class SafezoneVisualService
     // Wide enough that each configured panel line stays on one line at the normal text scale.
     internal static readonly Vector2 Scp914PanelTextDisplaySize = new(240f, 60f);
 
-    // Clearance, in gate-local units, between the text and its opaque backing; 0.02 let the backing hide the text.
+    // Clearance, in gate-local units, between the text and its backing; 0.02 let the backing hide the text.
     internal const float Scp914PanelTextGap = 0.15f;
 
     private readonly WarmupSafezoneConfig _config;
@@ -169,8 +169,9 @@ internal sealed class SafezoneVisualService
             false);
         backing.Type = PrimitiveType.Cube;
         backing.Flags = PrimitiveFlags.Visible;
-        // Fully opaque: a translucent backing is sorted with the transparent text and can draw over it.
-        backing.Color = new Color(0.02f, 0.14f, 0.17f, 1f);
+        // Translucent so the gate stays visible through the panel. Transparent toys sort by centre distance, so the
+        // text must stay Scp914PanelTextGap in front of the backing to draw over it.
+        backing.Color = new Color(0.02f, 0.14f, 0.17f, 0.45f);
         backing.IsStatic = true;
         backing.SyncInterval = 0f;
         backing.Spawn();
