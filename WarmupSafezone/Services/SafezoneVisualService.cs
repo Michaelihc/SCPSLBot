@@ -16,12 +16,9 @@ namespace ScpslPluginStarter.Services;
 
 internal sealed class SafezoneVisualService
 {
-    // Opaque plate sized to the two text lines (about 2.9 m x 0.85 m as rendered) plus a margin, so the gate stays
-    // visible around it while the plate still hides the mirrored text of the opposite face.
-    internal static readonly Vector3 Scp914PanelPlateSize = new(4f, 3f, 0.025f);
-
-    // The text block renders about 1.65 m below its toy anchor; the plate is centred on the rendered text.
-    internal const float Scp914PanelPlateDrop = 1f;
+    // Opaque plate sized to the two text lines (about 1.1 m x 0.3 m as rendered, centred on the text anchor) plus a
+    // margin, so the gate stays visible around it while the plate still hides the opposite face's mirrored text.
+    internal static readonly Vector3 Scp914PanelPlateSize = new(1.7f, 0.6f, 0.025f);
     internal const float Scp914PanelTextScale = 0.12f;
 
     // The closed gate leaves extend up to about 0.36 gate-local units either side of the origin; both faces sit
@@ -171,7 +168,7 @@ internal sealed class SafezoneVisualService
     {
         Quaternion rotation = door.rotation * localRotation;
         PrimitiveObjectToy backing = PrimitiveObjectToy.Create(
-            door.TransformPoint(new Vector3(0f, 1.85f, localZ)) + Vector3.down * Scp914PanelPlateDrop,
+            door.TransformPoint(new Vector3(0f, 1.85f, localZ)),
             rotation,
             Scp914PanelPlateSize,
             null,
