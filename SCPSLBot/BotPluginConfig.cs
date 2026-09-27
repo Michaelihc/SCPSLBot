@@ -73,7 +73,7 @@ namespace SCPSLBot
 
         public bool DisableScp207HealthDrainInWarmup { get; set; } = true;
 
-        [Description("Enables periodic overflow checks. When loose pickups grow beyond the round baseline plus the configured threshold, native item, corpse, blood, and bullet-hole cleanup runs. / 启用定期溢出检查。当散落物品数超过本回合基线与配置阈值之和时，执行原生物品、尸体、血迹和弹孔清理。")]
+        [Description("Enables periodic overflow checks. When loose pickups grow beyond the round baseline plus the configured threshold, native item, corpse, blood, and bullet-hole cleanup runs and all repairable doors are repaired. / 启用定期溢出检查。当散落物品数超过本回合基线与配置阈值之和时，执行原生物品、尸体、血迹和弹孔清理，并修复所有可修复的门。")]
         public bool EnableOverflowCleanup { get; set; } = true;
 
         [Description("Number of loose pickups allowed above the current round baseline before native cleanup runs. / 触发原生清理前，相对本回合基线允许增加的散落物品数量。")]

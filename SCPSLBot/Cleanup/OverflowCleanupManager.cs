@@ -1,5 +1,6 @@
 using CommandSystem;
 using CommandSystem.Commands.RemoteAdmin.Cleanup;
+using CommandSystem.Commands.RemoteAdmin.Doors;
 using InventorySystem.Items.Pickups;
 using LabApi.Events.Handlers;
 using MEC;
@@ -121,13 +122,14 @@ namespace SCPSLBot.Cleanup
             ExecuteNativeCommand(new CorpsesCommand(), "corpses");
             ExecuteNativeCommand(new BloodCommand(), "blood");
             ExecuteNativeCommand(new BulletHolesCommand(), "bullet holes");
+            ExecuteNativeCommand(new RepairDoorCommand(), "repair doors", "**");
             Logger.Info($"[SCPSLBot] Native overflow cleanup ran at {itemCount} items ({excessItemCount} above baseline {baselineCount}, threshold {threshold}).");
         }
 
-        private void ExecuteNativeCommand(ICommand command, string label)
+        private void ExecuteNativeCommand(ICommand command, string label, params string[] arguments)
         {
             bool success = command.Execute(
-                new ArraySegment<string>(Array.Empty<string>()),
+                new ArraySegment<string>(arguments),
                 commandSender,
                 out string response);
             if (!success)

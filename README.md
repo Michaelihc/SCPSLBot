@@ -186,7 +186,7 @@ panel:
   arena_switch_cooldown_seconds: 5
 ```
 
-`enable_overflow_cleanup` checks loose pickups on the configured interval. When the count grows by more than `cleanup_item_threshold` above the current round baseline, SCPSLBot invokes the game's native item, corpse, blood, and bullet-hole cleanup commands, then captures a new baseline. `controls` contains item policy, native spawn-anchor overrides, the three physical arena presets, cooldown groups, allowed item roles/zones, and limits; its legacy role allowlists no longer gate role selection. `panel` contains SSS presentation plus legacy loadout data retained only for config compatibility; no loadout control is shown. High-impact items share a 60-second cooldown, remain limited to one per life, and use a practical per-round ceiling of 999 for long-running warmup rounds; debug entries are filtered. Review these gameplay defaults before production deployment.
+`enable_overflow_cleanup` checks loose pickups on the configured interval. When the count grows by more than `cleanup_item_threshold` above the current round baseline, SCPSLBot invokes the game's native item, corpse, blood, and bullet-hole cleanup commands plus `repair **` for all repairable doors (named and unnamed), then captures a new baseline. `controls` contains item policy, native spawn-anchor overrides, the three physical arena presets, cooldown groups, allowed item roles/zones, and limits; its legacy role allowlists no longer gate role selection. `panel` contains SSS presentation plus legacy loadout data retained only for config compatibility; no loadout control is shown. High-impact items share a 60-second cooldown, remain limited to one per life, and use a practical per-round ceiling of 999 for long-running warmup rounds; debug entries are filtered. Review these gameplay defaults before production deployment.
 
 Every product exposes `language`, where `"en"` forces English, `"cn"` forces Chinese, and `""` uses a client-language seam when available with Chinese fallback. See [WarmupSafezone/README.md](WarmupSafezone/README.md) and [StatsBots/README.md](StatsBots/README.md) for their full configuration.
 
@@ -367,7 +367,7 @@ panel:
   arena_switch_cooldown_seconds: 5
 ```
 
-`enable_overflow_cleanup` 会按配置间隔检查散落物品。当数量相对本回合基线增加超过 `cleanup_item_threshold` 时，SCPSLBot 会调用游戏原生的物品、尸体、血迹和弹孔清理命令，然后重新记录基线。`controls` 包含物品策略、原生出生锚点覆盖、三个实体竞技场预设、共享冷却组、允许物品角色/区域和次数限制；其中旧版角色允许列表不再限制角色选择。`panel` 包含 SSS 显示设置，以及仅为配置兼容而保留的旧版装备预设数据；玩家界面不会显示装备预设控件。高影响物品共享 60 秒冷却、每条生命限 1 个，并为长期热身回合使用每回合 999 个的实用上限；调试项会被过滤。正式服部署前请检查这些玩法默认值。
+`enable_overflow_cleanup` 会按配置间隔检查散落物品。当数量相对本回合基线增加超过 `cleanup_item_threshold` 时，SCPSLBot 会调用游戏原生的物品、尸体、血迹和弹孔清理命令，并调用 `repair **` 修复所有可修复的门（包括命名和未命名的门），然后重新记录基线。`controls` 包含物品策略、原生出生锚点覆盖、三个实体竞技场预设、共享冷却组、允许物品角色/区域和次数限制；其中旧版角色允许列表不再限制角色选择。`panel` 包含 SSS 显示设置，以及仅为配置兼容而保留的旧版装备预设数据；玩家界面不会显示装备预设控件。高影响物品共享 60 秒冷却、每条生命限 1 个，并为长期热身回合使用每回合 999 个的实用上限；调试项会被过滤。正式服部署前请检查这些玩法默认值。
 
 每个产品都提供 `language`：`"en"` 强制英文，`"cn"` 强制中文，`""` 在服务器 API 可用时匹配客户端，否则回退中文。完整配置请查看 [WarmupSafezone/README.md](WarmupSafezone/README.md) 和 [StatsBots/README.md](StatsBots/README.md)。
 
