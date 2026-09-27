@@ -200,7 +200,7 @@ public sealed class Scp914SafezoneScenario : Scenario
             "SCP-914 panel must not alter the gate collision path");
         ctx.Require(backings.All(toy =>
                 Approximately(toy.Scale.x, 4f)
-                && Approximately(toy.Scale.y, 1.6f)
+                && Approximately(toy.Scale.y, 3f)
                 && Approximately(toy.Scale.z, 0.025f)),
             "SCP-914 panel backing is not the thin text-sized plate");
         ctx.Require(labels.All(toy =>

@@ -18,10 +18,10 @@ internal sealed class SafezoneVisualService
 {
     // Opaque plate sized to the two text lines (about 2.9 m x 0.85 m as rendered) plus a margin, so the gate stays
     // visible around it while the plate still hides the mirrored text of the opposite face.
-    internal static readonly Vector3 Scp914PanelPlateSize = new(4f, 1.6f, 0.025f);
+    internal static readonly Vector3 Scp914PanelPlateSize = new(4f, 3f, 0.025f);
 
     // The text block renders about 1.65 m below its toy anchor; the plate is centred on the rendered text.
-    internal const float Scp914PanelPlateDrop = 1.65f;
+    internal const float Scp914PanelPlateDrop = 1f;
     internal const float Scp914PanelTextScale = 0.12f;
 
     // The closed gate leaves extend up to about 0.36 gate-local units either side of the origin; both faces sit
@@ -37,6 +37,7 @@ internal sealed class SafezoneVisualService
     private readonly WarmupSafezoneConfig _config;
     private readonly WarmupLocalization _localization;
     private readonly List<AdminToy> _toys = new();
+    private readonly List<(string Kind, Vector3 Position)> _panelParts = new();
     private string _renderedSurfaceSignature = string.Empty;
 
     public SafezoneVisualService(
@@ -59,7 +60,9 @@ internal sealed class SafezoneVisualService
 
         Vector3 p = gate.Transform.position;
         Vector3 f = gate.Transform.forward;
-        return FormattableString.Invariant($"({p.x:0.##},{p.y:0.##},{p.z:0.##}) forward=({f.x:0.##},{f.y:0.##},{f.z:0.##})");
+        Vector3 s = gate.Transform.lossyScale;
+        string faces = string.Join(";", _panelParts.Select(part => FormattableString.Invariant($"{part.Kind}=({part.Position.x:0.##},{part.Position.y:0.##},{part.Position.z:0.##})")));
+        return FormattableString.Invariant($"({p.x:0.##},{p.y:0.##},{p.z:0.##}) forward=({f.x:0.##},{f.y:0.##},{f.z:0.##}) scale=({s.x:0.##},{s.y:0.##},{s.z:0.##}) panel=[{faces}]");
     }
 
     public void Ensure()
@@ -111,6 +114,7 @@ internal sealed class SafezoneVisualService
         }
 
         _toys.Clear();
+        _panelParts.Clear();
         _renderedSurfaceSignature = string.Empty;
     }
 
@@ -181,8 +185,10 @@ internal sealed class SafezoneVisualService
         backing.SyncInterval = 0f;
         backing.Spawn();
         _toys.Add(backing);
+        _panelParts.Add(("plate", backing.Position));
 
         float textZ = localZ > 0f ? localZ + Scp914PanelTextGap : localZ - Scp914PanelTextGap;
+        _panelParts.Add(("text", door.TransformPoint(new Vector3(0f, 1.85f, textZ))));
         CreateWorldLabel(
             door.TransformPoint(new Vector3(0f, 1.85f, textZ)),
             rotation,

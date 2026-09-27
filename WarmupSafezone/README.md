@@ -63,7 +63,7 @@ Player notices use the repository's stable-tag HintDisplayProvider pattern throu
 - `"cn"`: force Chinese.
 - `""`: match the client when a supported server API becomes available; LabAPI 1.1.6/1.1.7 exposes no synchronized client-language property, so the current fallback is Chinese.
 
-The SCP-914 door panel is one shared network object and therefore uses the configured/fallback server language for everyone. Each of its two faces has a thin, opaque, non-collidable plate just behind the text (4 m × 1.6 m), so the gate stays visible around it and the plate hides the mirrored text of the opposite face; the plate does not alter the native SCP-914 safezone bounds.
+The SCP-914 door panel is one shared network object and therefore uses the configured/fallback server language for everyone. Each of its two faces has a thin, opaque, non-collidable plate just behind the text (4 m × 3 m), so the gate stays visible around it and the plate hides the mirrored text of the opposite face; the plate does not alter the native SCP-914 safezone bounds.
 
 ## Configuration
 
@@ -212,7 +212,7 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 - `"cn"`：强制中文。
 - `""`：在服务端 API 可用时匹配客户端；LabAPI 1.1.6/1.1.7 暂无同步的客户端语言属性，因此当前回退中文。
 
-SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置语言或回退语言。两面各在文字正后方放一块薄的不透明无碰撞底板（4 米 × 1.6 米），门的其余部分保持可见，底板也会挡住另一面的镜像文字；底板只影响视觉，不会改变 SCP-914 原生安全区边界。
+SCP-914 门牌是所有客户端共享的网络物体，只能统一使用配置语言或回退语言。两面各在文字正后方放一块薄的不透明无碰撞底板（4 米 × 3 米），门的其余部分保持可见，底板也会挡住另一面的镜像文字；底板只影响视觉，不会改变 SCP-914 原生安全区边界。
 
 ## 配置
 
