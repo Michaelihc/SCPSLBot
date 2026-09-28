@@ -1,6 +1,6 @@
 param($Context)
 $ErrorActionPreference = 'Stop'
-$actor = @(Observe)[0]
+$actor = @(Observe | Where-Object id -eq $Context.Actor.id)[0]
 if (-not $actor.ready) { throw 'Connected client is not ready' }
 
 $warmup = (Invoke-LabServer '/bot_warmup standard') -join "`n"
@@ -16,6 +16,10 @@ Invoke-LabInput @{id='bot-hud-expiry';frames=300;capture=$true} | Out-Null
 Invoke-LabScreenshot -Name bot_hud_after_expiry | Out-Null
 
 # Exercise WarmupSafezone's actual blocked-action hint in native Class-D cells.
+# End the arena phase so it no longer relocates the player's native spawn.
+Invoke-LabServer '/bot_warmup none' | Out-Null
+$mode = (Invoke-LabServer '/bot_warmup') -join "`n"
+if ($mode -notmatch 'Current warmup mode is None') { throw "Warmup arena did not stop: $mode" }
 Invoke-LabServer '/roundlock on' | Out-Null
 Invoke-LabServer '/forcestart' | Out-Null
 Start-Sleep -Seconds 4
