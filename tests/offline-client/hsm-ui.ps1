@@ -14,3 +14,20 @@ $status = (Invoke-LabServer '/bot_status') -join "`n"
 if ($status -match 'does not exist|Unknown command') { throw "Bot status unavailable: $status" }
 Invoke-LabInput @{id='bot-hud-expiry';frames=300;capture=$true} | Out-Null
 Invoke-LabScreenshot -Name bot_hud_after_expiry | Out-Null
+
+# Exercise WarmupSafezone's actual blocked-action hint in native Class-D cells.
+Invoke-LabServer '/roundlock on' | Out-Null
+Invoke-LabServer '/forcestart' | Out-Null
+Start-Sleep -Seconds 4
+Invoke-LabServer "/forcerole $($actor.id) ClassD" | Out-Null
+Start-Sleep -Seconds 2
+$safezone = (Invoke-LabServer "safezone status $($actor.id)") -join "`n"
+if ($safezone -notmatch 'ClassDCells') { throw "Class-D cells fixture was not active: $safezone" }
+Invoke-LabServer "/god $($actor.id) 1" | Out-Null
+Invoke-LabServer "/strip $($actor.id)" | Out-Null
+Invoke-LabServer "/give $($actor.id) 13" | Out-Null # Native GunCOM15.
+Invoke-LabInput @{frames=40;inputFrames=2;keys=@(49)} | Out-Null
+$held = @(Observe | Where-Object id -eq $actor.id)[0].held
+if ($held -ne 'GunCOM15') { throw "Native pistol was not held: $held" }
+Invoke-LabInput @{id='safezone-blocked-action';frames=120;inputFrames=2;keys=@(323);capture=$true;audio=$true} | Out-Null
+Invoke-LabScreenshot -Name safezone_action_blocked | Out-Null
