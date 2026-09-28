@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <HsmAdapterProject Condition="'$(HsmAdapterProject)' == ''">$(MSBuildThisFileDirectory)..\..\HsmAdapter\HsmAdapter.csproj</HsmAdapterProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(HsmAdapterProject)" Private="false" />
+  </ItemGroup>
+  <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <Platforms>x64</Platforms>
     <AssemblyName>StatsBots</AssemblyName>

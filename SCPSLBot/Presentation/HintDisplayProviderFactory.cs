@@ -4,14 +4,7 @@ namespace SCPSLBot.Presentation
     {
         public static IHintDisplayProvider Create(HintDisplayConfig config)
         {
-            HsmHintDisplayProvider hsm = new(config);
-            if (hsm.TryInitialize(logResult: false))
-            {
-                return hsm;
-            }
-
-            return new NullHintDisplayProvider(
-                "HintServiceMeow.dll is missing or its required API is incompatible.");
+            return new HsmHintDisplayProvider(config);
         }
     }
 }
