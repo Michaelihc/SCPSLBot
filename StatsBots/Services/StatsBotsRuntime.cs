@@ -39,7 +39,6 @@ internal sealed class StatsBotsRuntime
     private readonly Dictionary<ReferenceHub, double> _joinedAt = new();
     private readonly Dictionary<ReferenceHub, AnnouncementSession> _announcements = new();
     private readonly Dictionary<string, Queue<ScoreMutation>> _pending = new(StringComparer.Ordinal);
-    private readonly Dictionary<ReferenceHub, string> _lastHero = new();
     private readonly Dictionary<ReferenceHub, ProviderState> _providerStates = new();
     private readonly object _mutationGate = new();
     private CoroutineHandle _loop;
@@ -114,7 +113,6 @@ internal sealed class StatsBotsRuntime
             _announcements.Clear();
             _pending.Clear();
             _pendingCount = 0;
-            _lastHero.Clear();
             _providerStates.Clear();
             _preferences.Clear();
             _duplicates.Clear();
@@ -303,7 +301,6 @@ internal sealed class StatsBotsRuntime
         {
             _hints.Remove(player, "hero");
             _hints.Remove(player, "footer");
-            _lastHero.Remove(player.ReferenceHub);
             return;
         }
 
@@ -345,15 +342,9 @@ internal sealed class StatsBotsRuntime
             footer = _text.Pick(player, "SSS · Choose an unlocked title", "SSS · 选择已解锁称号" );
         }
 
-        hero = PadRows(hero);
-        footer = PadRows(footer);
-        string snapshot = hero + "\n" + footer;
-        if (!_lastHero.TryGetValue(player.ReferenceHub, out string prior) || prior != snapshot)
-        {
-            _hints.Show(player, "hero", _config.HintDisplay.DefaultX, _config.HintDisplay.HeroY, _config.HintDisplay.HeroTextSize, hero);
-            _hints.Show(player, "footer", _config.HintDisplay.DefaultX, _config.HintDisplay.FooterY, _config.HintDisplay.FooterTextSize, footer);
-            if (_hints.IsAvailable) _lastHero[player.ReferenceHub] = snapshot;
-        }
+        // Show on every poll: HsmAdapter clears persistent hints on WaitingForPlayers and skips unchanged content.
+        _hints.Show(player, "hero", _config.HintDisplay.DefaultX, _config.HintDisplay.HeroY, _config.HintDisplay.HeroTextSize, PadRows(hero));
+        _hints.Show(player, "footer", _config.HintDisplay.DefaultX, _config.HintDisplay.FooterY, _config.HintDisplay.FooterTextSize, PadRows(footer));
     }
 
     private IEnumerator<float> Run()
@@ -395,7 +386,6 @@ internal sealed class StatsBotsRuntime
         _skill.OnLeft(ev.Player);
         _joinedAt.Remove(ev.Player.ReferenceHub);
         _announcements.Remove(ev.Player.ReferenceHub);
-        _lastHero.Remove(ev.Player.ReferenceHub);
         _providerStates.Remove(ev.Player.ReferenceHub);
         _preferences.Remove(ev.Player);
         _hints.Clear(ev.Player);
@@ -667,7 +657,6 @@ internal sealed class StatsBotsRuntime
     {
         Player? player = Player.Get(userId);
         if (player == null) return;
-        _lastHero.Remove(player.ReferenceHub);
         RefreshHud(player);
         _sss?.RequestRefresh(player, reason);
     }
