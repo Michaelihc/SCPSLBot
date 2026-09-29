@@ -91,14 +91,15 @@ namespace SCPSLBot.Presentation
             }
 
             string message = BuildBotDiagnostics(player, view);
-            ShowChanged(player, "admin.bot_diagnostics", message, 2.5f, config.SpectatorY, config.SpectatorTextSize);
+            // Timed lanes: re-show unchanged text to renew its expiry (HsmAdapter skips identical content).
+            ShowChanged(player, "admin.bot_diagnostics", message, 2.5f, config.SpectatorY, config.SpectatorTextSize, alwaysShow: true);
         }
 
         public void ShowNavDiagnostics(Player player, string message)
         {
             if (IsNavDiagnosticsEnabled(player))
             {
-                ShowChanged(player, "admin.nav_authoring", message, 2.5f, config.EditorY, config.SpectatorTextSize);
+                ShowChanged(player, "admin.nav_authoring", message, 2.5f, config.EditorY, config.SpectatorTextSize, alwaysShow: true);
             }
         }
 
@@ -149,12 +150,13 @@ namespace SCPSLBot.Presentation
             // currently being destroyed, eventually colliding with a recycled numeric player ID.
             // The client is leaving, so only forget our local presentation bookkeeping.
             sentText.Remove((hub, "admin.bot_diagnostics"));
+            sentText.Remove((hub, "admin.nav_authoring"));
         }
 
         public void ResetSpectators()
         {
             foreach ((ReferenceHub hub, string tag) in sentText.Keys
-                         .Where(key => key.Tag == "admin.bot_diagnostics")
+                         .Where(key => key.Tag == "admin.bot_diagnostics" || key.Tag == "admin.nav_authoring")
                          .ToArray())
             {
                 Player player = Player.Get(hub);
