@@ -8,11 +8,12 @@ StatsBots is the player-facing companion for SCPSLBot warmup. It records managed
 
 ### Install
 
-Build `StatsBots.csproj` for `Release|x64` and install `StatsBots.dll` as a LabAPI plugin. Runtime integrations are late-bound, so StatsBots builds without compile-time references to them, but the intended server package contains:
+Build `StatsBots.csproj` for `Release|x64` and install `StatsBots.dll` as a LabAPI plugin. The HsmAdapter project is a source build reference (`-p:HsmAdapterProject=<path>` from another checkout); the other integrations are late-bound. The intended server package contains:
 
 - `SCPSLBot.dll` exposing `SCPSLBot.Api.ManagedBotIdentity`;
 - `StatsSystem.dll` 2.2-compatible, using its default `player_stats` store;
 - `HintServiceMeow.dll` for the HUD (missing HSM fails quiet and never falls back to the shared native hint channel);
+- one matching `HsmAdapter.dll` for hint ownership and expiry;
 - the mainline `ServerKeybinds.dll` built from the metarepo `ServerKeybinds` project (provides `AddDropdownForPlayer`); exactly one copy per port.
 
 StatsSystem must have its lane/state environment configured normally. StatsBots never opens or copies StatsSystem's files.

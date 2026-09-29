@@ -11,6 +11,7 @@ This repository builds a LabAPI `net48` warmup suite for SCP: Secret Laboratory:
 - `StatsBots` records authenticated players' warmup bot score through the existing StatsSystem `player_stats` store, renders an HSM profile, manages unlockable titles, and schedules beginner/community notices.
 - `LabAPI_InfiniteAmmo` supplies reload-time reserve ammunition so warmup firefights do not end when finite role ammo is exhausted.
 - Personalized SSS uses the mainline `ServerKeybinds.dll`, built from the metarepo `ServerKeybinds` project (`../ServerKeybinds/ServerKeybinds.csproj`, overridable with `-p:ServerKeybindsProject=<path>`). It is the only SSS registry on the port.
+- Player text uses one `HsmAdapter.dll` per port, built from the metarepo `HsmAdapter` project (`../HsmAdapter/HsmAdapter.csproj`, overridable with `-p:HsmAdapterProject=<path>`), with HintServiceMeow as its renderer.
 
 The old `WarmupPlayerPanel` design is obsolete and must not be deployed with this suite.
 
@@ -211,7 +212,7 @@ node ..\.tests\lint-scenarios.js
 Build deployment is opt-in; the production solution excludes the in-server test and reload plugins. Test evidence and remaining live/manual gates are recorded in each product's `tests` directory. The navigation gates boot the isolated port 8891 against the patched server assets: `python tests/playtest/tools/check_connector_survey.py --scenario scpslbot-runtime-navmesh-gate` (readable meshes, coverage, links, door classes, budgets, long paths), `--scenario scpslbot-keycard-routing-survey` (denied/granted paths per keycard door), `--rounds 2` (native walking across every door-less connector on two map seeds) and `--scenario scpslbot-door-survey`; every driver verifies the asset patch first. See [tests/playtest/README.md](tests/playtest/README.md).
 
 The dedicated local bot-testing deployment is port `8888`. It carries the runtime suite, HSM,
-PlaytestHarness, and the bot/safezone scenario assemblies without DummyRoleFiller.
+HsmAdapter, PlaytestHarness, and the bot/safezone scenario assemblies without DummyRoleFiller.
 Start it with `tools\Start-BotTestServer8888.ps1`; the launcher supplies the lane-specific
 `SCPSL_OPS_STATE_ROOT` required by StatsSystem persistence and installs the mainline `ServerKeybinds.dll` under
 `dependencies/8888`. Local deployments keep `dependencies/global` empty so one lane cannot replace

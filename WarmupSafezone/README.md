@@ -55,7 +55,7 @@ The transparent Surface boundary wall follows the configured axis/threshold/mini
 
 ## Player text and language
 
-Player notices use the repository's stable-tag HintDisplayProvider pattern through HintServiceMeow. If HintServiceMeow is unavailable, notices are disabled while gameplay protection continues. WarmupSafezone contains no direct hint calls.
+Player notices use `HsmAdapter` scopes with stable tags and HintServiceMeow rendering. Install one matching `HsmAdapter.dll` per port; build from another checkout with `-p:HsmAdapterProject=<path to HsmAdapter.csproj>`. If HintServiceMeow is unavailable, notices are disabled while gameplay protection continues. WarmupSafezone contains no direct hint calls.
 
 `language` values:
 
