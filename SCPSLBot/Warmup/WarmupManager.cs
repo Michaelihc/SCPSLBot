@@ -5,6 +5,7 @@ using LabApi.Features.Wrappers;
 using PlayerRoles;
 using SCPSLBot.AI;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace SCPSLBot.Warmup
@@ -172,6 +173,48 @@ namespace SCPSLBot.Warmup
 
             response = $"Spawned independent bot player_id={hub.PlayerId} role={hub.roleManager.CurrentRole.RoleTypeId}.";
             return true;
+        }
+
+        /// <summary>
+        /// Explicit bulk spawn for load tests: bypasses the single-add independent cap (the caller bounds
+        /// <paramref name="count"/>) and requests <paramref name="role"/> through <see cref="BotOrders.SpawnBot"/>.
+        /// </summary>
+        public bool TryAddIndependentBots(int count, RoleTypeId role, out string response)
+        {
+            if (config == null)
+            {
+                response = "SCPSLBot is not loaded.";
+                return false;
+            }
+
+            int independentCount = Math.Max(0,
+                BotManager.Instance.BotPlayers.Count - botPopulation.GetDiagnostics().OwnedCount);
+            var spawned = new List<int>(count);
+            string failure = null;
+            for (int index = 0; index < count; index++)
+            {
+                try
+                {
+                    ReferenceHub hub = BotOrders.SpawnBot($"SCPSL Manual Bot {independentCount + index + 1}", role);
+                    if (hub == null)
+                    {
+                        failure = "spawn returned no dummy (network server not ready?)";
+                        break;
+                    }
+
+                    spawned.Add(hub.PlayerId);
+                }
+                catch (Exception exception)
+                {
+                    failure = $"{exception.GetType().Name}: {exception.Message}";
+                    break;
+                }
+            }
+
+            Logger.Info($"[BotOrders] BULK_ADD requested={count} spawned={spawned.Count} role={role} independent_before={independentCount} total_bots={BotManager.Instance.BotPlayers.Count} failure={failure ?? "none"}");
+            response = $"Spawned {spawned.Count}/{count} independent bots requesting role {role}: player_ids={string.Join(",", spawned)}."
+                       + (failure == null ? string.Empty : $" Stopped: {failure}");
+            return spawned.Count > 0;
         }
 
         public bool TryManageBot(int playerId, out string response)

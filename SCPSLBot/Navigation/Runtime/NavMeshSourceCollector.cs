@@ -446,12 +446,31 @@ namespace SCPSLBot.Navigation.Runtime
             // Stationary platforms must mark their complete toy hierarchy static.
             foreach (var toy in UnityEngine.Object.FindObjectsByType<AdminToyBase>(FindObjectsSortMode.None))
             {
-                if (toy != null && (!toy.IsStatic
-                    || toy is PrimitiveObjectToy primitive && (primitive.PrimitiveFlags & PrimitiveFlags.Collidable) == 0))
+                if (toy != null && !IsStaticGeometryToy(toy))
                 {
                     Ignore(toy.transform);
                 }
             }
+        }
+
+        /// <summary>Static toys may be navigation sources; non-static toys and non-collidable primitives never are.</summary>
+        public static bool IsStaticGeometryToy(AdminToyBase toy)
+        {
+            return toy.IsStatic
+                   && (toy is not PrimitiveObjectToy primitive || (primitive.PrimitiveFlags & PrimitiveFlags.Collidable) != 0);
+        }
+
+        /// <summary>
+        /// Whether spawning or removing <paramref name="toy"/> can change navigation. Colliderless
+        /// static toys (lights, speakers, text, waypoints) and every non-static or non-collidable toy
+        /// are skipped, so effect churn does not trigger reconciliations; a toy that turns static
+        /// later is still caught by the periodic reconciliation hash.
+        /// </summary>
+        public static bool CanChangeNavigation(AdminToyBase toy)
+        {
+            return toy != null
+                   && IsStaticGeometryToy(toy)
+                   && toy is not (LightSourceToy or SpeakerToy or TextToy or WaypointToy);
         }
 
         private void Ignore(Transform root)

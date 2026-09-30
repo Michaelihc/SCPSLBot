@@ -11,6 +11,7 @@ using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using RoundRestarting;
 using SCPSLBot.AI.FirstPersonControl;
+using SCPSLBot.AI.FirstPersonControl.Objectives;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
 using SCPSLBot.Components;
 using SCPSLBot.Infrastructure;
@@ -38,6 +39,7 @@ namespace SCPSLBot.AI
         public Dictionary<ReferenceHub, BotHub> BotPlayers { get; } = new(ManagedReferenceComparer<ReferenceHub>.Instance);
 
         private readonly Dictionary<ReferenceHub, BotOrderState> orders = new(ManagedReferenceComparer<ReferenceHub>.Instance);
+        private readonly Dictionary<ReferenceHub, BotObjectiveState> objectives = new(ManagedReferenceComparer<ReferenceHub>.Instance);
         private readonly Dictionary<ReferenceHub, RoleTypeId> requestedRoles = new(ManagedReferenceComparer<ReferenceHub>.Instance);
 
         private CoroutineHandle handle;
@@ -125,6 +127,7 @@ namespace SCPSLBot.AI
             SightSense.RetryPendingDisposals(force: true);
 
             orders.Clear();
+            objectives.Clear();
             requestedRoles.Clear();
             pathTarget = null;
             nextPathTargetUpdateTime = 0f;
@@ -148,6 +151,7 @@ namespace SCPSLBot.AI
             SightSense.RetryPendingDisposals(force: true);
 
             orders.Clear();
+            objectives.Clear();
             requestedRoles.Clear();
             pathTarget = null;
             nextPathTargetUpdateTime = 0f;
@@ -217,6 +221,7 @@ namespace SCPSLBot.AI
             {
                 Debug.LogException(exception);
                 orders.Remove(referenceHub);
+                objectives.Remove(referenceHub);
                 requestedRoles.Remove(referenceHub);
                 BotPlayers.Remove(referenceHub);
 
@@ -459,6 +464,7 @@ namespace SCPSLBot.AI
             }
 
             orders.Remove(userHub);
+            objectives.Remove(userHub);
             requestedRoles.Remove(userHub);
             if (BotPlayers.TryGetValue(userHub, out var botHub))
             {
@@ -524,6 +530,7 @@ namespace SCPSLBot.AI
                 return false;
             }
 
+            objectives.Remove(hub);
             var now = Time.time;
             var state = new BotOrderState
             {
@@ -545,11 +552,8 @@ namespace SCPSLBot.AI
             orders[hub] = state;
 
             var backend = NavigationSystem.Instance.Backend;
-            var capsule = (hub.roleManager.CurrentRole as FpcStandardRoleBase)?.FpcModule.CharacterControllerSettings;
             if (backend != null && NavigationSystem.Instance.IsReadyForCurrentMap
-                && !OrderGoalPolicy.IsOnNavigation(backend is RuntimeNavigationBackend,
-                    capsule?.Height ?? 0f, capsule?.Center.y ?? 0f, capsule?.SkinWidth ?? 0f,
-                    offset => backend.IsOnMesh(goal - Vector3.up * offset, 0.5f)))
+                && !IsGoalOnNavigation(hub, backend, goal))
             {
                 backend.TryGetNearestPoint(goal, 60f, out var nearest, out var nearestDistance);
                 state.Kind = BotOrderKind.FailedOffMesh;
@@ -565,6 +569,15 @@ namespace SCPSLBot.AI
             return true;
         }
 
+        /// <summary>Floor points and the actor's native standing-root points both count as on the navigation surface.</summary>
+        internal static bool IsGoalOnNavigation(ReferenceHub hub, INavigationBackend backend, Vector3 goal)
+        {
+            var capsule = (hub.roleManager.CurrentRole as FpcStandardRoleBase)?.FpcModule.CharacterControllerSettings;
+            return OrderGoalPolicy.IsOnNavigation(backend is RuntimeNavigationBackend,
+                capsule?.Height ?? 0f, capsule?.Center.y ?? 0f, capsule?.SkinWidth ?? 0f,
+                offset => backend.IsOnMesh(goal - Vector3.up * offset, 0.5f));
+        }
+
         public bool StopOrder(ReferenceHub hub, string reason)
         {
             if (hub == null || !BotPlayers.ContainsKey(hub))
@@ -572,6 +585,7 @@ namespace SCPSLBot.AI
                 return false;
             }
 
+            objectives.Remove(hub);
             if (!orders.TryGetValue(hub, out var state))
             {
                 state = new BotOrderState
@@ -608,6 +622,73 @@ namespace SCPSLBot.AI
 
             target = default;
             return false;
+        }
+
+        public bool SetObjective(ReferenceHub hub, Vector3 point, float engageRadius)
+        {
+            if (hub == null || !BotPlayers.ContainsKey(hub))
+            {
+                return false;
+            }
+
+            if (!BotObjectivePolicy.IsValidRequest(point.x, point.y, point.z, engageRadius))
+            {
+                LabLogger.Error($"[BotOrders] OBJECTIVE_REJECTED bot={BotName(hub)} point={Format(point)} radius={engageRadius} maxRadius={BotObjectivePolicy.MaxEngageRadius}");
+                return false;
+            }
+
+            orders.Remove(hub);
+            objectives[hub] = new BotObjectiveState(point, engageRadius, Time.time);
+            LabLogger.Info($"[BotOrders] OBJECTIVE bot={BotName(hub)} point={Format(point)} radius={engageRadius:F1} role={hub.roleManager?.CurrentRole?.RoleTypeId}");
+            return true;
+        }
+
+        public bool TryGetObjective(ReferenceHub hub, out BotObjectiveState state)
+            => objectives.TryGetValue(hub, out state);
+
+        public bool TryGetObjectiveStatus(ReferenceHub hub, out BotObjectiveStatus status)
+        {
+            if (hub == null || !objectives.TryGetValue(hub, out var state))
+            {
+                status = null;
+                return false;
+            }
+
+            var position = hub.transform.position;
+            status = new BotObjectiveStatus
+            {
+                Bot = hub,
+                Point = state.Point,
+                EngageRadius = state.EngageRadius,
+                Goal = state.Goal,
+                GoalResolved = state.GoalResolved,
+                GoalIsNearestPoint = state.GoalIsNearestPoint,
+                Phase = state.Policy.Phase,
+                AtNearestReachable = state.Policy.AtNearestReachable,
+                HasPath = state.HasPath,
+                DistanceRemaining = FpcBotObjective.GoalDistance(position, state.Goal),
+                ElapsedSeconds = Mathf.Max(0f, Time.time - state.IssuedAt),
+                StallCount = state.Policy.StallCount,
+                Engagements = state.Policy.Engagements,
+                Room = RoomNameAt(position),
+            };
+            return true;
+        }
+
+        /// <summary>Drops any order or objective; the bot resumes its normal AI next tick.</summary>
+        public bool ReleaseBot(ReferenceHub hub, string reason)
+        {
+            if (hub == null || !BotPlayers.TryGetValue(hub, out var botHub))
+            {
+                return false;
+            }
+
+            var hadOrder = orders.Remove(hub);
+            var hadObjective = objectives.Remove(hub);
+            botHub.FpcPlayer.Move.DesiredLocalDirection = Vector3.zero;
+            botHub.FpcPlayer.StuckRecovery.Reset();
+            LabLogger.Info($"[BotOrders] RELEASE bot={BotName(hub)} reason={reason} order={hadOrder} objective={hadObjective} pos={Format(hub.transform.position)}");
+            return true;
         }
 
         private const float NoPathGraceSeconds = 1.5f;
@@ -865,16 +946,16 @@ namespace SCPSLBot.AI
             LabLogger.Info($"[BotOrders] SUMMARY verdict={verdict} bot={BotName(hub)} order={state.Description} elapsed={Time.time - state.IssuedAt:F2} stalls={state.StallCount} doors={state.DoorsTraversed} maxTick={state.MaxTickDistance:F3} teleport={state.TeleportDetected} groundMisses={state.GroundProbeMisses} maxGround={state.MaxGroundDistance:F2} remaining={state.DistanceRemaining:F2} reason={state.FailureReason ?? "none"}");
         }
 
-        private static float HorizontalDistance(Vector3 a, Vector3 b)
+        internal static float HorizontalDistance(Vector3 a, Vector3 b)
             => Vector3.Distance(Vector3.ProjectOnPlane(a, Vector3.up), Vector3.ProjectOnPlane(b, Vector3.up));
 
-        private static string RoomNameAt(Vector3 position)
+        internal static string RoomNameAt(Vector3 position)
             => RoomUtils.TryGetRoom(position, out var room) && room != null ? room.Name.ToString() : "none";
 
-        private static string BotName(ReferenceHub hub)
+        internal static string BotName(ReferenceHub hub)
             => hub?.nicknameSync?.MyNick ?? hub?.PlayerId.ToString() ?? "null";
 
-        private static string Format(Vector3 value)
+        internal static string Format(Vector3 value)
             => $"({value.x:F2},{value.y:F2},{value.z:F2})";
 
         public bool TogglePathToTarget(ReferenceHub target)

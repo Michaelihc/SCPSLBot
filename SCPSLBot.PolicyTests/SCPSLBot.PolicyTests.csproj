@@ -21,8 +21,14 @@
     <Compile Include="..\SCPSLBot\Infrastructure\ManagedReferenceComparer.cs" Link="Infrastructure\ManagedReferenceComparer.cs" />
     <Compile Include="..\SCPSLBot\AI\FirstPersonControl\Combat\HumanWeaponReloadPolicy.cs"
              Link="CombatPolicy\HumanWeaponReloadPolicy.cs" />
+    <Compile Include="..\SCPSLBot\AI\FirstPersonControl\Combat\HostilityOverride.cs"
+             Link="CombatPolicy\HostilityOverride.cs" />
     <Compile Include="..\SCPSLBot\AI\FirstPersonControl\Movement\StuckRecoveryPolicy.cs"
              Link="MovementPolicy\StuckRecoveryPolicy.cs" />
+    <Compile Include="..\SCPSLBot\AI\BotObjectivePhase.cs" Link="ObjectivePolicy\BotObjectivePhase.cs" />
+    <Compile Include="..\SCPSLBot\AI\FirstPersonControl\Objectives\BotObjectivePolicy.cs"
+             Link="ObjectivePolicy\BotObjectivePolicy.cs" />
+    <Compile Include="..\SCPSLBot\AI\Commands\BotCommandParsing.cs" Link="Commands\BotCommandParsing.cs" />
     <Compile Include="..\SCPSLBot\Navigation\Policy\*.cs"
              Link="NavigationPolicy\%(Filename)%(Extension)" />
     <Compile Include="..\SCPSLBot\Navigation\Runtime\RuntimeNavigationTiming.cs"

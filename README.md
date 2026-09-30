@@ -53,7 +53,7 @@ Surface PvE managed CI bots use their exact native CI reinforcement spawn. Real 
 
 Navigation (default `navigation.backend: runtime`) is a Unity navmesh baked on the server for every generated map: two frames after generation the live physics colliders the human capsule collides with are collected (players, door leaves and glass, pickups, ragdolls, elevator chambers, invisible doorway blockers, the Surface helicopter, the capybara and non-collidable admin toys are excluded), built asynchronously off the main thread with the human capsule (radius 0.36 m plus 5 cm clearance, height 1.8 m, 0.3 m step, 45 degree slope, 9 cm voxels) and published as one navmesh. Every room, clutter connector, seasonal variant and mid-round geometry change is covered without per-type logic; rooms whose collider meshes still cannot be read fall back to a probed floor and are logged as `NAV_ROOM_PROBED`. Each elevator group receives a bidirectional link between the landings in front of its doors, so LCZ to HCZ and Surface routes plan through the checkpoint and gate elevators and the existing elevator behaviors take over at the link. Door-less clutter connectors the baked surface leaves sealed (huge pipes and similar jumpable clutter) are probed with the capsule and bridged with a jump-tier link through the probed band, which the stuck ladder's native jump crosses; connectors impassable at every tier are logged as `NAV_CONNECTOR_SEALED` and routed around. Keycard doors contribute an area per distinct permission class; a bot plans with an area mask built from its inventory and role, so a Class-D never plans through a Containment Level 2 door while a Scientist holding the card does (`navigation.keycard_area_routing`). Locked and unpowered doors are still handled at interaction time.
 
-The navmesh is reconciled with the live geometry every `navigation.reconcile_interval_seconds` (5 s) and immediately after admin toys, room connectors or breakable doors change; unchanged geometry costs only a source hash, and changed tiles are rebuilt asynchronously. A bot that reports a blocked crossing carves that spot out of the navmesh for `navigation.blocked_crossing_seconds` (45 s) so the next plan prefers another route. Server logs record `NAV_BAKE_START`, `NAV_BAKED`, `NAV_RECONCILE_START`, `NAV_RECONCILED`, `NAV_UNREADABLE_MESH`, `NAV_LINK` and `NAV_BAKE_FAILED`; `bot_status` exposes `nav_backend`, `nav_triangles`, `nav_unreadable_meshes`, `nav_links`, `nav_passage_links`, `nav_sealed_connectors`, `nav_last_bake_ms`, `nav_door_classes`, `nav_fallback_rooms`, `nav_uncovered_rooms`, `nav_island_samples`, `nav_reconciles`, `nav_reconcile_rebuilds` and `nav_obstacles`; `nav status`, `nav probe` and `nav path` give the details.
+The navmesh is reconciled with the live geometry every `navigation.reconcile_interval_seconds` (5 s) and immediately after static collidable admin toys spawn or despawn or room connectors or breakable doors change (other toys wait for the periodic check); unchanged geometry costs only a source hash, and changed tiles are rebuilt asynchronously. A bot that reports a blocked crossing carves that spot out of the navmesh for `navigation.blocked_crossing_seconds` (45 s) so the next plan prefers another route. Server logs record `NAV_BAKE_START`, `NAV_BAKED`, `NAV_RECONCILE_START`, `NAV_RECONCILED`, `NAV_UNREADABLE_MESH`, `NAV_LINK` and `NAV_BAKE_FAILED`; `bot_status` exposes `nav_backend`, `nav_triangles`, `nav_unreadable_meshes`, `nav_links`, `nav_passage_links`, `nav_sealed_connectors`, `nav_last_bake_ms`, `nav_door_classes`, `nav_fallback_rooms`, `nav_uncovered_rooms`, `nav_island_samples`, `nav_reconciles`, `nav_reconcile_rebuilds` and `nav_obstacles`; `nav status`, `nav probe` and `nav path` give the details.
 
 A bake that fails twice on a map falls back to the authored backend for that map (`NAV_BAKE_FALLBACK`). `navigation.backend: authored` keeps the previous hand-authored cell mesh for one release: SCPSLBot installs its embedded `Assets/navmesh.slnmf` on a fresh configuration, quarantines invalid live nav data with backup recovery, fills rooms without authored cells from live floor probes, links door-less connectors through capsule-probed passages and keeps the `nav` cell editor; `bot_status` then exposes `nav_generated_rooms`, `nav_probed_connectors`, `nav_sealed_connectors` and `nav_penalized_links`.
 
@@ -107,7 +107,8 @@ A round-owned service scans all participating ready real players every `respawn_
 | Command | Purpose | Permission |
 |---|---|---|
 | `bot_status` | Readiness, desired/tracked/owned/independent/live bots, nav generation, faults, runner heartbeat, resources | `FacilityManagement` |
-| `bot_add` | Spawn an independent AI bot (maximum 10 independent bots); RA role changes persist | `PlayersManagement` |
+| `bot_add [count] [role]` | Without arguments, spawn one independent AI bot (maximum 10 independent bots). With a count (1–40), spawn that many independent bots requesting a native first-person role (default `ChaosRifleman`) without the independent cap. RA role changes persist | `PlayersManagement` |
+| `bot_order <player ID|all> moveto <x> <y> <z> | hold | release | objective <x> <y> <z> <radius>` | Order one or every SCPSLBot bot to walk to a point, hold, return to its normal AI, or pursue an objective | `PlayersManagement` |
 | `bot_manage <player ID>` | Adopt an independent bot into a maintained population slot; at full population it replaces one managed bot | `PlayersManagement` |
 | `bot_unmanage <player ID>` | Release a maintained bot without despawning it; the controller creates a replacement | `PlayersManagement` |
 | `bot_warmup [none|standard]` | Query or change persisted mode | Query: none; change: `PlayersManagement` |
@@ -124,6 +125,26 @@ A round-owned service scans all participating ready real players every `respawn_
 | `statsbots status|grant|revoke <fullUserId> ...` | Inspect or administer warmup titles | configurable `statsbots.manage` |
 
 StatsBots admin commands require an exact full authenticated UserId; ambiguous nicknames and `ID_Dummy` are rejected.
+
+An objective (`bot_order ... objective`, `BotOrders.SetObjective`) walks a bot to a point and holds
+it there. The bot fights only hostiles in line of sight within the engage radius around itself
+(0 never fights, at most 1000 m) and otherwise keeps heading to or holding the point, so objective
+bots neither idle on Surface nor chase targets across it. An off-mesh point resolves to the nearest
+navmesh point; an unreachable point holds at the end of the reachable path and retries every
+5 seconds. A stalled walk re-plans, then avoids the blocked crossing, then resolves the goal again.
+The latest `moveto`, `hold`, `objective` or `release` replaces the previous order or objective.
+Objectives persist across role changes until released, the bot is removed or the round restarts.
+Server logs record `[BotOrders] OBJECTIVE`, `OBJECTIVE_NEAREST`, `OBJECTIVE_HOLD`,
+`OBJECTIVE_STALL`, `RELEASE` and `BULK_ADD`.
+
+Companion plugins reference `SCPSLBot.dll` and drive bots through `SCPSLBot.AI.BotOrders`:
+`SpawnBot(nickname, role)`, `MoveTo`, `MoveToRoom`, `Stop`, `Release`,
+`SetObjective(hub, point, engageRadius)`, `TryGetStatus`, `TryGetObjective` and `DespawnBot`.
+`SCPSLBot.Api.BotHostility.Resolver` (`Func<ReferenceHub, ReferenceHub, bool?>`, called with the bot
+and then the candidate) overrides the native team comparison: return `true` or `false` to declare
+the candidate hostile or friendly, or `null` to use the native rules. Dead players, the bot itself
+and Standard warmup arena separation still apply, and a throwing resolver falls back to the native
+rules. Set the resolver when the owning plugin enables and clear it when it disables.
 
 Custom-map regions are temporary for the current map. A plain `nav rebuild` retains the region;
 round restart, new map generation, plugin unload, or `nav rebuild clear` removes it. Load the custom
@@ -271,7 +292,7 @@ dotnet tools\NavMeshAssetPatcher\bin\Release\net8.0\NavMeshAssetPatcher.dll veri
 
 导航（默认 `navigation.backend: runtime`）是每张生成地图在服务器上烘焙的 Unity 导航网格：地图生成两帧后收集人类胶囊体会碰撞的实时物理碰撞体（排除玩家、门扇与门玻璃、掉落物、尸体、电梯轿厢、门口的隐形阻挡体、地表直升机、水豚以及不可碰撞的管理员道具），用人类胶囊体（半径 0.36 米加 5 厘米余量、高 1.8 米、台阶 0.3 米、坡度 45 度、体素 9 厘米）在主线程外异步构建并发布为一张导航网格。所有房间、杂物连接处、季节变体和回合中的几何变化都被覆盖，无需按类型特殊处理；碰撞网格仍无法读取的房间会回退为探测地面，并记录 `NAV_ROOM_PROBED`。每组电梯在两侧门前的落脚点之间建立双向链接，因此轻收到重收以及地表路线会经由检查点和大门电梯规划，现有电梯行为在链接处接管。烘焙表面仍封死的无门杂物连接处（大型管道等可跳越杂物）会用胶囊体探测，并在探测出的通道带上建立跳跃级链接，由卡住恢复阶梯的原生跳跃穿过；任何层级都无法通过的连接处记录为 `NAV_CONNECTOR_SEALED` 并绕行。门禁门按不同权限组合各占一个导航区域；机器人用背包和角色生成的区域掩码规划路径，因此 D 级人员绝不会规划穿过二级收容门，而持卡的科学家可以（`navigation.keycard_area_routing`）。上锁和断电的门仍在交互时处理。
 
-导航网格每 `navigation.reconcile_interval_seconds`（5 秒）与实时几何对账，管理员道具、房间连接处或可破坏门变化时立即对账；几何未变时只计算一次来源哈希，变化的分块异步重建。机器人报告通道受阻后，该处会从导航网格中挖除 `navigation.blocked_crossing_seconds`（45 秒），使下一次规划优先选择其他路线。服务器日志记录 `NAV_BAKE_START`、`NAV_BAKED`、`NAV_RECONCILE_START`、`NAV_RECONCILED`、`NAV_UNREADABLE_MESH`、`NAV_LINK` 和 `NAV_BAKE_FAILED`；`bot_status` 显示 `nav_backend`、`nav_triangles`、`nav_unreadable_meshes`、`nav_links`、`nav_passage_links`、`nav_sealed_connectors`、`nav_last_bake_ms`、`nav_door_classes`、`nav_fallback_rooms`、`nav_uncovered_rooms`、`nav_island_samples`、`nav_reconciles`、`nav_reconcile_rebuilds` 和 `nav_obstacles`；`nav status`、`nav probe` 和 `nav path` 提供细节。
+导航网格每 `navigation.reconcile_interval_seconds`（5 秒）与实时几何对账，静态且可碰撞的管理员道具生成或移除、房间连接处或可破坏门变化时立即对账（其他道具等待定期对账）；几何未变时只计算一次来源哈希，变化的分块异步重建。机器人报告通道受阻后，该处会从导航网格中挖除 `navigation.blocked_crossing_seconds`（45 秒），使下一次规划优先选择其他路线。服务器日志记录 `NAV_BAKE_START`、`NAV_BAKED`、`NAV_RECONCILE_START`、`NAV_RECONCILED`、`NAV_UNREADABLE_MESH`、`NAV_LINK` 和 `NAV_BAKE_FAILED`；`bot_status` 显示 `nav_backend`、`nav_triangles`、`nav_unreadable_meshes`、`nav_links`、`nav_passage_links`、`nav_sealed_connectors`、`nav_last_bake_ms`、`nav_door_classes`、`nav_fallback_rooms`、`nav_uncovered_rooms`、`nav_island_samples`、`nav_reconciles`、`nav_reconcile_rebuilds` 和 `nav_obstacles`；`nav status`、`nav probe` 和 `nav path` 提供细节。
 
 同一张地图烘焙失败两次后会回退到手工后端（`NAV_BAKE_FALLBACK`）。`navigation.backend: authored` 保留上一版本的手工网格一个版本周期：首次启动时安装内嵌的 `Assets/navmesh.slnmf`，损坏的实时导航文件会被隔离并尝试备份恢复，没有手工网格的房间根据实时地面探测填充，无门连接处通过胶囊体探测的通道连接，并保留 `nav` 网格编辑器；此时 `bot_status` 显示 `nav_generated_rooms`、`nav_probed_connectors`、`nav_sealed_connectors` 和 `nav_penalized_links`。
 
@@ -311,7 +332,8 @@ Standard 热身期间，仅原生 Gate A/Gate B 地表电梯门会加上插件�
 | 命令 | 用途 | 权限 |
 |---|---|---|
 | `bot_status` | 就绪状态、目标/跟踪/托管/独立/存活机器人、导航代次、故障、AI 心跳和资源 | `FacilityManagement` |
-| `bot_add` | 创建独立 AI 机器人（最多 10 个独立机器人）；RA 修改的角色会保持 | `PlayersManagement` |
+| `bot_add [数量] [角色]` | 不带参数时创建 1 个独立 AI 机器人（最多 10 个独立机器人）。指定数量（1–40）时创建该数量、请求指定原生第一人称角色（默认 `ChaosRifleman`）的独立机器人，不受独立机器人上限限制。RA 修改的角色会保持 | `PlayersManagement` |
+| `bot_order <玩家ID|all> moveto <x> <y> <z> | hold | release | objective <x> <y> <z> <半径>` | 命令单个或全部 SCPSLBot 机器人走到某点、原地停留、恢复常规 AI 或执行目标 | `PlayersManagement` |
 | `bot_manage <玩家ID>` | 将独立机器人纳入维护人口槽位；人口已满时替换一个托管机器人 | `PlayersManagement` |
 | `bot_unmanage <玩家ID>` | 解除人口托管但不删除机器人；控制器会创建替补 | `PlayersManagement` |
 | `bot_warmup [none|standard]` | 查询或修改持久化模式 | 查询无需权限；修改需 `PlayersManagement` |
@@ -326,6 +348,10 @@ Standard 热身期间，仅原生 Gate A/Gate B 地表电梯门会加上插件�
 | `statsbots status|grant|revoke <完整UserId> ...` | 查询或管理热身称号 | 可配置的 `statsbots.manage` |
 
 StatsBots 管理命令必须使用完整已认证 UserId；模糊昵称和 `ID_Dummy` 会被拒绝。
+
+目标（`bot_order ... objective`、`BotOrders.SetObjective`）让机器人走到某点并在该处驻守。机器人只攻击以自身为中心、交战半径内（0 表示从不交战，最大 1000 米）且在视线内的敌人，其余时间继续前往或驻守该点，因此执行目标的机器人既不会在地表发呆，也不会横穿地表追击。不在导航网格上的点会改用最近的网格点；无法到达的点会停在可达路径的终点，并每 5 秒重试。行走停滞时依次重新规划、避开受阻通道、重新解析目标点。最新的 `moveto`、`hold`、`objective` 或 `release` 会替换之前的命令或目标。目标在角色变更后仍然保留，直到被释放、机器人被移除或回合重启。服务器日志记录 `[BotOrders] OBJECTIVE`、`OBJECTIVE_NEAREST`、`OBJECTIVE_HOLD`、`OBJECTIVE_STALL`、`RELEASE` 和 `BULK_ADD`。
+
+配套插件引用 `SCPSLBot.dll`，通过 `SCPSLBot.AI.BotOrders` 控制机器人：`SpawnBot(nickname, role)`、`MoveTo`、`MoveToRoom`、`Stop`、`Release`、`SetObjective(hub, point, engageRadius)`、`TryGetStatus`、`TryGetObjective` 和 `DespawnBot`。`SCPSLBot.Api.BotHostility.Resolver`（`Func<ReferenceHub, ReferenceHub, bool?>`，参数依次为机器人和候选目标）覆盖原生阵营判断：返回 `true` 或 `false` 表示候选目标敌对或友好，返回 `null` 使用原生规则。死亡玩家、机器人自身和标准热身的竞技场隔离仍然生效；解析器抛出异常时回退到原生规则。所属插件启用时设置解析器，停用时清除。
 
 ## 配置
 

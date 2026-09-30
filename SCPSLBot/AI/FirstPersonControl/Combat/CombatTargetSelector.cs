@@ -1,6 +1,7 @@
 using MapGeneration;
 using PlayerRoles;
 using UnityEngine;
+using SCPSLBot.Api;
 using SCPSLBot.Warmup;
 
 namespace SCPSLBot.AI.FirstPersonControl.Combat
@@ -81,11 +82,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             currentTargetSelectedTime = 0f;
         }
 
-        public bool TrySelectVisibleTarget(out CombatTarget target)
+        /// <param name="maxDistance">Engagement limit; null uses the default visible-target range.</param>
+        public bool TrySelectVisibleTarget(float? maxDistance, out CombatTarget target)
         {
             target = null;
             var botHub = botPlayer.BotHub.PlayerHub;
             var botPosition = botPlayer.PlayerPosition;
+            var limit = maxDistance ?? MaxTargetDistance;
 
             CombatTarget best = null;
             CombatTarget currentVisible = null;
@@ -97,7 +100,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 }
 
                 var distance = Vector3.Distance(botPosition, candidate.Position);
-                if (distance > MaxTargetDistance)
+                if (distance > limit)
                 {
                     continue;
                 }
@@ -234,6 +237,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return false;
             }
 
+            if (BotHostility.TryResolve(bot, candidate, out var resolved))
+            {
+                return resolved;
+            }
+
             var botTeam = bot.roleManager.CurrentRole.Team;
             var candidateTeam = candidate.roleManager.CurrentRole.Team;
             if (botTeam == Team.SCPs)
@@ -271,6 +279,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             if (!WarmupManager.Instance.CanHubsFightInWarmup(bot, candidate.Hub))
             {
                 return false;
+            }
+
+            if (BotHostility.TryResolve(bot, candidate.Hub, out var resolved))
+            {
+                return resolved;
             }
 
             var currentCandidateRole = candidate.Hub.roleManager.CurrentRole;

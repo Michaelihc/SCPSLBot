@@ -1,5 +1,6 @@
 using MapGeneration;
 using PlayerRoles;
+using SCPSLBot.AI.FirstPersonControl.Objectives;
 using System;
 using UnityEngine;
 
@@ -39,6 +40,27 @@ namespace SCPSLBot.AI
         public string LastBlocker { get; internal set; }
     }
 
+    public sealed class BotObjectiveStatus
+    {
+        public ReferenceHub Bot { get; internal set; }
+        public Vector3 Point { get; internal set; }
+        public float EngageRadius { get; internal set; }
+        /// <summary>The navigable point the bot walks to: <see cref="Point"/>, or the nearest navmesh point when it is off the mesh.</summary>
+        public Vector3 Goal { get; internal set; }
+        /// <summary>False until navigation is ready for the current map.</summary>
+        public bool GoalResolved { get; internal set; }
+        public bool GoalIsNearestPoint { get; internal set; }
+        public BotObjectivePhase Phase { get; internal set; }
+        /// <summary>Holding at the end of the reachable path because the goal itself cannot be reached.</summary>
+        public bool AtNearestReachable { get; internal set; }
+        public bool HasPath { get; internal set; }
+        public float DistanceRemaining { get; internal set; }
+        public float ElapsedSeconds { get; internal set; }
+        public int StallCount { get; internal set; }
+        public int Engagements { get; internal set; }
+        public string Room { get; internal set; }
+    }
+
     /// <summary>
     /// Public per-bot movement facade. Orders only supply native FPC input; they never set position.
     /// </summary>
@@ -56,6 +78,23 @@ namespace SCPSLBot.AI
 
         public static bool Stop(ReferenceHub hub)
             => BotManager.Instance.StopOrder(hub, "requested");
+
+        /// <summary>Drops any order or objective so the bot returns to its normal AI.</summary>
+        public static bool Release(ReferenceHub hub)
+            => BotManager.Instance.ReleaseBot(hub, "requested");
+
+        /// <summary>
+        /// Walks to <paramref name="point"/> and holds there, fighting only hostiles in line of sight
+        /// within <paramref name="engageRadius"/> meters of the bot (0 never fights). An off-mesh point
+        /// resolves to the nearest navmesh point; an unreachable one holds at the end of the reachable
+        /// path and is retried. Replaces any order; lasts until <see cref="Release"/>, another order or
+        /// objective, removal or round restart, including across role changes.
+        /// </summary>
+        public static bool SetObjective(ReferenceHub hub, Vector3 point, float engageRadius)
+            => BotManager.Instance.SetObjective(hub, point, engageRadius);
+
+        public static bool TryGetObjective(ReferenceHub hub, out BotObjectiveStatus status)
+            => BotManager.Instance.TryGetObjectiveStatus(hub, out status);
 
         public static bool TryGetStatus(ReferenceHub hub, out BotOrderStatus status)
             => BotManager.Instance.TryGetOrderStatus(hub, out status);
@@ -95,5 +134,30 @@ namespace SCPSLBot.AI
         public int LastProgressStamp = int.MinValue;
         public Vector3 LastProgressPosition;
         public float BestRemaining = float.PositiveInfinity;
+    }
+
+    internal sealed class BotObjectiveState
+    {
+        public BotObjectiveState(Vector3 point, float engageRadius, float now)
+        {
+            Point = point;
+            EngageRadius = engageRadius;
+            IssuedAt = now;
+            Goal = point;
+            Policy = new BotObjectivePolicy(now);
+        }
+
+        public readonly Vector3 Point;
+        public readonly float EngageRadius;
+        public readonly float IssuedAt;
+        public readonly BotObjectivePolicy Policy;
+        public Vector3 Goal;
+        public bool GoalResolved;
+        public bool GoalIsNearestPoint;
+        public int ResolvedTopologyVersion;
+        public bool HasPath;
+        public float DistanceRemaining = float.PositiveInfinity;
+        public bool ArrivalLogged;
+        public bool OffMeshLogged;
     }
 }

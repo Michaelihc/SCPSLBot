@@ -553,7 +553,14 @@ namespace SCPSLBot.Navigation.Runtime
             }
         }
 
-        private void OnToyChanged(AdminToyBase toy) => RequestReconcile("admin-toy");
+        private void OnToyChanged(AdminToyBase toy)
+        {
+            if (NavMeshSourceCollector.CanChangeNavigation(toy))
+            {
+                RequestReconcile("admin-toy");
+            }
+        }
+
         private void OnConnectorChanged(SpawnableRoomConnector connector) => RequestReconcile("room-connector");
         private void OnDoorDestroyedChanged() => RequestReconcile("door-destroyed");
 

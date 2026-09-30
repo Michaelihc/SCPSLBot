@@ -69,7 +69,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             nextStrafeFlipTime = 0f;
         }
 
-        public bool Tick()
+        public bool Tick() => Tick(null);
+
+        /// <summary>
+        /// Objective combat: engages only hostiles in line of sight within <paramref name="engageRadius"/>
+        /// meters of the bot. Remembered, out-of-sight and Surface-wide chase targets are ignored.
+        /// </summary>
+        public bool TickWithinRadius(float engageRadius) => Tick(engageRadius);
+
+        private bool Tick(float? engageRadius)
         {
             var settings = CurrentSettings;
             var botHub = botPlayer.BotHub.PlayerHub;
@@ -77,12 +85,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             scpStrategy.PrepareForTick(role);
 
             CombatTarget target;
-            if (scpStrategy.TrySelectPriorityTarget(role, out target))
+            if (scpStrategy.TrySelectPriorityTarget(role, out target) && IsWithinEngagement(target, engageRadius))
             {
                 SetCurrentTarget(target.Hub, targetSelector.CurrentTarget != target.Hub);
                 targetSelector.ExtendChase(settings.ChaseAfterLostLosSeconds);
             }
-            else if (targetSelector.TrySelectVisibleTarget(out target))
+            else if (targetSelector.TrySelectVisibleTarget(engageRadius, out target))
             {
                 if (targetSelector.CurrentTarget != target.Hub)
                 {
@@ -91,7 +99,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
 
                 targetSelector.ExtendChase(settings.ChaseAfterLostLosSeconds);
             }
-            else if (!targetSelector.TrySelectRememberedTarget(out target)
+            else if (engageRadius.HasValue
+                     || !targetSelector.TrySelectRememberedTarget(out target)
                      && !targetSelector.TrySelectSurfaceTarget(out target))
             {
                 targetSelector.Clear();
@@ -131,6 +140,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
 
             return true;
         }
+
+        private static bool IsWithinEngagement(CombatTarget target, float? engageRadius)
+            => !engageRadius.HasValue || target.HasLineOfSight && target.Distance <= engageRadius.Value;
 
         private void SetCurrentTarget(ReferenceHub target, bool resetCombatTiming)
         {

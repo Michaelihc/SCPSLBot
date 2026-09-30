@@ -10,6 +10,7 @@ using SCPSLBot.AI.FirstPersonControl.Combat;
 using SCPSLBot.AI.FirstPersonControl.Looking;
 using SCPSLBot.AI.FirstPersonControl.Mind;
 using SCPSLBot.AI.FirstPersonControl.Movement;
+using SCPSLBot.AI.FirstPersonControl.Objectives;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
 using SCPSLBot.AI.FirstPersonControl.Roaming;
@@ -39,6 +40,7 @@ namespace SCPSLBot.AI.FirstPersonControl
         public FpcMindRunner MindRunner { get; }
 
         public FpcBotCombat Combat { get; }
+        public FpcBotObjective Objective { get; }
         public FpcZoneRoam ZoneRoam { get; }
         public IBotNavigator Navigator { get; }
 
@@ -65,6 +67,7 @@ namespace SCPSLBot.AI.FirstPersonControl
                 MindRunner = new FpcMindRunner();
 
                 Combat = new(this);
+                Objective = new(this);
                 ZoneRoam = new(this);
                 Navigator = NavigationSystem.Instance.CreateNavigator(this);
                 Look = new(this);
@@ -134,6 +137,26 @@ namespace SCPSLBot.AI.FirstPersonControl
                 Move.DesiredLocalDirection = Vector3.zero;
                 StuckRecovery.Reset();
                 DisplaySpectatorDiagnostics("held", "none");
+                yield break;
+            }
+
+            // Objectives replace free combat and roaming (including Surface idling): fight only
+            // inside the engage radius, otherwise walk to or hold at the objective goal.
+            if (BotManager.Instance.TryGetObjective(BotHub.PlayerHub, out var objective))
+            {
+                switch (Objective.Tick(objective))
+                {
+                    case BotObjectivePhase.Engaging:
+                        DisplaySpectatorDiagnostics();
+                        break;
+                    case BotObjectivePhase.Holding:
+                        DisplaySpectatorDiagnostics("objective holding", "objective point");
+                        break;
+                    default:
+                        DisplaySpectatorDiagnostics("objective moving", "objective point");
+                        break;
+                }
+
                 yield break;
             }
 
