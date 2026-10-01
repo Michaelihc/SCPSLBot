@@ -1,0 +1,5 @@
+language: cn
+enable_network_registry_recovery: true
+warmup_bot_count: 3
+navigation:
+  backend: authored

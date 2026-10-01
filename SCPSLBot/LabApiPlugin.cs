@@ -4,6 +4,7 @@ using LabApi.Features.Console;
 using LabApi.Loader.Features.Plugins;
 using SCPSLBot.AI;
 using SCPSLBot.Cleanup;
+using SCPSLBot.Health;
 using SCPSLBot.Navigation;
 using SCPSLBot.Navigation.Mesh;
 using SCPSLBot.Presentation;
@@ -38,6 +39,8 @@ namespace SCPSLBot
         private bool isEnabled;
         private BotPresentationService presentation;
         private WarmupControlsRuntime warmupControls;
+        private HumanPlayerCountService humanPlayerCount;
+        internal NetworkRegistryHealthService NetworkHealth { get; private set; }
 
         internal BotPresentationService Presentation => presentation;
 
@@ -60,6 +63,11 @@ namespace SCPSLBot
                 {
                     SaveConfig();
                 }
+
+                humanPlayerCount = new HumanPlayerCountService();
+                humanPlayerCount.Enable();
+                NetworkHealth = new NetworkRegistryHealthService(Config);
+                NetworkHealth.Enable();
 
                 // A stable owner id lets a later load remove patches left by an interrupted enable.
                 harmonyInstance = new Harmony(HarmonyId);
@@ -119,6 +127,10 @@ namespace SCPSLBot
         private void ShutdownComponents()
         {
             isEnabled = false;
+            humanPlayerCount?.Disable();
+            humanPlayerCount = null;
+            NetworkHealth?.Disable();
+            NetworkHealth = null;
 
             ShutdownComponent(ref warmupControlsStarted, () => warmupControls?.Terminate(), nameof(WarmupControlsRuntime));
             warmupControls = null;

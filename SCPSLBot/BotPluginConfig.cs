@@ -11,6 +11,9 @@ namespace SCPSLBot
 {
     public sealed class BotPluginConfig
     {
+        [Description("Remove only destroyed identities from Mirror registries and observer sets; log their last known object and component identities.")]
+        public bool EnableNetworkRegistryRecovery { get; set; } = true;
+
         [Description("Player-facing language: empty matches a client preference when a companion exposes it; cn forces Chinese; en forces English. Chinese is the fallback. / 玩家文本语言：留空时在可用时匹配客户端偏好；cn 强制中文；en 强制英文。无法判断时回退中文。")]
         public string Language { get; set; } = string.Empty;
 

@@ -107,6 +107,7 @@ A round-owned service scans all participating ready real players every `respawn_
 | Command | Purpose | Permission |
 |---|---|---|
 | `bot_status` | Readiness, desired/tracked/owned/independent/live bots, nav generation, faults, runner heartbeat, resources | `FacilityManagement` |
+| `bot_health` | Network registry recovery counters, last repair with object/component provenance, and last scan fault; also available in the server console | `FacilityManagement` |
 | `bot_add` | Spawn an independent AI bot (maximum 10 independent bots); RA role changes persist | `PlayersManagement` |
 | `bot_manage <player ID>` | Adopt an independent bot into a maintained population slot; at full population it replaces one managed bot | `PlayersManagement` |
 | `bot_unmanage <player ID>` | Release a maintained bot without despawning it; the controller creates a replacement | `PlayersManagement` |
@@ -124,6 +125,10 @@ A round-owned service scans all participating ready real players every `respawn_
 | `statsbots status|grant|revoke <fullUserId> ...` | Inspect or administer warmup titles | configurable `statsbots.manage` |
 
 StatsBots admin commands require an exact full authenticated UserId; ambiguous nicknames and `ID_Dummy` are rejected.
+
+The native server-console `players` response counts human hubs, including humans still authenticating, and excludes the dedicated host and dummies. LocalAdmin's player-count restart gates use this response.
+
+Network registry monitoring records each live identity's name, parent and network component types. It checks for destroyed identities before network updates and when connections arrive. With `enable_network_registry_recovery: true` (default), it removes only destroyed entries from Mirror's spawned, observing and ownership registries and sends their destroy messages to observing clients. It leaves live entities intact. Repairs log `[BotHealth] DESTROYED_REGISTRY_ENTRY` with the last known identity details; `bot_health` exposes the counters and most recent repair. Setting recovery to false retains diagnostics without registry mutation. Neither setting enables automatic restarts.
 
 Custom-map regions are temporary for the current map. A plain `nav rebuild` retains the region;
 round restart, new map generation, plugin unload, or `nav rebuild clear` removes it. Load the custom
