@@ -53,7 +53,11 @@ $presetList = (& $localAdminExe ctl $Context.Port localadmin 'restartwhen list')
 if ($presetList -notmatch 'Custom presets are JSON files in (.+) \(name = filename\)\.') {
     throw "Missing native preset directory: $presetList"
 }
-$presetFolder = [IO.Path]::GetFullPath($Matches[1])
+$nativePresetFolder = $Matches[1]
+if (-not [IO.Path]::IsPathRooted($nativePresetFolder)) {
+    $nativePresetFolder = Join-Path (Join-Path $Context.Root 'LocalAdmin') $nativePresetFolder
+}
+$presetFolder = [IO.Path]::GetFullPath($nativePresetFolder)
 $slotPrefix = [IO.Path]::GetFullPath($Context.Root).TrimEnd('\') + '\'
 if (-not $presetFolder.StartsWith($slotPrefix, [StringComparison]::OrdinalIgnoreCase)) {
     throw "Preset directory is outside this run's slot: $presetFolder"
