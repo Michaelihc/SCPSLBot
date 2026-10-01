@@ -48,11 +48,19 @@ Check-Reply 'bot_health_fixture cleanup' 'HEALTH_FIXTURE cleaned'
 $sessionReply = (Invoke-LabServer 'bot_health_fixture session') -join "`n"
 if ($sessionReply -notmatch 'HEALTH_FIXTURE session=(\d+)') { throw "Missing game session ID: $sessionReply" }
 $originalSession = $Matches[1]
-$presetFolder = Join-Path $Context.Root "server-state/$($Context.Port)/config/restart_presets"
+$localAdminExe = Join-Path $Context.Root 'LocalAdmin/LocalAdmin.exe'
+$presetList = (& $localAdminExe ctl $Context.Port localadmin 'restartwhen list') -join "`n"
+if ($presetList -notmatch 'Custom presets are JSON files in (.+) \(name = filename\)\.') {
+    throw "Missing native preset directory: $presetList"
+}
+$presetFolder = [IO.Path]::GetFullPath($Matches[1])
+$slotPrefix = [IO.Path]::GetFullPath($Context.Root).TrimEnd('\') + '\'
+if (-not $presetFolder.StartsWith($slotPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Preset directory is outside this run's slot: $presetFolder"
+}
 $null = New-Item -ItemType Directory -Path $presetFolder -Force
 @{ edge='low-activity'; maxPlayers=0; confirmations=2; tickSeconds=1; summary='Local-only human-count gate check' } |
     ConvertTo-Json | Set-Content (Join-Path $presetFolder 'health-empty.json') -Encoding utf8
-$localAdminExe = Join-Path $Context.Root 'LocalAdmin/LocalAdmin.exe'
 $armed = (& $localAdminExe ctl $Context.Port localadmin 'restartwhen health-empty') -join "`n"
 if ($armed -notmatch 'armed|Armed') { throw "Empty-human restart gate was not armed: $armed" }
 Start-Sleep -Seconds 8
@@ -81,5 +89,8 @@ do {
 } until ($joined -or (Get-Date) -gt $deadline)
 if (-not $joined) { throw 'Real client did not reconnect after the empty-human restart' }
 Check-Reply 'players' 'List of players \(1\):'
+$intentStatus = (& $localAdminExe ctl $Context.Port localadmin 'restartwhen status') -join "`n"
+if ($intentStatus -notmatch 'No restart intent is armed') { throw "One-shot intent was not consumed: $intentStatus" }
+Remove-Item -LiteralPath (Join-Path $presetFolder 'health-empty.json')
 $null = Invoke-LabInput @{ id='network-health-rejoined'; frames=120; dx=0.08; capture=$true }
 $null = Invoke-LabScreenshot -Name 'network-health-rejoined'
