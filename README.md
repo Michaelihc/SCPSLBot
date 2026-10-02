@@ -15,7 +15,6 @@ See [Credits](#credits).
 ![Chaos Insurgency and NTF bots in a firefight on Surface](docs/media/surface-firefight.webp)
 
 **[Download the latest release](https://github.com/Michaelihc/scpsl-warmup-sandbox/releases/latest)**.
-This is the build that runs our production bot server.
 
 ## What the bots do
 
