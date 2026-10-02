@@ -21,18 +21,34 @@ This is the build that runs our production bot server.
 
 ### SCPs
 
-<!-- scp-gallery -->
+<table>
+<tr>
+<td width="50%"><img src="docs/media/scp173.webp" alt="SCP-173 bot attacking guards and scientists"><br>
+<b>SCP-173</b>: blinks toward its target and snaps necks only while nobody is watching. It drops tantrum at close range and uses Breakneck Speeds on long chases.</td>
+<td width="50%"><img src="docs/media/scp096.webp" alt="SCP-096 bot enraged, seen from its own view"><br>
+<b>SCP-096</b>: enrages at the first hostile it sees and tears into it.</td>
+</tr>
+<tr>
+<td><img src="docs/media/scp049.webp" alt="SCP-049 bot using Sense on a guard"><br>
+<b>SCP-049</b>: uses Sense on its target and closes in for the kill.</td>
+<td><img src="docs/media/scp049-2.webp" alt="SCP-049-2 bot attacking a soldier"><br>
+<b>SCP-049-2</b>: hunts and claws humans.</td>
+</tr>
+<tr>
+<td><img src="docs/media/scp106.webp" alt="SCP-106 bot closing in on its prey"><br>
+<b>SCP-106</b>: hunts and attacks, and drags corroded victims into the pocket dimension.</td>
+<td><img src="docs/media/scp939.webp" alt="SCP-939 bot mauling scientists"><br>
+<b>SCP-939</b>: hunts and claws humans.</td>
+</tr>
+<tr>
+<td><img src="docs/media/scp3114.webp" alt="SCP-3114 bot attacking scientists"><br>
+<b>SCP-3114</b>: hunts and slaps humans.</td>
+<td><b>SCP-079</b> is not supported: it has no body for a bot to drive.</td>
+</tr>
+</table>
 
-| SCP | What the bot does |
-|---|---|
-| SCP-173 | Blinks toward its target and snaps necks only while nobody is watching. It drops tantrum at close range and uses Breakneck Speeds on long chases. |
-| SCP-096 | Enrages at the first hostile it sees and tears into it. |
-| SCP-049 | Uses Sense on its target and closes in for the kill. |
-| SCP-049-2 | Hunts and claws humans. |
-| SCP-106 | Hunts and attacks, and drags corroded victims into the pocket dimension. |
-| SCP-939 | Hunts and claws humans. |
-| SCP-3114 | Hunts and slaps humans. |
-| SCP-079 | Not supported. SCP-079 has no body for a bot to drive. |
+<sub>These are real-client clips of the release build, using runtime navigation at the hardest
+difficulty. The SCP bots were invulnerable so that each take ran its full length.</sub>
 
 ### Humans
 
@@ -72,6 +88,15 @@ SCPSLBot also ships a warmup-server layer and two companion plugins. Each one is
 | **StatsBots** | Records players' bot kills, a decayed combat skill rating, unlockable titles and a profile HUD. Requires [StatsSystem](https://github.com/MedveMarci/StatsSystem) 2.2. | Install `StatsBots.dll` |
 | **Overflow cleanup** | Once loose items pile up, runs the native item/corpse/decal cleanup and repairs doors. | `enable_overflow_cleanup` (default `true`) |
 | **Infinite ammo** | Reload-time reserve ammo so firefights never run dry. Third-party: [LabAPI_InfiniteAmmo](https://github.com/TASA-Ed/LabAPI_InfiniteAmmo). | Install the DLL |
+
+<table>
+<tr>
+<td width="50%"><img src="docs/media/safezone-cells.jpg" alt="Class-D cells safezone boundary and sign"><br>
+WarmupSafezone: the Class-D cells boundary and sign.</td>
+<td width="50%"><img src="docs/media/safezone-914-blocked.webp" alt="A shot fired inside the SCP-914 safezone is blocked"><br>
+A shot fired inside the SCP-914 safezone is blocked.</td>
+</tr>
+</table>
 
 ### Bots only, without the warmup layer
 
