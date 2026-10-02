@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Arena placement skips a position write when the spawned role's movement module is not ready yet
+  (another role change in the same event); the scheduled placement retries instead of throwing.
+
+## v2026.10.02-dce1c17
+
 - Add the `bots_only` master switch, default `true`: plain AI bots with the warmup layer, overflow
   cleanup, the warmup SSS menu, WarmupSafezone and StatsBots off. Existing warmup servers must set
   `bots_only: false` to keep their behaviour. `bot_status` reports it and `bot_warmup` refuses mode

@@ -5,6 +5,7 @@ using LabApi.Features.Wrappers;
 using MapGeneration;
 using MEC;
 using PlayerRoles;
+using PlayerRoles.FirstPersonControl;
 using SCPSLBot.AI;
 using SCPSLBot.Warmup.Controls;
 using System;
@@ -299,7 +300,7 @@ namespace SCPSLBot.Warmup
                         out ArenaEntryTarget evacuationTarget)
                     && evacuationTarget.Arena == transition.TargetArena)
                 {
-                    player.Position = evacuationTarget.Position;
+                    TrySetPosition(player, evacuationTarget.Position);
                 }
                 else
                 {
@@ -348,7 +349,7 @@ namespace SCPSLBot.Warmup
                     playerArenas[transition.PlayerId] = safeArena;
                     if (TryGetNativeArenaSpawn(safeArena, out Vector3 safePosition))
                     {
-                        player.Position = safePosition;
+                        TrySetPosition(player, safePosition);
                     }
                 }
             }
@@ -722,7 +723,7 @@ namespace SCPSLBot.Warmup
                             out ArenaEntryTarget evacuationTarget)
                         && evacuationTarget.Arena == arena)
                     {
-                        ev.Player.Position = evacuationTarget.Position;
+                        TrySetPosition(ev.Player, evacuationTarget.Position);
                     }
                     else
                     {
@@ -784,8 +785,10 @@ namespace SCPSLBot.Warmup
             LabPlayer player,
             PlayerRoleArenaTransition transition)
         {
-            player.Position = transition.OriginalPosition;
-            player.LookRotation = transition.OriginalLookRotation;
+            if (TrySetPosition(player, transition.OriginalPosition))
+            {
+                player.LookRotation = transition.OriginalLookRotation;
+            }
         }
 
         private void ScheduleBotPlacement(
@@ -826,7 +829,7 @@ namespace SCPSLBot.Warmup
 
             if (TryGetNativeArenaSpawn(arena, out Vector3 position))
             {
-                player.Position = position;
+                TrySetPosition(player, position);
             }
         }
 
@@ -834,8 +837,24 @@ namespace SCPSLBot.Warmup
         {
             if (TryGetNativeArenaSpawn(arena, out Vector3 position))
             {
-                player.Position = position;
+                TrySetPosition(player, position);
             }
+        }
+
+        // A role replaced again inside a spawn or role-change event leaves the reported role's movement
+        // module unspawned, and writing its position throws inside Unity. Skip the write; the scheduled
+        // placement retries once the current role is ready.
+        private static bool TrySetPosition(LabPlayer player, Vector3 position)
+        {
+            if (player?.ReferenceHub == null
+                || player.ReferenceHub.roleManager.CurrentRole is not IFpcRole fpcRole
+                || !fpcRole.FpcModule.ModuleReady)
+            {
+                return false;
+            }
+
+            player.Position = position;
+            return true;
         }
 
         private void ShowPendingSurfaceEvacuation(LabPlayer player)
@@ -1000,7 +1019,7 @@ namespace SCPSLBot.Warmup
                 playerArenas[player.PlayerId] = safeArena;
                 if (TryGetNativeArenaSpawn(safeArena, out Vector3 safePosition))
                 {
-                    player.Position = safePosition;
+                    TrySetPosition(player, safePosition);
                 }
             }
 
