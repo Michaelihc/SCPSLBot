@@ -1,6 +1,6 @@
 # SCPSLBot: AI players for SCP: Secret Laboratory
 
-[![Latest release](https://img.shields.io/github/v/release/Michaelihc/scpsl-warmup-sandbox?label=release)](https://github.com/Michaelihc/scpsl-warmup-sandbox/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/Michaelihc/SCPSLBot?label=release)](https://github.com/Michaelihc/SCPSLBot/releases/latest)
 ![LabAPI](https://img.shields.io/badge/LabAPI-net48-blue)
 
 SCPSLBot fills an SCP: Secret Laboratory dedicated server with AI-controlled players. Every bot is a
@@ -14,7 +14,7 @@ See [Credits](#credits).
 
 ![Chaos Insurgency and NTF bots in a firefight on Surface](docs/media/surface-firefight.webp)
 
-**[Download the latest release](https://github.com/Michaelihc/scpsl-warmup-sandbox/releases/latest)**.
+**[Download the latest release](https://github.com/Michaelihc/SCPSLBot/releases/latest)**.
 
 ## What the bots do
 
@@ -116,7 +116,7 @@ Restart the server after changing the switch. Details: [docs/warmup.md](docs/war
 
 ## Install
 
-1. Download `SCPSLBot-<version>.zip` from the [latest release](https://github.com/Michaelihc/scpsl-warmup-sandbox/releases/latest).
+1. Download `SCPSLBot-<version>.zip` from the [latest release](https://github.com/Michaelihc/SCPSLBot/releases/latest).
 2. Copy its folders into the LabAPI tree for your server port:
 
    | From the zip | To |
