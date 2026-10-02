@@ -79,15 +79,18 @@ difficulty. The SCP bots were invulnerable so that each take ran its full length
 
 ## Optional features
 
-SCPSLBot also ships a warmup-server layer and two companion plugins. Each one is optional.
+SCPSLBot also ships a warmup-server layer and two companion plugins. They are all off by default:
+the `bots_only` master switch is `true`, so a fresh install runs plain AI bots in normal rounds.
+Set `bots_only: false` in `LabAPI/configs/<port>/SCPSLBot/config.yml` and restart the server to turn the
+features below on; each then follows its own setting.
 
-| Feature | What it adds | How to turn it on or off |
+| Feature | What it adds | Its own setting (with `bots_only: false`) |
 |---|---|---|
 | **Standard warmup** | Rounds never end and everyone respawns. Players get three arenas, each with its own bot population: Surface PvE, HCZ/EZ PvPvE and LCZ SCP. Per-player menus let them respawn as any role, request items, teleport to rooms and switch arena. The warhead, decontamination, disarming, SCP-207 drain and native respawn waves are suppressed. | `warmup_mode: Standard` (default) or `None`; RA `bot_warmup standard\|none` |
 | **WarmupSafezone** | Damage-free safezones at the Surface escape, SCP-914 and the Class-D cells. Inside, nobody deals or takes damage, grenades and SCP items can't be thrown, and in-world boundaries and signs are shown. Surface anti-camping applies too. | Install `WarmupSafezone.dll`; toggle with `enabled` |
 | **StatsBots** | Records players' bot kills, a decayed combat skill rating, unlockable titles and a profile HUD. Requires [StatsSystem](https://github.com/MedveMarci/StatsSystem) 2.2. | Install `StatsBots.dll` |
 | **Overflow cleanup** | Once loose items pile up, runs the native item/corpse/decal cleanup and repairs doors. | `enable_overflow_cleanup` (default `true`) |
-| **Infinite ammo** | Reload-time reserve ammo so firefights never run dry. Third-party: [LabAPI_InfiniteAmmo](https://github.com/TASA-Ed/LabAPI_InfiniteAmmo). | Install the DLL |
+| **Infinite ammo** | Reload-time reserve ammo so firefights never run dry. Third-party: [LabAPI_InfiniteAmmo](https://github.com/TASA-Ed/LabAPI_InfiniteAmmo); not controlled by `bots_only`. | Install the DLL |
 
 <table>
 <tr>
@@ -98,24 +101,26 @@ A shot fired inside the SCP-914 safezone is blocked.</td>
 </tr>
 </table>
 
-### Bots only, without the warmup layer
-
-No single setting turns everything off. `warmup_mode: None` disables the whole warmup layer, and
-the remaining features have their own switches:
+### The `bots_only` master switch
 
 ```yaml
 # LabAPI/configs/<port>/SCPSLBot/config.yml
-warmup_mode: None              # no round lock, respawns, arenas, managed population or hazard overrides
-enable_overflow_cleanup: false # keep corpses (SCP-049 revives, SCP-3114 disguises) and broken doors
-panel:
-  enabled: false               # do not register the warmup Server-Specific Settings menu
+bots_only: true   # default: plain AI bots; false turns on the warmup features above
 ```
 
-Restart the server after changing `panel.enabled`. `bot_warmup none` switches the mode at runtime and
-saves it to the config. Leave out `WarmupSafezone.dll` and `StatsBots.dll`, or disable them with
-`is_enabled: false` in their `LabAPI/configs/<port>/<plugin>/properties.yml`.
+With `bots_only: true`, these stay off:
 
-In `None` mode you add the bots:
+- the warmup layer, so the effective mode is `None`: no round lock, respawns, arenas, managed bot
+  population, or hazard and wave overrides;
+- overflow cleanup, so corpses (SCP-049 revives, SCP-3114 disguises) and broken doors remain;
+- the warmup Server-Specific Settings menu;
+- WarmupSafezone and StatsBots, which stay dormant even when installed.
+
+The saved `warmup_mode` is kept, so switching `bots_only` back to `false` restores it. While the
+switch is on, `bot_warmup` reports it and refuses mode changes. `bot_status` shows `bots_only=`.
+Restart the server after changing the switch.
+
+In bots-only mode you add the bots:
 
 - `bot_add` spawns an AI bot (at most 10 at a time). Use native RA force-class to make it any role,
   SCPs included, and the AI takes over on the new role.
@@ -176,12 +181,15 @@ in `SCPSLBot.dll`, which is what our production server runs.
 | Spawn an AI bot | `bot_add` |
 | Make it an SCP or any other role | native force-class on the bot |
 | Change bot skill | `bot_difficulty easy\|normal\|hard\|hardest` |
-| Turn the warmup layer off/on | `bot_warmup none\|standard` |
+| Turn the warmup features on | set `bots_only: false` in the config and restart |
+| Switch warmup modes (with `bots_only: false`) | `bot_warmup none\|standard` |
 | Check health and navigation | `bot_status`, `bot_health`, `nav status` |
 
 ## Reference
 
 ### Standard warmup
+
+Requires `bots_only: false`.
 
 **Arenas and population.** Arena occupancy drives the managed bot population:
 
@@ -363,6 +371,7 @@ Notes:
 SCPSLBot defaults (`LabAPI/configs/<port>/SCPSLBot/config.yml`):
 
 ```yaml
+bots_only: true                                # master switch; false turns on the warmup features
 language: ""                                   # "en", "cn", or "" (client language, Chinese fallback)
 warmup_mode: Standard                          # Standard or None
 default_warmup_mode: Standard                  # fallback when warmup_mode is invalid
@@ -383,7 +392,7 @@ disable_warhead_in_warmup: true
 disable_lcz_decontamination_in_warmup: true
 disable_disarming_in_warmup: true
 disable_scp207_health_drain_in_warmup: true
-enable_overflow_cleanup: true                  # independent of warmup_mode
+enable_overflow_cleanup: true                  # with bots_only: false; independent of warmup_mode
 cleanup_item_threshold: 80
 cleanup_check_interval_seconds: 10
 enable_network_registry_recovery: true
