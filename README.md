@@ -8,6 +8,10 @@ native dummy, and the plugin drives it through the same systems a real player us
 facility, opens doors, rides elevators, aims, shoots and reloads, and uses SCP abilities. Bots can play
 any human role and every SCP except SCP-079.
 
+SCPSLBot is a fork of [repkins/scpsl-bot-plugin](https://github.com/repkins/scpsl-bot-plugin) by
+Antons Repins ([@repkins](https://github.com/repkins)), who created the bot framework it is built on.
+See [Credits](#credits).
+
 ![Chaos Insurgency and NTF bots in a firefight on Surface](docs/media/surface-firefight.webp)
 
 **[Download the latest release](https://github.com/Michaelihc/scpsl-warmup-sandbox/releases/latest)**.
@@ -65,7 +69,7 @@ SCPSLBot also ships a warmup-server layer and two companion plugins. Each one is
 |---|---|---|
 | **Standard warmup** | Rounds never end and everyone respawns. Players get three arenas, each with its own bot population: Surface PvE, HCZ/EZ PvPvE and LCZ SCP. Per-player menus let them respawn as any role, request items, teleport to rooms and switch arena. The warhead, decontamination, disarming, SCP-207 drain and native respawn waves are suppressed. | `warmup_mode: Standard` (default) or `None`; RA `bot_warmup standard\|none` |
 | **WarmupSafezone** | Damage-free safezones at the Surface escape, SCP-914 and the Class-D cells. Inside, nobody deals or takes damage, grenades and SCP items can't be thrown, and in-world boundaries and signs are shown. Surface anti-camping applies too. | Install `WarmupSafezone.dll`; toggle with `enabled` |
-| **StatsBots** | Records players' bot kills, a decayed combat skill rating, unlockable titles and a profile HUD. Requires the StatsSystem 2.2 plugin. | Install `StatsBots.dll` |
+| **StatsBots** | Records players' bot kills, a decayed combat skill rating, unlockable titles and a profile HUD. Requires [StatsSystem](https://github.com/MedveMarci/StatsSystem) 2.2. | Install `StatsBots.dll` |
 | **Overflow cleanup** | Once loose items pile up, runs the native item/corpse/decal cleanup and repairs doors. | `enable_overflow_cleanup` (default `true`) |
 | **Infinite ammo** | Reload-time reserve ammo so firefights never run dry. Third-party: [LabAPI_InfiniteAmmo](https://github.com/TASA-Ed/LabAPI_InfiniteAmmo). | Install the DLL |
 
@@ -106,7 +110,7 @@ In `None` mode you add the bots:
    | `optional/plugins/` (`WarmupSafezone.dll`, `StatsBots.dll`) | `LabAPI/plugins/<port>/`, only if you want them |
 
 3. Install [HintServiceMeow](https://github.com/MeowServer/HintServiceMeow) for on-screen text. StatsBots
-   also needs the StatsSystem 2.2 plugin and its `player_stats` store.
+   also needs [StatsSystem](https://github.com/MedveMarci/StatsSystem) 2.2 and its `player_stats` store.
 4. Choose a navigation backend (below) and start the server. `bot_status` reports readiness.
 
 Install exactly one `ServerKeybinds.dll` per port, in the dependency folder that port's loader reads.
@@ -477,3 +481,32 @@ Verification:
 
 - This suite never owns native badges or player names; StatsBots titles stay in its HSM profile.
 - HSM text uses stable owned tags and never clears the shared vanilla hint and broadcast channels.
+
+## Credits
+
+SCPSLBot is a fork of **[repkins/scpsl-bot-plugin](https://github.com/repkins/scpsl-bot-plugin)** by
+**Antons Repins ([@repkins](https://github.com/repkins))**, who created the project in 2023. He wrote the
+foundation everything here builds on:
+
+- the dummy-driven bot runtime;
+- the goal-oriented AI mind (beliefs, goals and actions) and bot perception;
+- movement and the original navigation mesh pathfinding, with its in-game navmesh editor;
+- the first combat, door, elevator and item behaviours.
+
+His commits make up most of this repository's history.
+
+This fork adds the warmup layer, runtime navigation, SCP combat strategies, WarmupSafezone, StatsBots and
+the later AI and stability work.
+
+SCPSLBot is built with and alongside:
+
+- [Harmony](https://github.com/pardeike/Harmony) by Andreas Pardeike (MIT) for runtime patching.
+  `0Harmony.dll` ships in the release with its license.
+- [AssetsTools.NET](https://github.com/nesrak1/AssetsTools.NET) by nesrak1 (MIT), used by the
+  NavMeshAssetPatcher tool.
+- [HintServiceMeow](https://github.com/MeowServer/HintServiceMeow) by MeowServer (MIT) for on-screen text.
+- [StatsSystem](https://github.com/MedveMarci/StatsSystem) by MedveMarci, the player statistics store
+  StatsBots uses.
+- [LabAPI_InfiniteAmmo](https://github.com/TASA-Ed/LabAPI_InfiniteAmmo) by TASA-Ed Studio (Apache-2.0),
+  recommended for warmup ammo.
+- [LabAPI](https://github.com/northwood-studios/LabAPI) and SCP: Secret Laboratory by Northwood Studios.
