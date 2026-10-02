@@ -7,6 +7,16 @@
   `bots_only: false` to keep their behaviour. `bot_status` reports it and `bot_warmup` refuses mode
   changes while it is on.
 - WarmupSafezone enables at `Low` load priority so it always follows SCPSLBot.
+- The warmup SSS controls register only while Standard warmup runs, so ServerKeybinds leaves the native
+  menu alone otherwise; `bot_warmup` switches them on and off.
+- Under `bots_only`: the native `players` header is no longer rewritten, and the runtime navmesh skips
+  its periodic re-scan while no bot exists.
+- Bots no longer target dummies that SCPSLBot did not create.
+- Restoring LCZ decontamination only undoes SCPSLBot's own override, never one set by the round,
+  an admin, the warhead or another plugin.
+- Commands renamed to avoid collisions: `teleport` is `bot_tp`, `raycast` is `bot_raycast` (now
+  requires `GameplayData`), `plugin_test` is `bot_test`, `position_local` is `bot_position_local`;
+  the `warmup` alias of `bot_warmup` is removed.
 - README rewritten in English only: it now describes what the bots do, lists the optional warmup
   features with their switches, gives a bots-only configuration, and adds gameplay media.
 

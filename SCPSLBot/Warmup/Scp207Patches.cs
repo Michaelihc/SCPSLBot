@@ -10,10 +10,10 @@ namespace SCPSLBot.Warmup
         private static bool SkipHealthDrainInStandardWarmup(Scp207 __instance)
         {
             var config = LabApiPlugin.Instance?.Config;
-            return !WarmupParticipation.IsManagedRole(__instance.Hub.roleManager.CurrentRole.RoleTypeId)
-                   || !WarmupManager.Instance.IsStandardWarmup
+            return !WarmupManager.Instance.IsStandardWarmup
                    || config == null
-                   || !config.DisableScp207HealthDrainInWarmup;
+                   || !config.DisableScp207HealthDrainInWarmup
+                   || !WarmupParticipation.IsManagedRole(__instance.Hub.roleManager.CurrentRole.RoleTypeId);
         }
     }
 }

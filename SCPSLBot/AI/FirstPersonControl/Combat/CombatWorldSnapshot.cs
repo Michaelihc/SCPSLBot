@@ -55,6 +55,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return false;
             }
 
+            // Other plugins' dummies (NPCs, props, test actors) are not combatants: only real players and
+            // SCPSLBot's own bots are targeted.
+            if (hub.IsDummy && !BotManager.Instance.BotPlayers.ContainsKey(hub))
+            {
+                return false;
+            }
+
             var role = hub.roleManager.CurrentRole;
             if (role.RoleTypeId is RoleTypeId.None or RoleTypeId.Spectator || role.Team == Team.Dead)
             {

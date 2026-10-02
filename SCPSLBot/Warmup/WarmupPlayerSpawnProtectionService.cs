@@ -58,7 +58,7 @@ internal sealed class WarmupPlayerSpawnProtectionService
 
     private void OnPlayerDeath(PlayerDeathEventArgs ev)
     {
-        if (WarmupParticipation.IsParticipant(ev.Player))
+        if (IsStandardWarmup() && WarmupParticipation.IsParticipant(ev.Player))
         {
             pendingDeathRespawns.Add(ev.Player.ReferenceHub);
         }

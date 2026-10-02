@@ -395,6 +395,15 @@ namespace SCPSLBot.Navigation.Runtime
                 }
 
                 reconcileRequested = false;
+
+                // With no bot to navigate, skip the main-thread source scan so other plugins' toy and
+                // door churn costs nothing. The first pass after a bot appears still compares the full
+                // source hash, so no geometry change is lost.
+                if (SCPSLBot.AI.BotManager.Instance.BotPlayers.Count == 0)
+                {
+                    continue;
+                }
+
                 obstacles.Prune(Time.time);
 
                 var operation = TryStartReconcile(out var changed);

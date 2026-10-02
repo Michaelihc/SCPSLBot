@@ -11,7 +11,7 @@ namespace SCPSLBot.Misc
     [CommandHandler(typeof(RemoteAdminCommandHandler))]
     internal class PositionLocalCommand : ICommand
     {
-        public string Command => "position_local";
+        public string Command => "bot_position_local";
 
         public string[] Aliases => new string[] { };
 

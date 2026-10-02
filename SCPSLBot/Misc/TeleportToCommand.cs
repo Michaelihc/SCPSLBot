@@ -12,7 +12,7 @@ namespace SCPSLBot.Misc
     [CommandHandler(typeof(RemoteAdminCommandHandler))]
     internal class TeleportRoCommand : ICommand
     {
-        public string Command => "teleport";
+        public string Command => "bot_tp";
 
         public string[] Aliases => new string[] { };
 

@@ -114,7 +114,12 @@ With `bots_only: true`, these stay off:
   population, or hazard and wave overrides;
 - overflow cleanup, so corpses (SCP-049 revives, SCP-3114 disguises) and broken doors remain;
 - the warmup Server-Specific Settings menu;
-- WarmupSafezone and StatsBots, which stay dormant even when installed.
+- WarmupSafezone and StatsBots, which stay dormant even when installed;
+- the humans-only rewrite of the native `players` header, so the native output stays unchanged.
+
+Nothing registers Server-Specific Settings, so ServerKeybinds stays idle and other plugins' menus are
+untouched. Bots never target dummies SCPSLBot did not create, and the runtime navmesh stops
+re-scanning the map while no bot exists.
 
 The saved `warmup_mode` is kept, so switching `bots_only` back to `false` restores it. While the
 switch is on, `bot_warmup` reports it and refuses mode changes. `bot_status` shows `bots_only=`.
@@ -144,6 +149,9 @@ In bots-only mode you add the bots:
 4. Choose a navigation backend (below) and start the server. `bot_status` reports readiness.
 
 Install exactly one `ServerKeybinds.dll` per port, in the dependency folder that port's loader reads.
+ServerKeybinds 6.4 keeps other plugins' Server-Specific Settings beside ours and only touches the menu
+while the warmup controls or StatsBots are active; the warmup controls exist only during Standard
+warmup.
 Never install a second copy or use `dependencies/global`. `HsmAdapter` and `ServerKeybinds` are open
 source at [sl-plugins-cement/HsmAdapter](https://github.com/sl-plugins-cement/HsmAdapter) and
 [Michaelihc/serverkeybinds](https://github.com/Michaelihc/serverkeybinds).
@@ -356,9 +364,9 @@ have no authored cells from live floor probes, and keeps the `nav` cell editor.
 Notes:
 
 - StatsBots admin commands require an exact full authenticated UserId.
-- The native server-console `players` response counts humans only, including those still
-  authenticating. It excludes the dedicated host and bots, so a LocalAdmin "restart when empty"
-  policy treats a bot-only server as empty.
+- With `bots_only: false`, the native server-console `players` response counts humans only,
+  including those still authenticating. It excludes the dedicated host and bots, so a LocalAdmin
+  "restart when empty" policy treats a server with only bots as empty.
 - Network registry monitoring checks for destroyed identities before network updates and when
   connections arrive.
   - With `enable_network_registry_recovery: true` (default), it removes only destroyed entries from

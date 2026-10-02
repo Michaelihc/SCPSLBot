@@ -53,6 +53,8 @@ namespace SCPSLBot
             }
 
             Instance = this;
+            // Published before anything that can fail, so companions never wake on a failed enable.
+            BotsOnlyMode.IsEnabled = Config.BotsOnly;
             try
             {
                 var normalizedSettings = Config.Normalize();
@@ -65,14 +67,18 @@ namespace SCPSLBot
                     SaveConfig();
                 }
 
-                BotsOnlyMode.IsEnabled = Config.BotsOnly;
                 if (Config.BotsOnly)
                 {
                     Logger.Info("[SCPSLBot] bots_only is enabled: warmup, overflow cleanup, the warmup SSS menu, WarmupSafezone and StatsBots stay off.");
                 }
 
-                humanPlayerCount = new HumanPlayerCountService();
-                humanPlayerCount.Enable();
+                // The humans-only players header serves warmup servers' restart gates; a bots-only server
+                // keeps the native output other tools parse.
+                if (!Config.BotsOnly)
+                {
+                    humanPlayerCount = new HumanPlayerCountService();
+                    humanPlayerCount.Enable();
+                }
                 NetworkHealth = new NetworkRegistryHealthService(Config);
                 NetworkHealth.Enable();
 

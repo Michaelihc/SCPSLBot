@@ -7,7 +7,7 @@ namespace SCPSLBot.Misc
     [CommandHandler(typeof(RemoteAdminCommandHandler))]
     internal class TestCommand : ICommand
     {
-        public string Command => "plugin_test";
+        public string Command => "bot_test";
 
         public string[] Aliases => new string[] { };
 

@@ -81,7 +81,17 @@ internal sealed class WarmupControlsRuntime
 
         try
         {
-            controller.Enable();
+            // The menu exists only while Standard warmup runs, so ServerKeybinds leaves native SSS
+            // untouched otherwise.
+            if (WarmupManager.Instance.IsStandardWarmup)
+            {
+                controller.Enable();
+            }
+            else
+            {
+                Logger.Info("[SCPSLBot] Warmup SSS controls wait for Standard warmup.");
+            }
+
             WarmupManager.Instance.ModeChanged += OnModeChanged;
             ServerEvents.RoundRestarted += OnRoundRestarted;
             initialized = true;
@@ -111,11 +121,19 @@ internal sealed class WarmupControlsRuntime
         roundId = string.Empty;
     }
 
-    private void OnModeChanged(WarmupMode _)
+    private void OnModeChanged(WarmupMode mode)
     {
         try
         {
-            controller?.NotifyArenaPresetChanged("warmup-mode-changed");
+            if (mode == WarmupMode.Standard)
+            {
+                controller?.Enable();
+                controller?.NotifyArenaPresetChanged("warmup-mode-changed");
+            }
+            else
+            {
+                controller?.Disable();
+            }
         }
         catch (Exception exception)
         {

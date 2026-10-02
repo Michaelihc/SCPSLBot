@@ -24,6 +24,9 @@ namespace SCPSLBot.Warmup
         };
 
         private readonly HashSet<LabElevatorDoor> ownedSurfaceElevatorLocks = new();
+        // The controller whose override this service set; a later round, admin command, warhead or
+        // another plugin owns any other value.
+        private DecontaminationController ownedDecontaminationOverride;
         private BotPluginConfig config;
         private Func<bool> isStandardWarmup;
         private bool initialized;
@@ -253,36 +256,44 @@ namespace SCPSLBot.Warmup
 
         private void DisableLczDecontaminationIfNeeded()
         {
-            if (ShouldDisableLczDecontamination())
+            if (ShouldDisableLczDecontamination()
+                && SetLczDecontamination(DecontaminationController.DecontaminationStatus.Disabled, "disabled"))
             {
-                SetLczDecontamination(DecontaminationController.DecontaminationStatus.Disabled, "disabled");
+                ownedDecontaminationOverride = DecontaminationController.Singleton;
             }
         }
 
         private void RestoreLczDecontaminationIfOwned()
         {
-            if (config != null && config.DisableLczDecontaminationInWarmup)
+            DecontaminationController owned = ownedDecontaminationOverride;
+            ownedDecontaminationOverride = null;
+            DecontaminationController controller = DecontaminationController.Singleton;
+            if (owned != null
+                && ReferenceEquals(controller, owned)
+                && controller.DecontaminationOverride == DecontaminationController.DecontaminationStatus.Disabled)
             {
                 SetLczDecontamination(DecontaminationController.DecontaminationStatus.None, "enabled");
             }
         }
 
-        private static void SetLczDecontamination(DecontaminationController.DecontaminationStatus status, string label)
+        private static bool SetLczDecontamination(DecontaminationController.DecontaminationStatus status, string label)
         {
             try
             {
                 var controller = DecontaminationController.Singleton;
                 if (controller == null || controller.DecontaminationOverride == status)
                 {
-                    return;
+                    return false;
                 }
 
                 controller.DecontaminationOverride = status;
                 Logger.Info($"[SCPSLBot] LCZ decontamination {label}.");
+                return true;
             }
             catch (Exception ex)
             {
                 Logger.Warn($"[SCPSLBot] Failed to set LCZ decontamination {label}: {ex.Message}");
+                return false;
             }
         }
 

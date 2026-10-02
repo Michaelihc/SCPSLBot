@@ -12,7 +12,7 @@ namespace SCPSLBot.Misc
     [CommandHandler(typeof(ClientCommandHandler))]
     internal class RaycastCommand : ICommand
     {
-        public string Command => "raycast";
+        public string Command => "bot_raycast";
 
         public string[] Aliases => new string[] { };
 
@@ -23,6 +23,12 @@ namespace SCPSLBot.Misc
             if (sender is not PlayerCommandSender playerCommandSender)
             {
                 response = "You must be in-game to use this command!";
+                return false;
+            }
+
+            // Client-console command: without this check any player could flood the server log.
+            if (!sender.CheckPermission(PlayerPermissions.GameplayData, out response))
+            {
                 return false;
             }
 
