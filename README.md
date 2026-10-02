@@ -74,6 +74,8 @@ difficulty. The SCP bots were invulnerable so that each take ran its full length
   for 45 s.
 - Custom maps built from static admin toys can be added to the navmesh (`nav rebuild <center> <size>`).
 
+How it works, the asset patch and the authored fallback: [docs/navigation.md](docs/navigation.md).
+
 ![Bots fighting on Surface](docs/media/surface-skirmish.jpg)
 
 ## Optional features
@@ -107,30 +109,10 @@ A shot fired inside the SCP-914 safezone is blocked.</td>
 bots_only: true   # default: plain AI bots; false turns on the warmup features above
 ```
 
-With `bots_only: true`, these stay off:
-
-- the warmup layer, so the effective mode is `None`: no round lock, respawns, arenas, managed bot
-  population, or hazard and wave overrides;
-- overflow cleanup, so corpses (SCP-049 revives, SCP-3114 disguises) and broken doors remain;
-- the warmup Server-Specific Settings menu;
-- WarmupSafezone and StatsBots, which stay dormant even when installed;
-- the humans-only rewrite of the native `players` header, so the native output stays unchanged.
-
-Nothing registers Server-Specific Settings, so ServerKeybinds stays idle and other plugins' menus are
-untouched. Bots never target dummies SCPSLBot did not create, and the runtime navmesh stops
-re-scanning the map while no bot exists.
-
-The saved `warmup_mode` is kept, so switching `bots_only` back to `false` restores it. While the
-switch is on, `bot_warmup` reports it and refuses mode changes. `bot_status` shows `bots_only=`.
-Restart the server after changing the switch.
-
-In bots-only mode you add the bots:
-
-- `bot_add` spawns an AI bot (at most 10 at a time). Use native RA force-class to make it any role,
-  SCPs included, and the AI takes over on the new role.
-- Bots are removed on round restart.
-- Dead bots are native spectators, so native NTF/Chaos waves can bring them back.
-- Other plugins can spawn and command bots through the [plugin API](#plugin-api).
+With the switch on, SCPSLBot only runs bots: nothing above is active, the native `players` output and
+other plugins' Server-Specific Settings menus are left alone, and bots ignore dummies they did not
+create. Add bots with `bot_add` and make them any role, SCPs included, with native RA force-class.
+Restart the server after changing the switch. Details: [docs/warmup.md](docs/warmup.md).
 
 ## Install
 
@@ -144,42 +126,16 @@ In bots-only mode you add the bots:
    | `optional/plugins/` (`WarmupSafezone.dll`, `StatsBots.dll`) | `LabAPI/plugins/<port>/`, only if you want them |
 
 3. Install [HintServiceMeow](https://github.com/MeowServer/HintServiceMeow) for on-screen text. StatsBots
-   also needs [StatsSystem](https://github.com/MedveMarci/StatsSystem) 2.2 and its `player_stats` store.
-4. Choose a navigation backend (below) and start the server. `bot_status` reports readiness.
+   also needs [StatsSystem](https://github.com/MedveMarci/StatsSystem) 2.2.
+4. Pick a navigation backend: either patch the server assets once per game update for the default
+   `Runtime` backend, or set `navigation.backend: Authored`. See [docs/navigation.md](docs/navigation.md).
+5. Start the server; `bot_status` reports readiness.
 
-Install exactly one `ServerKeybinds.dll` per port, in the dependency folder that port's loader reads.
-ServerKeybinds 6.4 keeps other plugins' Server-Specific Settings beside ours and only touches the menu
-while the warmup controls or StatsBots are active; the warmup controls exist only during Standard
-warmup.
-Never install a second copy or use `dependencies/global`. `HsmAdapter` and `ServerKeybinds` are open
-source at [sl-plugins-cement/HsmAdapter](https://github.com/sl-plugins-cement/HsmAdapter) and
+Install exactly one `ServerKeybinds.dll` per port, never under `dependencies/global`. It keeps other
+plugins' Server-Specific Settings and only touches the menu while the warmup controls or StatsBots are
+active. `HsmAdapter` and `ServerKeybinds` are open source at
+[sl-plugins-cement/HsmAdapter](https://github.com/sl-plugins-cement/HsmAdapter) and
 [Michaelihc/serverkeybinds](https://github.com/Michaelihc/serverkeybinds).
-
-### Navigation backend
-
-The default `navigation.backend: Runtime` bakes the navmesh from the server's real collision geometry.
-A stock dedicated server ships its collider meshes unreadable (and streamed), so Unity's navmesh builder
-silently drops most of the facility. Patch the server assets once per game update with the tools-only
-patcher, then verify before every start:
-
-```powershell
-dotnet build tools\NavMeshAssetPatcher\NavMeshAssetPatcher.csproj -c Release
-dotnet tools\NavMeshAssetPatcher\bin\Release\net8.0\NavMeshAssetPatcher.dll patch  --server "C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server"
-dotnet tools\NavMeshAssetPatcher\bin\Release\net8.0\NavMeshAssetPatcher.dll verify --server "C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server"
-```
-
-What the patcher does:
-
-- It rewrites `SCPSL_Data/*.assets` so every `Mesh` becomes readable with its vertex data inlined.
-  The `.bak` originals stay beside them.
-- It writes `SCPSL_Data/navmesh-asset-patch.json`, and `restore` puts the originals back.
-- `verify` exits 2 when a game update or Steam file validation has restored the stock files.
-  `tools\Start-BotTestServer8888.ps1`, the isolated 8891 drivers and the production deploy script
-  refuse to start an unpatched server.
-- Client files are never touched.
-
-To skip patching, set `navigation.backend: Authored`. Bots then use the hand-authored navmesh embedded
-in `SCPSLBot.dll`, which is what our production server runs.
 
 ## Quick start
 
@@ -192,336 +148,24 @@ in `SCPSLBot.dll`, which is what our production server runs.
 | Switch warmup modes (with `bots_only: false`) | `bot_warmup none\|standard` |
 | Check health and navigation | `bot_status`, `bot_health`, `nav status` |
 
-## Reference
+## Documentation
 
-### Standard warmup
+- [Warmup features](docs/warmup.md): the `bots_only` switch, arenas, respawns and the player menu
+- [Navigation](docs/navigation.md): backends, the asset patcher, custom maps and diagnostics
+- [Remote Admin commands](docs/commands.md)
+- [Configuration](docs/configuration.md)
+- [Plugin API](docs/plugin-api.md) for other plugins that spawn and command bots
+- [Build and verify](docs/development.md)
+- [Changelog](CHANGELOG.md)
 
-Requires `bots_only: false`.
-
-**Arenas and population.** Arena occupancy drives the managed bot population:
-
-- LCZ occupancy keeps at least one SCP bot.
-- HCZ/EZ occupancy keeps at least two human bots: one Foundation and one Chaos before any higher
-  configured count.
-- Surface keeps its classic player-factor population.
-- Empty servers keep the configured baseline population.
-
-Population-created bots stay reconciled to their role and arena. `bot_add` instead creates an
-independent AI bot: RA role changes persist, because the population controller only adopts it when an
-admin runs `bot_manage`.
-
-**Arena entry and Surface rules.**
-
-- Surface and LCZ placement use the game's native NTF Private and Class-D spawnpoints.
-- HCZ/EZ entry rotates across distinct generated rooms. It uses the native named-door registry with
-  the same collision-safe resolver as RA `doortp`, and falls back to SCP-939's native spawn if no door
-  target is available.
-- Surface PvE managed CI bots use their exact native CI reinforcement spawn.
-- Real players may stay on Surface as Facility Guard or any NTF rank. Other human roles are evacuated
-  to HCZ/EZ and SCPs to LCZ, each with a localized per-player broadcast.
-- Only the native Gate A/Gate B Surface elevator doors receive a plugin-owned lock. It is removed
-  when warmup is disabled.
-
-**Respawns.** A round-owned service scans participating ready players every
-`respawn_scan_interval_seconds`:
-
-- Only the exact native `Spectator` role is eligible.
-- A first-observed spectator respawns after `spectator_respawn_delay_ms`.
-- A death from a playable role respawns after `human_respawn_delay_ms` and restores the previous role.
-- Spectators are routed by their server-owned arena membership, not the spectator camera position.
-- Failed native assignments stay scheduled and are retried with explicit logs.
-
-Native spawn protection for real players is kept only on the first playable respawn after a confirmed
-death. SCPSLBot clears native spawn protection on every bot it drives.
-
-**Native waves.** Native reinforcement waves (NTF/CI main waves, mini-waves and forced waves) are
-disabled during Standard warmup by default (`disable_native_respawn_waves_in_warmup: true`). Individual
-player and bot respawns continue. Setting the option to `false`, switching warmup off or unloading
-SCPSLBot releases the restriction without overwriting native timers or token counts.
-
-**Tutorial.** Admin-assigned Tutorial is outside all warmup management. It keeps native spawning and
-effects, adds nothing to arena population, has no warmup controls and is not protected by safezones.
-
-### Player controls
-
-While Standard warmup is active, Server-Specific Settings (SSS) provide personalized controls:
-
-- **`Respawn as` + `Apply`.** The dropdown lists every registered native gameplay role except `None`,
-  `Spectator`, `Destroyed`, `Overwatch`, `Filmmaker`, `CustomRole` and `Tutorial`. `Apply` performs
-  the revalidated exact-role change. Role changes inside the facility keep the player's position.
-- **`Request item` + `Grant`.** The dropdown lists the complete safe native item list. `Grant`
-  rechecks full-UserId cooldowns and per-life/per-round limits before one native grant.
-- **`Teleport room` + `Apply`.**
-  - The dropdown stages a generated room from the native RA named-door registry.
-  - Apply re-resolves the door tag with the same collision-safe calculation as RA `doortp`.
-  - Surface destinations are hidden for every role. Apply rechecks the resolved zone, so a stale or
-    forged selection cannot bypass that.
-- **`Arena preset` + `Apply`.** Moves only that player to Surface PvE, HCZ/EZ PvPvE or LCZ SCP and
-  applies the arena's default role. Selecting the active arena is a no-op for an alive player and
-  respawns a spectator. A real switch commits only after the exact role and destination are verified,
-  and otherwise rolls back.
-
-How staging and refreshes behave:
-
-- Opening or refreshing SSS performs no action. Dropdowns only stage a server-side selection; the
-  explicit button executes it.
-- A retained selection stays staged after it runs, so pressing the button again revalidates and
-  repeats it.
-- Staged selections use stable IDs tied to PlayerId, full UserId and action type. Each action type
-  has its own monotonic per-user cooldown, so one action never delays another.
-- Personalized refreshes are fingerprinted, targeted, debounced by 500 ms, spaced at least 2 s
-  apart, and capped at six per player per minute.
-
-Debug, bot-diagnostic and navigation-authoring tools are never sent to player SSS; they stay in Remote
-Admin. StatsBots adds Display toggles and an unlocked-only title selector, with
-`warmuptitle [list|none|<titleId>]` as the Player Console fallback.
-
-### Navigation details
-
-The runtime backend works in stages:
-
-1. **Collect.** Two frames after map generation, it collects the live colliders the human capsule
-   collides with. Players, door leaves and glass, pickups, ragdolls, elevator chambers, invisible
-   doorway blockers, the Surface helicopter, the capybara and non-collidable admin toys are excluded.
-2. **Build.** It builds asynchronously with the human capsule: radius 0.36 m plus 5 cm clearance,
-   height 1.8 m, 0.3 m step, 45° slope, 9 cm voxels.
-3. **Fill gaps.** Rooms whose meshes still cannot be read fall back to a probed floor
-   (`NAV_ROOM_PROBED`).
-4. **Link.** Each elevator group gets a bidirectional link between its landings. Door-less clutter
-   connectors that the bake leaves sealed are probed with the capsule and bridged with a jump link.
-   Connectors impassable at every tier log `NAV_CONNECTOR_SEALED` and are routed around.
-5. **Keycard areas.** Keycard doors contribute one navmesh area per permission class
-   (`navigation.keycard_area_routing`). Locked and unpowered doors are still handled when a bot
-   interacts with them.
-
-Keeping the navmesh current:
-
-- The navmesh is reconciled with live geometry every `navigation.reconcile_interval_seconds` (5 s)
-  and immediately after admin toys, room connectors or breakable doors change. Unchanged geometry
-  costs only a source hash, and changed tiles rebuild asynchronously.
-- When a bot reports a blocked crossing, that spot is carved out for
-  `navigation.blocked_crossing_seconds` (45 s).
-- A bake that fails twice on a map falls back to the authored backend for that map
-  (`NAV_BAKE_FALLBACK`).
-- Failed loads and bakes retry after 1, 2, 4 and 8 s, then every 15 s, until they succeed or the map
-  changes. Managed bot spawning resumes once navigation is ready.
-
-How bots move and recover:
-
-- Bots follow string-pulled corners nudged into each turn and slide around whatever collider is
-  directly ahead.
-- When they stop making progress they escalate: door interaction and sideways nudges after 0.7 s,
-  a native jump after 1.5 s, a short back-off, a re-plan after 2.5 s, then the crossing is carved out.
-- Roam targets come only from reachable points. An unreachable goal produces a partial path toward
-  the closest reachable point.
-
-**Authored backend.** `navigation.backend: Authored` uses the embedded `Assets/navmesh.slnmf`, installed
-on a fresh configuration. It quarantines invalid live nav data with backup recovery, fills rooms that
-have no authored cells from live floor probes, and keeps the `nav` cell editor.
-
-**Custom maps.**
-
-- `nav rebuild <centerX> <centerY> <centerZ> <sizeX> <sizeY> <sizeZ>` re-bakes runtime navigation
-  including one custom region.
-- Load the geometry first, then wait for `nav status` to report `ready=True`, `built=True` and
-  `active_backend=runtime`.
-- Sizes are 1–1024 m on X/Z and 1–256 m on Y, within ±20,000 m on each axis.
-- Only stationary toy hierarchies are baked: mark platforms and their parents `IsStatic=true`, and
-  non-static parents exclude their children.
-- A region lasts until round restart, new map generation, plugin unload or `nav rebuild clear`.
-
-**Logs and status fields.**
-
-- Server logs record `NAV_BAKE_START`, `NAV_BAKED`, `NAV_RECONCILE_START`, `NAV_RECONCILED`,
-  `NAV_UNREADABLE_MESH`, `NAV_LINK`, `NAV_BAKE_FAILED`, `NAV_LOAD_RETRY` and `NAV_LOAD_RECOVERED`.
-- Bot movement logs record `[BotNav] STUCK`, `CROSSING_PENALIZED`, `PLAN_FAILED`, `PLAN_PARTIAL` and
-  `REPLAN_STORM`.
-- `bot_status` exposes `nav_ready`, `nav_error`, `nav_backend` and the bake, link and reconcile counters.
-  `nav status`, `nav probe` and `nav path` give the details.
-
-### Remote Admin commands
-
-| Command | Purpose | Permission |
-|---|---|---|
-| `bot_status` | Readiness, desired/tracked/owned/independent/live bots, nav generation, faults, runner heartbeat, resources | `FacilityManagement` |
-| `bot_health` | Network registry recovery counters, last repair with object/component provenance, last scan fault; also available in the server console | `FacilityManagement` |
-| `bot_add` | Spawn an independent AI bot (maximum 10); RA role changes persist | `PlayersManagement` |
-| `bot_manage <player ID>` | Adopt an independent bot into a maintained population slot (Standard warmup); at full population it replaces one managed bot | `PlayersManagement` |
-| `bot_unmanage <player ID>` | Release a maintained bot without despawning it; the controller creates a replacement | `PlayersManagement` |
-| `bot_warmup [none\|standard]` | Query or change the persisted warmup mode | Query: none; change: `PlayersManagement` |
-| `bot_difficulty [easy\|normal\|hard\|hardest]` | Query or change combat difficulty (default `hardest`, not persisted) | Query: none; change: `PlayersManagement` |
-| `bot_path`, `botspike ...` | Pathing and native movement diagnostics | Mutation: `PlayersManagement`; spike status: `GameplayData` |
-| `botspike survey <clutter\|doors\|all\|keycard> [both\|forward]`, `botspike survey_status`, `botspike survey_stop` | Walk the spike bot natively across every door-less connector (or plain door) and log per-case `[BotSurvey]` verdicts; `keycard` asserts keycard-aware routing with path queries only | Survey: `PlayersManagement`; status: `GameplayData` |
-| `nav status` | Active/configured backend, readiness, bake and reconcile diagnostics | `GameplayData` |
-| `nav rebuild` | Re-bake (runtime) or re-load (authored) navigation for the current map | `ServerConfigs` |
-| `nav rebuild <center xyz> <size xyz>` / `nav rebuild clear` | Add or remove one custom-map region | `ServerConfigs` |
-| `nav probe [x y z\|RoomName]` | Whether a point is on the navigation surface, the nearest surface point, navmesh area / door class | `GameplayData` |
-| `nav path <from> <to> [perms <hex>\|all]` | Runtime path query between points or room anchors with a permission mask | `GameplayData` |
-| `nav edit\|load\|save\|vertex ...` | Authored-backend cell editor | Read: `GameplayData`; mutation: `ServerConfigs` |
-| `statsbots status\|grant\|revoke <fullUserId> ...` | Inspect or administer warmup titles | configurable `statsbots.manage` |
-
-Notes:
-
-- StatsBots admin commands require an exact full authenticated UserId.
-- With `bots_only: false`, the native server-console `players` response counts humans only,
-  including those still authenticating. It excludes the dedicated host and bots, so a LocalAdmin
-  "restart when empty" policy treats a server with only bots as empty.
-- Network registry monitoring checks for destroyed identities before network updates and when
-  connections arrive.
-  - With `enable_network_registry_recovery: true` (default), it removes only destroyed entries from
-    Mirror's spawned, observing and ownership registries.
-  - Repairs log `[BotHealth] DESTROYED_REGISTRY_ENTRY`.
-  - Setting it to `false` keeps diagnostics without mutating the registries.
-
-### Configuration
-
-SCPSLBot defaults (`LabAPI/configs/<port>/SCPSLBot/config.yml`):
-
-```yaml
-bots_only: true                                # master switch; false turns on the warmup features
-language: ""                                   # "en", "cn", or "" (client language, Chinese fallback)
-warmup_mode: Standard                          # Standard or None
-default_warmup_mode: Standard                  # fallback when warmup_mode is invalid
-disable_native_respawn_waves_in_warmup: true
-human_respawn_delay_ms: 1200
-bot_respawn_delay_ms: 2500
-spectator_respawn_delay_ms: 5000
-respawn_scan_interval_seconds: 0.5
-warmup_bot_count: 3                            # 0-10
-warmup_bot_role: ChaosRifleman
-warmup_human_role: NtfPrivate
-default_warmup_arena: SurfacePve
-surface_pve_bot_factor: 1.2                    # 1-2
-surface_pve_max_bot_count: 6                   # 2-6
-heavy_entrance_pvpve_bot_count: 2              # 2-5
-light_containment_scp_bot_count: 1             # fixed at 1
-disable_warhead_in_warmup: true
-disable_lcz_decontamination_in_warmup: true
-disable_disarming_in_warmup: true
-disable_scp207_health_drain_in_warmup: true
-enable_overflow_cleanup: true                  # with bots_only: false; independent of warmup_mode
-cleanup_item_threshold: 80
-cleanup_check_interval_seconds: 10
-enable_network_registry_recovery: true
-force_standard_door_connectors: false
-navigation:
-  backend: Runtime                             # Runtime (needs the patched server assets) or Authored
-  reconcile_interval_seconds: 5
-  voxel_size: 0.09
-  keycard_area_routing: true
-  blocked_crossing_seconds: 45
-panel:
-  enabled: true                                # register the warmup SSS menu (read at plugin enable)
-  show_arena_preset: true
-  role_change_cooldown_seconds: 6
-  item_grant_cooldown_seconds: 1
-  teleport_cooldown_seconds: 1
-  arena_switch_cooldown_seconds: 5
-```
-
-**Overflow cleanup.** `enable_overflow_cleanup` checks loose pickups on the configured interval. When
-the count grows more than `cleanup_item_threshold` above the round baseline, it does the following,
-then captures a new baseline:
-
-- runs the game's native item, corpse, blood and bullet-hole cleanup;
-- runs `repair **` for all repairable doors.
-
-**`controls` and `panel`.**
-
-- `controls` holds the item policy, native spawn-anchor overrides, the three arena presets, cooldown
-  groups, allowed item roles and zones, and limits.
-- `panel` holds the SSS presentation.
-- High-impact items share a 60-second cooldown and are limited to one per life.
-
-Each product exposes `language`. See [WarmupSafezone/README.md](WarmupSafezone/README.md) and
-[StatsBots/README.md](StatsBots/README.md) for their full configuration.
-
-Recommended native settings for a warmup server:
-
-```yaml
-auto_warhead_start_minutes: 0
-dms_enabled: false
-stamina_balance_use: 0
-spawn_protect_enabled: true
-```
-
-### Plugin API
-
-Other plugins can drive bots directly:
-
-```csharp
-using MapGeneration;
-using PlayerRoles;
-using SCPSLBot.AI;
-using SCPSLBot.Api;
-
-ReferenceHub bot = BotOrders.SpawnBot("Guard Bot", RoleTypeId.FacilityGuard);
-BotOrders.MoveToRoom(bot, RoomName.HczArmory);   // or MoveTo(bot, worldPosition)
-BotOrders.TryGetStatus(bot, out BotOrderStatus status);
-BotOrders.Stop(bot);
-BotOrders.DespawnBot(bot);
-
-bool isBot = ManagedBotIdentity.IsManaged(player); // true for dummies SCPSLBot currently drives
-```
-
-On runtime navigation, `BotOrders.MoveTo` accepts either a floor point or the actor's native
-standing-root position.
-
-## Build and verify
-
-```powershell
-$env:SL_REFERENCES = 'C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed'
-dotnet build SCPSLBotAddon.sln -c Release -p:Platform=x64 -p:DeployToLocalServer=false
-dotnet test SCPSLBot.PolicyTests\SCPSLBot.PolicyTests.csproj -c Release
-node ..\.tests\lint-scenarios.js
-```
-
-Build notes:
-
-- `ServerKeybinds` and `HsmAdapter` are project references, resolved from sibling checkouts.
-  Override them with `-p:ServerKeybindsProject=<path>` and `-p:HsmAdapterProject=<path>`.
-- Build deployment is opt-in. The production solution excludes the in-server test and reload plugins.
-
-Verification:
-
-- The navigation gates boot the isolated port 8891 against the patched server assets, and every
-  driver verifies the asset patch first:
-  - `python tests/playtest/tools/check_connector_survey.py --scenario scpslbot-runtime-navmesh-gate`
-  - `--scenario scpslbot-keycard-routing-survey`
-  - `--rounds 2`
-  - `--scenario scpslbot-door-survey`
-
-  See [tests/playtest/README.md](tests/playtest/README.md).
-- The dedicated local bot-testing deployment is port `8888`. Start it with
-  `tools\Start-BotTestServer8888.ps1`.
-
-## Known conflicts and limits
-
-**Install conflicts**
-
-- Do not deploy the legacy `WarmupPlayerPanel` or `ScpslPluginStarter.dll`, or more than one
-  `ServerKeybinds.dll` per port.
-- `force_standard_door_connectors: true` rewrites map connectors and can conflict with map-layout
-  plugins. It is off by default.
-
-**Navigation**
-
-- The runtime backend needs the patched dedicated-server assets, and a game update or Steam file
-  validation restores the stock files. Bots stop at the Intercom doorway because its interior floor
-  does not voxelize.
-
-**Bot behaviour**
+## Known limits
 
 - SCP-079 has no bot AI.
 - Generic SCP bots use their primary attack only: no SCP-049 revive, SCP-939 lunge, amnestic cloud
   or mimicry, SCP-106 stalk or portals, or SCP-3114 disguise or strangle.
 - Bots do not use medkits, grenades or armor, and do not cuff.
 - With no target in sight, bots on Surface hold position instead of roaming.
-
-**Presentation**
-
-- This suite never owns native badges or player names; StatsBots titles stay in its HSM profile.
-- HSM text uses stable owned tags and never clears the shared vanilla hint and broadcast channels.
+- Do not install the legacy `WarmupPlayerPanel` or `ScpslPluginStarter.dll` alongside this suite.
 
 ## Credits
 

@@ -4,8 +4,9 @@ Read the [shared workspace instructions](../AGENTS.md) before working here, incl
 language, authorization and verification policy; independent repositories may not inherit them.
 Use [plugin conventions](../docs/plugin-conventions.md) for shared settings, audio and UI.
 
-LabAPI `net48` bot runtime and companion warmup plugins. Read [README](README.md) for
-features, configuration and commands; source owns detailed tuning and inventories.
+LabAPI `net48` bot runtime and companion warmup plugins. Read [README](README.md) for features and
+[docs/](docs/) for warmup, navigation, configuration and commands; source owns detailed tuning and
+inventories.
 
 ## Constraints
 
