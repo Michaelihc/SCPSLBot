@@ -3,6 +3,7 @@ using LabApi.Features;
 using LabApi.Features.Console;
 using LabApi.Loader.Features.Plugins;
 using SCPSLBot.AI;
+using SCPSLBot.Api;
 using SCPSLBot.Cleanup;
 using SCPSLBot.Health;
 using SCPSLBot.Navigation;
@@ -62,6 +63,12 @@ namespace SCPSLBot
                 if (normalizedSettings.Count > 0)
                 {
                     SaveConfig();
+                }
+
+                BotsOnlyMode.IsEnabled = Config.BotsOnly;
+                if (Config.BotsOnly)
+                {
+                    Logger.Info("[SCPSLBot] bots_only is enabled: warmup, overflow cleanup, the warmup SSS menu, WarmupSafezone and StatsBots stay off.");
                 }
 
                 humanPlayerCount = new HumanPlayerCountService();

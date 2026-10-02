@@ -11,6 +11,9 @@ namespace SCPSLBot
 {
     public sealed class BotPluginConfig
     {
+        [Description("Master switch. true runs plain AI bots: the warmup layer (round lock, respawns, arenas, managed bot population, hazard and wave overrides), overflow cleanup, the warmup Server-Specific Settings menu, WarmupSafezone and StatsBots all stay off. false enables them under their own settings. Restart the server after changing it.")]
+        public bool BotsOnly { get; set; } = true;
+
         [Description("Remove only destroyed identities from Mirror registries and observer sets; log their last known object and component identities.")]
         public bool EnableNetworkRegistryRecovery { get; set; } = true;
 

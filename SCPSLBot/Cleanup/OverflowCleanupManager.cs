@@ -77,7 +77,7 @@ namespace SCPSLBot.Cleanup
 
             try
             {
-                if (config.EnableOverflowCleanup)
+                if (config.EnableOverflowCleanup && !config.BotsOnly)
                 {
                     CleanupIfNeeded();
                 }

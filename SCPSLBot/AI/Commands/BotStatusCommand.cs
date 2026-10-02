@@ -26,7 +26,7 @@ namespace SCPSLBot.AI.Commands
             var sight = SightSense.Diagnostics;
             var navigation = NavigationSystem.Instance;
 
-            response = $"mode={WarmupManager.Instance.Mode}; desired={state.DesiredCount}; desired_role={state.DesiredRole}; "
+            response = $"mode={WarmupManager.Instance.Mode}; bots_only={SCPSLBot.Api.BotsOnlyMode.IsEnabled}; desired={state.DesiredCount}; desired_role={state.DesiredRole}; "
                        + $"tracked={state.TrackedCount}; owned={state.OwnedCount}; independent={Math.Max(0, state.TrackedCount - state.OwnedCount)}; live={state.LiveCount}; states={state.States}; arenas={state.Arenas}; "
                        + $"network_ready={state.NetworkReady}; nav_ready={state.NavReady}; nav_generation={state.NavGeneration}; nav_ready_generation={state.NavReadyGeneration}; "
                        + $"last_reconcile={Format(population.LastReconcileUtc)}; last_spawn_error={Value(population.LastSpawnError)}; reconcile_fault={Value(population.LastReconcileFault)}; "

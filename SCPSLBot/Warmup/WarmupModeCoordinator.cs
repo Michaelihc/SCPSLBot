@@ -9,6 +9,9 @@ namespace SCPSLBot.Warmup
 {
     internal sealed class WarmupModeCoordinator
     {
+        internal const string BotsOnlyRefusal =
+            "bots_only is enabled, so warmup stays off. Set bots_only: false in the SCPSLBot config and restart to use warmup modes.";
+
         private BotPluginConfig config;
         private BotPopulationController botPopulation;
         private WarmupRoundRespawnService respawns;
@@ -17,7 +20,9 @@ namespace SCPSLBot.Warmup
         private bool initialized;
         private int generation;
 
-        public WarmupMode Mode => config?.WarmupMode ?? WarmupMode.None;
+        // bots_only overrides the persisted mode without rewriting it, so turning the switch off
+        // restores the operator's previous warmup selection.
+        public WarmupMode Mode => config == null || config.BotsOnly ? WarmupMode.None : config.WarmupMode;
         public bool IsStandardWarmup => Mode == WarmupMode.Standard;
         public int Generation => generation;
 
@@ -88,6 +93,12 @@ namespace SCPSLBot.Warmup
                 return false;
             }
 
+            if (config?.BotsOnly == true)
+            {
+                response = BotsOnlyRefusal;
+                return false;
+            }
+
             SetMode(mode);
             response = $"Warmup mode set to {mode}.";
             return true;
@@ -95,7 +106,7 @@ namespace SCPSLBot.Warmup
 
         public void SetMode(WarmupMode mode)
         {
-            if (config == null || !Enum.IsDefined(typeof(WarmupMode), mode))
+            if (config == null || config.BotsOnly || !Enum.IsDefined(typeof(WarmupMode), mode))
             {
                 return;
             }

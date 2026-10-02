@@ -6,6 +6,7 @@ using LabApi.Loader.Features.Plugins.Enums;
 using StatsBots.Config;
 using StatsBots.Integration;
 using StatsBots.Services;
+using WarmupShared;
 
 namespace StatsBots;
 
@@ -31,6 +32,11 @@ public sealed class StatsBotsPlugin : Plugin<StatsBotsConfig>
         if (_runtime != null)
         {
             Logger.Warn("[StatsBots] Duplicate Enable ignored.");
+            return;
+        }
+        if (BotsOnlySwitch.IsEnabled())
+        {
+            Logger.Info("[StatsBots] SCPSLBot bots_only is enabled; StatsBots stays off. Set bots_only: false in the SCPSLBot config to use it.");
             return;
         }
         if (_sss?.HasClaim == true)

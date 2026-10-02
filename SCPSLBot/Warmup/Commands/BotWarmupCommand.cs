@@ -17,7 +17,7 @@ namespace SCPSLBot.Warmup.Commands
         {
             if (arguments.Count < 1)
             {
-                response = $"Current warmup mode is {WarmupManager.Instance.Mode}. Use: bot_warmup none|standard or warmup mode none|standard";
+                response = $"Current warmup mode is {WarmupManager.Instance.Mode}{(SCPSLBot.Api.BotsOnlyMode.IsEnabled ? " (bots_only is enabled)" : string.Empty)}. Use: bot_warmup none|standard or warmup mode none|standard";
                 return true;
             }
 
@@ -26,7 +26,7 @@ namespace SCPSLBot.Warmup.Commands
             {
                 if (arguments.Count < 2)
                 {
-                    response = $"Current warmup mode is {WarmupManager.Instance.Mode}. Use: warmup mode none|standard";
+                    response = $"Current warmup mode is {WarmupManager.Instance.Mode}{(SCPSLBot.Api.BotsOnlyMode.IsEnabled ? " (bots_only is enabled)" : string.Empty)}. Use: warmup mode none|standard";
                     return true;
                 }
 

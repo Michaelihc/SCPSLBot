@@ -64,5 +64,6 @@
   <Import Project="$(_DeployTargetsFile)" Condition="'$(_DeployTargetsFile)' != ''" />
   <ItemGroup>
     <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
+    <Compile Include="..\Shared\BotsOnlySwitch.cs" Link="Shared\BotsOnlySwitch.cs" />
   </ItemGroup>
 </Project>

@@ -36,10 +36,12 @@ internal sealed class WarmupControlsRuntime
             throw new ArgumentNullException(nameof(presentation));
         }
 
-        if (!pluginConfig.Panel.Enabled)
+        if (pluginConfig.BotsOnly || !pluginConfig.Panel.Enabled)
         {
             initialized = true;
-            Logger.Info("[SCPSLBot] Warmup SSS controls are disabled by config.");
+            Logger.Info(pluginConfig.BotsOnly
+                ? "[SCPSLBot] Warmup SSS controls are off because bots_only is enabled."
+                : "[SCPSLBot] Warmup SSS controls are disabled by config.");
             return;
         }
 

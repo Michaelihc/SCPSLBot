@@ -29,6 +29,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Shared\BotsOnlySwitch.cs" Link="Shared\BotsOnlySwitch.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="LabApi"><Private>false</Private></Reference>
     <Reference Include="Assembly-CSharp"><Private>false</Private></Reference>
     <Reference Include="Assembly-CSharp-firstpass"><Private>false</Private></Reference>

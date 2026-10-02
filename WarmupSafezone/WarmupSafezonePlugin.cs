@@ -3,8 +3,10 @@ using LabApi.Events;
 using LabApi.Events.Handlers;
 using LabApi.Features.Console;
 using LabApi.Loader.Features.Plugins;
+using LabApi.Loader.Features.Plugins.Enums;
 using ScpslPluginStarter.Core;
 using ScpslPluginStarter.Services;
+using WarmupShared;
 
 namespace ScpslPluginStarter;
 
@@ -33,6 +35,9 @@ public sealed class WarmupSafezonePlugin : Plugin<WarmupSafezoneConfig>
     public override Version Version => new(1, 0, 0);
     public override Version RequiredApiVersion => new(1, 1, 6);
 
+    // After SCPSLBot (Medium), so its bots_only switch is known when this plugin enables.
+    public override LoadPriority Priority => LoadPriority.Low;
+
     public override void Enable()
     {
         if (_enabled)
@@ -43,6 +48,12 @@ public sealed class WarmupSafezonePlugin : Plugin<WarmupSafezoneConfig>
         if (Instance != null && Instance != this)
         {
             throw new InvalidOperationException("Another WarmupSafezone instance is already enabled.");
+        }
+
+        if (BotsOnlySwitch.IsEnabled())
+        {
+            Logger.Info($"[{Name}] SCPSLBot bots_only is enabled; safezones stay off. Set bots_only: false in the SCPSLBot config to use them.");
+            return;
         }
 
         Instance = this;
