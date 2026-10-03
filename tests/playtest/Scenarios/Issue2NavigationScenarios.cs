@@ -209,7 +209,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
         ctx.Require(floors.Length > 1, "greenhouse has floor controls");
         ctx.Require(elevated.Length > 0, "greenhouse contains an elevated support with capsule clearance");
 
-        int failed = 0, tested = 0, reachable = 0;
+        int failed = 0, tested = 0, reachable = 0, skipped = 0;
         foreach (var top in elevated)
         {
             var approaches = floors.Where(p => Issue2World.HorizontalDistance(p, top) >= 1.5f && Issue2World.HorizontalDistance(p, top) <= 5f
@@ -218,6 +218,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
             if (start == default) start = approaches.FirstOrDefault();
             if (start == default)
             {
+                skipped++;
                 ctx.Info($"ISSUE2 CASE elevated={PlacementProbes.Format(top)} verdict=SETUP_SKIP reason=no-visible-floor-approach");
                 continue;
             }
@@ -225,7 +226,12 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
                     && Issue2World.ClearFloorRoute(start, p, pair.Bot)).OrderBy(p => Issue2World.HorizontalDistance(p, start)).ToArray();
             var floorGoal = controls.FirstOrDefault(Issue2World.OnAuthoredMesh);
             if (floorGoal == default) floorGoal = controls.FirstOrDefault();
-            ctx.Require(floorGoal != default, "same-floor pursuit control has visible separated anchors");
+            if (floorGoal == default)
+            {
+                skipped++;
+                ctx.Info($"ISSUE2 CASE elevated={PlacementProbes.Format(top)} verdict=SETUP_SKIP reason=no-clear-separated-floor-control");
+                continue;
+            }
             ctx.Info($"ISSUE2 APPROACH start={PlacementProbes.Format(start)} startOnMesh={Issue2World.OnAuthoredMesh(start)} floor={PlacementProbes.Format(floorGoal)} floorOnMesh={Issue2World.OnAuthoredMesh(floorGoal)} elevated={PlacementProbes.Format(top)} elevatedOnMesh={Issue2World.OnAuthoredMesh(top)}");
 
             // A plain native dummy is deliberately used for the physical control. It has no bot
@@ -238,9 +244,12 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
             var rootHeight = PlacementProbes.ExpectedRootHeight(((IFpcRole)WarmupBotWorld.FindById(jumper.PlayerId)!.RoleBase).FpcModule.CharacterControllerSettings);
             yield return jumper.TraverseJumpCourse(new[] { start - Vector3.up * rootHeight, top - Vector3.up * rootHeight }, nativeJump,
                 arrivalRadii: new[] { 0.6f, 0.6f });
+            // The native grounded flag accounts for capsule support at a platform edge, where a
+            // centre-only downward ray can miss the ledge despite a real supported landing.
+            bool nativeGrounded = WarmupBotWorld.FindById(jumper.PlayerId)!.ReferenceHub.IsGrounded();
             bool nativeReachable = nativeJump.CompletedCourse && Mathf.Abs(jumper.Position.y - top.y) <= 0.25f
-                && Issue2World.HorizontalDistance(jumper.Position, top) <= 0.6f && PlacementProbes.Ground(jumper.Position, 1.5f).Ok;
-            ctx.Info($"ISSUE2 NATIVE_JUMP top={PlacementProbes.Format(top)} landing={PlacementProbes.Format(jumper.Position)} verifiedLanding={nativeReachable} {nativeJump.Summary()}");
+                && Issue2World.HorizontalDistance(jumper.Position, top) <= 0.6f && nativeGrounded;
+            ctx.Info($"ISSUE2 NATIVE_JUMP top={PlacementProbes.Format(top)} landing={PlacementProbes.Format(jumper.Position)} nativeGrounded={nativeGrounded} verifiedLanding={nativeReachable} {nativeJump.Summary()}");
             if (nativeReachable) reachable++;
             using (ctx.BeginArrangement("remove the physical reachability probe before combat pursuit"))
                 yield return jumper.ChangeRole(RoleTypeId.Spectator);
@@ -273,7 +282,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
                 ctx.Info($"ISSUE2 CASE {label} verdict={verdict} nativeJumpReachable={nativeReachable} {walk.Describe()} targetNow={PlacementProbes.Format(pair.Target.Position)}");
             }
         }
-        ctx.Info($"ISSUE2 SUMMARY greenhouse tested={tested} failed={failed} nativeReachableLevels={reachable}");
+        ctx.Info($"ISSUE2 SUMMARY greenhouse tested={tested} failed={failed} nativeReachablePositions={reachable} setupSkippedPositions={skipped}");
         ctx.Require(tested > 0, "at least one floor/elevated pursuit pair was exercised");
         ctx.Require(failed == 0, $"SCP-049 physically reached each visible target (failed={failed}; native-reachable levels={reachable})");
         if (reachable == 0) ctx.Skip("No elevated landing was cleared by the native jump control; elevated pursuit reachability remains unverified.");
