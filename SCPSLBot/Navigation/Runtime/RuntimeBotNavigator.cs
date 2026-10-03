@@ -88,6 +88,7 @@ namespace SCPSLBot.Navigation.Runtime
         public bool HasPath => current.HasPath;
         public bool HasPartialPath => current.HasPartialPath;
         public Vector3 CurrentWaypoint { get; private set; }
+        public bool RequiresJump => false;
         public Vector3 GoalPosition => current.Goal;
         public int ProgressStamp { get; private set; }
         public int PathNodeCount => current.Corners.Count;

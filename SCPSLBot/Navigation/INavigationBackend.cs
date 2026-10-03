@@ -53,6 +53,9 @@ namespace SCPSLBot.Navigation
         /// <summary>The steering point returned by the last <see cref="GetPositionTowards"/> call.</summary>
         Vector3 CurrentWaypoint { get; }
 
+        /// <summary>The current route needs a native jump over a physically validated low step.</summary>
+        bool RequiresJump { get; }
+
         /// <summary>The goal of the current plan.</summary>
         Vector3 GoalPosition { get; }
 

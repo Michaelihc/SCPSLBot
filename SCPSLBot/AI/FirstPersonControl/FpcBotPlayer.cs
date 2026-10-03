@@ -242,7 +242,17 @@ namespace SCPSLBot.AI.FirstPersonControl
             positionTowardsGoal = Navigator.GetPositionTowards(goalPosition);
             SteerToPosition(positionTowardsGoal);
             SteerAwayFromObstacles();
-            SteerAroundAhead(positionTowardsGoal);
+            if (Navigator.RequiresJump)
+            {
+                // A validated low step needs forward input, rather than obstacle avoidance sliding
+                // along its face. Request the native jump only while grounded.
+                var module = FpcRole.FpcModule;
+                if (module.IsGrounded) module.Motor.JumpController.WantsToJump = true;
+            }
+            else
+            {
+                SteerAroundAhead(positionTowardsGoal);
+            }
         }
 
         // Generic local avoidance for whatever collider is directly ahead (spawned clutter, props,

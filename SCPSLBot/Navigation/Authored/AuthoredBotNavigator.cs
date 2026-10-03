@@ -52,13 +52,21 @@ namespace SCPSLBot.Navigation.Authored
         }
 
         /// <summary>True when a complete path to the goal cell exists.</summary>
-        public bool HasPath => hasPath;
+        public bool HasPath => localRoute || hasPath;
 
         /// <summary>True when only a partial path (toward the reachable cell nearest the goal) exists.</summary>
-        public bool HasPartialPath => hasPartialPath;
+        public bool HasPartialPath => !localRoute && hasPartialPath;
 
         /// <summary>The steering point returned by the last <see cref="GetPositionTowards"/> call.</summary>
         public Vector3 CurrentWaypoint { get; private set; }
+        public bool RequiresJump { get; private set; }
+        private bool localRoute;
+        private bool localRouteValid;
+        private bool localRouteJump;
+        private Vector3 localRouteStart;
+        private Vector3 localRouteGoal;
+        private float nextLocalProbeAt;
+        private int localTopologyVersion = -1;
 
         /// <summary>
         /// Increments whenever the bot genuinely advances along its path (a portal was crossed) or
@@ -81,7 +89,7 @@ namespace SCPSLBot.Navigation.Authored
         /// <summary>Index of the cell the bot is currently on within <see cref="CellsPath"/>.</summary>
         public int CurrentPathIndex => currentPathIdx;
 
-        public int PathNodeCount => CellsPath.Count;
+        public int PathNodeCount => localRoute ? 2 : CellsPath.Count;
 
         public int AreaMask => ~0;
 
@@ -93,7 +101,7 @@ namespace SCPSLBot.Navigation.Authored
             var target = NavigationMesh.GetCellWithin(goalPosition);
             if (!within.HasValue || !target.HasValue)
             {
-                return false;
+                return LocalSurfaceRoute.TryProbe(botPlayer.PlayerPosition, goalPosition, out _);
             }
 
             return NavigationMesh.FindShortestPath(within.Value, target.Value, reachScratch, allowPartial: false) == NavigationMesh.PathOutcome.Complete;
@@ -120,6 +128,11 @@ namespace SCPSLBot.Navigation.Authored
         /// </summary>
         public bool TryGetElevatorLink(out ElevatorLinkSegment link)
         {
+            if (localRoute)
+            {
+                link = default;
+                return false;
+            }
             foreach (var (cell, nextCell) in CellPathSegments)
             {
                 if (!cell.AdjacentCellEdges.ContainsKey(nextCell)
@@ -136,12 +149,37 @@ namespace SCPSLBot.Navigation.Authored
 
         public string DescribeState()
         {
+            if (localRoute) return $"local/{(RequiresJump ? "jump" : "walk")}/2";
             var kind = hasPath ? "complete" : hasPartialPath ? "partial" : "none";
             return $"{kind}/{currentPathIdx}/{CellsPath.Count}";
         }
 
         public Vector3 GetPositionTowards(Vector3 goalPosition)
         {
+            RequiresJump = false;
+            var position = botPlayer.PlayerPosition;
+            if ((!GetCellWithin().HasValue || !NavigationMesh.GetCellWithin(goalPosition).HasValue)
+                && TryLocalRoute(position, goalPosition))
+            {
+                if (!localRoute)
+                {
+                    CellsPath.Clear();
+                    currentPathIdx = -1;
+                    ProgressStamp++;
+                }
+                else if (Vector3.Distance(GoalPosition, goalPosition) > 0.5f) ProgressStamp++;
+                localRoute = true;
+                GoalPosition = goalPosition;
+                CurrentWaypoint = goalPosition;
+                RequiresJump = localRouteJump;
+                PointsPath.Clear();
+                PointsPath.Add(position);
+                PointsPath.Add(goalPosition);
+                return goalPosition;
+            }
+
+            if (localRoute) ForceReplan();
+            localRoute = false;
             this.UpdateNavigationTo(goalPosition);
 
             // No navigable path at all: hold position rather than walking straight into walls
@@ -193,6 +231,22 @@ namespace SCPSLBot.Navigation.Authored
 
             CurrentWaypoint = goalPosition;
             return goalPosition;
+        }
+
+        private bool TryLocalRoute(Vector3 position, Vector3 goal)
+        {
+            // Bound live physics work and invalidate on map/topology changes, movement and goal changes.
+            if (Time.time >= nextLocalProbeAt || localTopologyVersion != NavigationMesh.TopologyVersion
+                || Vector3.Distance(position, localRouteStart) > 0.4f
+                || Vector3.Distance(goal, localRouteGoal) > 0.2f)
+            {
+                localRouteValid = LocalSurfaceRoute.TryProbe(position, goal, out localRouteJump);
+                localRouteStart = position;
+                localRouteGoal = goal;
+                localTopologyVersion = NavigationMesh.TopologyVersion;
+                nextLocalProbeAt = Time.time + 0.2f;
+            }
+            return localRouteValid;
         }
 
         private void UpdateNavigationTo(Vector3 goalPosition)
@@ -558,6 +612,7 @@ namespace SCPSLBot.Navigation.Authored
         {
             goalCell = null;
             currentPathIdx = -1;
+            nextLocalProbeAt = 0f;
         }
 
         /// <summary>
