@@ -101,7 +101,8 @@ namespace SCPSLBot.Navigation.Authored
             var target = NavigationMesh.GetCellWithin(goalPosition);
             if (!within.HasValue || !target.HasValue)
             {
-                return LocalSurfaceRoute.TryProbe(botPlayer.PlayerPosition, goalPosition, out _);
+                return LocalSurfaceRoute.TryProbe(botPlayer.PlayerPosition, goalPosition,
+                    botPlayer.FpcRole.FpcModule.CharacterControllerSettings, out _);
             }
 
             return NavigationMesh.FindShortestPath(within.Value, target.Value, reachScratch, allowPartial: false) == NavigationMesh.PathOutcome.Complete;
@@ -240,7 +241,8 @@ namespace SCPSLBot.Navigation.Authored
                 || Vector3.Distance(position, localRouteStart) > 0.4f
                 || Vector3.Distance(goal, localRouteGoal) > 0.2f)
             {
-                localRouteValid = LocalSurfaceRoute.TryProbe(position, goal, out localRouteJump);
+                localRouteValid = LocalSurfaceRoute.TryProbe(position, goal,
+                    botPlayer.FpcRole.FpcModule.CharacterControllerSettings, out localRouteJump);
                 localRouteStart = position;
                 localRouteGoal = goal;
                 localTopologyVersion = NavigationMesh.TopologyVersion;

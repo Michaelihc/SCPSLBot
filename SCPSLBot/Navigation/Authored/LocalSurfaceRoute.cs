@@ -10,10 +10,9 @@ namespace SCPSLBot.Navigation.Authored
         private const float MaxDistance = 6f;
         private const float SampleSpacing = 0.2f;
         private const float MaxRise = 0.9f;
-        private const float FloorTolerance = 0.15f;
         private const float JumpApproachDistance = 1.1f;
 
-        public static bool TryProbe(Vector3 start, Vector3 goal, out bool jump)
+        public static bool TryProbe(Vector3 start, Vector3 goal, CharacterControllerSettingsPreset settings, out bool jump)
         {
             jump = false;
             var delta = Vector3.ProjectOnPlane(goal - start, Vector3.up);
@@ -28,7 +27,7 @@ namespace SCPSLBot.Navigation.Authored
             // Keep doors in the mask: a local route must not bypass a locked leaf. Player bodies
             // are handled by native collision and must not make the target itself an obstruction.
             var mask = FpcStateProcessor.Mask & ~LayerMask.GetMask("Player", "Hitbox");
-            var rootHeight = NavigationAgentProfile.RootHeight;
+            var rootHeight = settings.Height * 0.5f - settings.Center.y + settings.SkinWidth + 0.04f;
             if (!TryFloor(start + Vector3.up * 0.2f, rootHeight + MaxRise + 0.3f, room, mask, out var startFloor)
                 || !TryFloor(goal + Vector3.up * 0.2f, rootHeight + 0.4f, room, mask, out var goalFloor)
                 || Mathf.Abs(goal.y - goalFloor - rootHeight) > 0.3f)
@@ -59,8 +58,8 @@ namespace SCPSLBot.Navigation.Authored
                 }
 
                 point.y = floor;
-                if (floor - startFloor > NavigationAgentProfile.StepOffset + FloorTolerance
-                    || !ClearSegment(previous, point, NavigationAgentProfile.StepClearance, mask))
+                if (floor - previous.y > settings.StepOffset * 0.9f
+                    || !ClearSegment(previous, point, settings.StepOffset + 0.03f, settings, mask))
                 {
                     walkable = false;
                     firstObstacle = Mathf.Min(firstObstacle, distance * index / count);
@@ -77,8 +76,8 @@ namespace SCPSLBot.Navigation.Authored
             // current position. Native FPC supplies the jump, gravity and actual collision.
             var raisedStart = new Vector3(start.x, highest, start.z);
             var raisedGoal = new Vector3(goal.x, highest, goal.z);
-            if (!ClearSegment(new Vector3(start.x, startFloor, start.z), raisedStart, 0.08f, mask)
-                || !ClearSegment(raisedStart, raisedGoal, 0.08f, mask))
+            if (!ClearSegment(new Vector3(start.x, startFloor, start.z), raisedStart, 0.08f, settings, mask)
+                || !ClearSegment(raisedStart, raisedGoal, 0.08f, settings, mask))
             {
                 return false;
             }
@@ -101,11 +100,13 @@ namespace SCPSLBot.Navigation.Authored
             return true;
         }
 
-        private static bool ClearSegment(Vector3 from, Vector3 to, float clearance, int mask)
+        private static bool ClearSegment(Vector3 from, Vector3 to, float clearance, CharacterControllerSettingsPreset settings, int mask)
         {
-            var radius = NavigationAgentProfile.Radius;
-            var bottom = from + Vector3.up * (radius + clearance);
-            var top = from + Vector3.up * (NavigationAgentProfile.Height - radius);
+            // Native capsules rest within their skin band at a step face. Treat that contact as
+            // contact rather than an overlapping wall, while keeping the role's full height.
+            var radius = Mathf.Max(0.2f, settings.Radius - Mathf.Min(0.04f, settings.SkinWidth * 0.5f));
+            var bottom = from + Vector3.up * (settings.Radius + clearance);
+            var top = from + Vector3.up * (settings.Height - settings.Radius);
             var delta = to - from;
             return !Physics.CheckCapsule(bottom, top, radius, mask, QueryTriggerInteraction.Ignore)
                    && !Physics.CheckCapsule(bottom + delta, top + delta, radius, mask, QueryTriggerInteraction.Ignore)
