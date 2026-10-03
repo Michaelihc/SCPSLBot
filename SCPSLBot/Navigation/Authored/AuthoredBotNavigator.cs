@@ -99,11 +99,13 @@ namespace SCPSLBot.Navigation.Authored
         {
             var within = GetCellWithin();
             var target = NavigationMesh.GetCellWithin(goalPosition);
-            if (!within.HasValue || !target.HasValue)
+            if (!target.HasValue)
             {
                 return LocalSurfaceRoute.TryProbe(botPlayer.PlayerPosition, goalPosition,
                     botPlayer.FpcRole.FpcModule.CharacterControllerSettings, out _);
             }
+
+            if (!within.HasValue) return false;
 
             return NavigationMesh.FindShortestPath(within.Value, target.Value, reachScratch, allowPartial: false) == NavigationMesh.PathOutcome.Complete;
         }
