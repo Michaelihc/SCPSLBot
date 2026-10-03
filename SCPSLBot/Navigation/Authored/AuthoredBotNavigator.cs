@@ -159,8 +159,10 @@ namespace SCPSLBot.Navigation.Authored
         {
             RequiresJump = false;
             var position = botPlayer.PlayerPosition;
-            if ((!GetCellWithin().HasValue || !NavigationMesh.GetCellWithin(goalPosition).HasValue)
-                && TryLocalRoute(position, goalPosition))
+            // Preserve the existing cell path when its goal is covered, including its sticky
+            // recovery across momentary off-mesh room boundaries. Local probing extends coverage
+            // only for a goal the authored mesh cannot represent.
+            if (!NavigationMesh.GetCellWithin(goalPosition).HasValue && TryLocalRoute(position, goalPosition))
             {
                 if (!localRoute)
                 {
