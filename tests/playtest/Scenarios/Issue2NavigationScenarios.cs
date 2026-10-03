@@ -267,7 +267,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
                 ctx.Require(Issue2World.Visible(pair.Bot.Position, pair.Target.Position), "held hostile target is visible before pursuit");
                 string label = $"greenhouse mode={mode} rise={goal.y - start.y:F3} target={PlacementProbes.Format(goal)}";
                 ctx.Info($"ISSUE2 BEGIN {label} bot={pair.Bot.PlayerId} target={pair.Target.PlayerId} start={PlacementProbes.Format(pair.Bot.Position)} goal={PlacementProbes.Format(pair.Target.Position)} probe={NativeCommandAdapter.RemoteAdmin($"nav probe {Issue2World.Arguments(goal)}").Response}");
-                var walk = new Issue2Walk(pair.Bot, pair.Target.Position);
+                var walk = new Issue2Walk(pair.Bot, pair.Target.Position, requireLanding: mode == "elevated");
                 float deadline = Time.realtimeSinceStartup + 20f;
                 while (!walk.Arrived && Time.realtimeSinceStartup < deadline)
                 {
@@ -359,9 +359,13 @@ internal sealed class Issue2Walk
     private float nextLog;
     private float maxStep;
     private float maxRise;
-    public bool Arrived => Issue2World.HorizontalDistance(bot.Position, goal) <= 1.4f && Mathf.Abs(bot.Position.y - goal.y) <= 0.45f;
+    private readonly bool requireLanding;
+    public bool Arrived => Issue2World.HorizontalDistance(bot.Position, goal) <= 1.4f
+        && Mathf.Abs(bot.Position.y - goal.y) <= (requireLanding ? 0.25f : 0.45f)
+        && (!requireLanding || bot.ReferenceHub.IsGrounded());
     public bool WorldOk { get; private set; } = true;
-    public Issue2Walk(Player bot, Vector3 goal) { this.bot = bot; this.goal = goal; start = previous = bot.Position; }
+    public Issue2Walk(Player bot, Vector3 goal, bool requireLanding = false)
+    { this.bot = bot; this.goal = goal; this.requireLanding = requireLanding; start = previous = bot.Position; }
     public void Sample(ScenarioContext ctx, string label)
     {
         var point = bot.Position;
@@ -373,7 +377,7 @@ internal sealed class Issue2Walk
         nextLog = Time.realtimeSinceStartup + 1f;
         ctx.Info($"ISSUE2 TRACE {label} {Describe()}");
     }
-    public string Describe() => $"arrived={Arrived} worldOk={WorldOk} pos={PlacementProbes.Format(bot.Position)} horizontalGap={Issue2World.HorizontalDistance(bot.Position, goal):F2} verticalGap={Mathf.Abs(bot.Position.y - goal.y):F2} displacement={Vector3.Distance(start, bot.Position):F2} maxRise={maxRise:F2} maxSampleStep={maxStep:F2}";
+    public string Describe() => $"arrived={Arrived} worldOk={WorldOk} nativeGrounded={bot.ReferenceHub.IsGrounded()} requireLanding={requireLanding} pos={PlacementProbes.Format(bot.Position)} horizontalGap={Issue2World.HorizontalDistance(bot.Position, goal):F2} verticalGap={Mathf.Abs(bot.Position.y - goal.y):F2} displacement={Vector3.Distance(start, bot.Position):F2} maxRise={maxRise:F2} maxSampleStep={maxStep:F2}";
 }
 
 internal static class Issue2World
