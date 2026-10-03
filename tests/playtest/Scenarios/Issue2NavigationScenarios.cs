@@ -42,13 +42,72 @@ public sealed class Issue2CheckpointScenario : Scenario
             5f, "checkpoint fixtures have their selected human roles");
         yield return ctx.Wait(1f);
 
-        int tested = 0, failed = 0, skipped = 0;
+        int tested = 0, failed = 0, skipped = 0, floorControls = 0, failedControls = 0, nativeCrossings = 0;
         foreach (var checkpoint in checkpoints)
         {
             bool original = checkpoint.TargetState;
+            float originalOpenTime = checkpoint.SequenceCtrl.OpenLoopTime;
             try
             {
                 ctx.Info($"ISSUE2 CHECKPOINT name={checkpoint.name} pos={PlacementProbes.Format(checkpoint.transform.position)} leaves={checkpoint.SubDoors.Length} locks={checkpoint.ActiveLocks} permissions={checkpoint.RequiredPermissions.RequiredPermissions}");
+                foreach (int direction in new[] { 1, -1 })
+                {
+                    var leaf = checkpoint.SubDoors[0];
+                    var forward = Vector3.ProjectOnPlane(leaf.transform.forward, Vector3.up).normalized * direction;
+                    if (!Issue2World.TryStanding(pair.Bot, leaf.transform.position - forward * 3.5f, out var start)
+                        || !Issue2World.TryStanding(pair.Target, start - forward * 3f, out var goal)
+                        || Issue2World.CorridorBlockers(start, goal) != "none")
+                    {
+                        skipped++;
+                        ctx.Info($"ISSUE2 CASE checkpoint={checkpoint.name} direction={direction} mode=floor verdict=SETUP_SKIP reason=no-clear-floor-corridor");
+                        continue;
+                    }
+                    ctx.Require(Issue2World.TryStanding(pair.Target, leaf.transform.position + forward * 3.5f, out var farSide),
+                        "native checkpoint control has a clear far-side landing");
+                    float rootHeight = PlacementProbes.ExpectedRootHeight(((IFpcRole)pair.Bot.RoleBase).FpcModule.CharacterControllerSettings);
+                    pair.SetRoles(RoleTypeId.Spectator, RoleTypeId.Spectator);
+                    ctx.Arrange("keep the checkpoint open for the native physical control", () =>
+                    {
+                        checkpoint.SequenceCtrl.OpenLoopTime = 60f;
+                        checkpoint.SequenceCtrl.RemainingTime = 0f;
+                        checkpoint.CurSequence = CheckpointDoor.SequenceState.Idle;
+                        checkpoint.NetworkTargetState = true;
+                        checkpoint.ToggleAllDoors(true);
+                    });
+                    yield return ctx.Wait(1.6f);
+                    Actor walker = ctx.SpawnActor("issue2-native-checkpoint-walk", RoleTypeId.Scientist, SpawnSpec.At(start), useMovementProvider: false);
+                    yield return walker.WaitReady();
+                    var nativeWalk = Actor.NewJumpCourseResult(allowJump: false);
+                    yield return walker.TraverseJumpCourse(new[] { start - Vector3.up * rootHeight, farSide - Vector3.up * rootHeight }, nativeWalk,
+                        allowJump: false, arrivalRadii: new[] { 0.6f, 0.6f });
+                    bool nativeArrived = nativeWalk.CompletedCourse && Issue2World.HorizontalDistance(walker.Position, farSide) <= 0.6f
+                        && Mathf.Abs(walker.Position.y - farSide.y) <= 0.25f;
+                    ctx.Info($"ISSUE2 NATIVE_CROSSING checkpoint={checkpoint.name} direction={direction} start={PlacementProbes.Format(start)} goal={PlacementProbes.Format(farSide)} landing={PlacementProbes.Format(walker.Position)} verifiedLanding={nativeArrived} {nativeWalk.Summary()}");
+                    if (nativeArrived) nativeCrossings++;
+                    using (ctx.BeginArrangement("remove the native checkpoint control before bot follow"))
+                        yield return walker.ChangeRole(RoleTypeId.Spectator);
+                    pair.SetRoles(RoleTypeId.Scientist, RoleTypeId.Scientist);
+                    yield return ctx.Wait(0.7f);
+                    pair.Place(start, goal);
+                    yield return ctx.Wait(0.7f);
+                    Issue2World.RequireStanding(ctx, pair.Bot);
+                    Issue2World.RequireStanding(ctx, pair.Target);
+                    string label = $"checkpoint={checkpoint.name} direction={direction} mode=floor";
+                    ctx.Info($"ISSUE2 BEGIN {label} start={PlacementProbes.Format(pair.Bot.Position)} goal={PlacementProbes.Format(pair.Target.Position)} corridor=none");
+                    pair.Follow();
+                    var walk = new Issue2Walk(pair.Bot, pair.Target.Position);
+                    float deadline = Time.realtimeSinceStartup + 10f;
+                    while (!walk.Arrived && Time.realtimeSinceStartup < deadline)
+                    {
+                        walk.Sample(ctx, label);
+                        yield return ctx.Wait(0.2f);
+                    }
+                    walk.Sample(ctx, label);
+                    pair.ClearFollow();
+                    floorControls++;
+                    if (!walk.Arrived || !walk.WorldOk) failedControls++;
+                    ctx.Info($"ISSUE2 CASE {label} verdict={(walk.Arrived && walk.WorldOk ? "PASS" : "FAIL")} {walk.Describe()} targetNow={PlacementProbes.Format(pair.Target.Position)}");
+                }
                 foreach (var leaf in checkpoint.SubDoors)
                 foreach (int direction in new[] { 1, -1 })
                 foreach (string mode in new[] { "open", "closed-card", "closed-denied" })
@@ -58,6 +117,9 @@ public sealed class Issue2CheckpointScenario : Scenario
                     {
                         pair.Bot.ClearInventory();
                         if (mode == "closed-card") pair.Bot.CurrentItem = pair.Bot.AddItem(ItemType.KeycardO5);
+                        checkpoint.SequenceCtrl.OpenLoopTime = mode == "open" ? 60f : originalOpenTime;
+                        checkpoint.SequenceCtrl.RemainingTime = 0f;
+                        checkpoint.CurSequence = CheckpointDoor.SequenceState.Idle;
                         checkpoint.NetworkTargetState = mode == "open";
                         checkpoint.ToggleAllDoors(mode == "open");
                     });
@@ -89,17 +151,19 @@ public sealed class Issue2CheckpointScenario : Scenario
                     tested++;
                     bool expected = mode == "closed-denied" ? !walk.Arrived : walk.Arrived;
                     if (!expected || !walk.WorldOk) failed++;
-                    ctx.Info($"ISSUE2 CASE {label} verdict={(expected && walk.WorldOk ? "PASS" : "FAIL")} {walk.Describe()} leafOpen={leaf.IsConsideredOpen()} controllerSequence={checkpoint.CurSequence}");
+                    ctx.Info($"ISSUE2 CASE {label} verdict={(expected && walk.WorldOk ? "PASS" : "FAIL")} {walk.Describe()} targetNow={PlacementProbes.Format(pair.Target.Position)} leafOpen={leaf.IsConsideredOpen()} controllerSequence={checkpoint.CurSequence}");
                 }
             }
             finally
             {
                 pair.ClearFollow();
+                checkpoint.SequenceCtrl.OpenLoopTime = originalOpenTime;
                 checkpoint.NetworkTargetState = original;
                 checkpoint.ToggleAllDoors(original);
             }
         }
-        ctx.Info($"ISSUE2 SUMMARY checkpoints tested={tested} failed={failed} skipped={skipped}");
+        ctx.Info($"ISSUE2 SUMMARY checkpoints tested={tested} failed={failed} skipped={skipped} floorControls={floorControls} failedControls={failedControls} nativeCrossings={nativeCrossings}");
+        ctx.Require(floorControls > 0 && failedControls == 0, $"same-floor native follow controls arrived (tested={floorControls}, failed={failedControls})");
         ctx.Require(tested > 0, "at least one checkpoint lane was exercised natively");
         ctx.Require(failed == 0, $"all checkpoint walk/card controls behaved correctly (failed={failed}, skipped={skipped})");
     }
@@ -169,8 +233,10 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
             var rootHeight = PlacementProbes.ExpectedRootHeight(((IFpcRole)WarmupBotWorld.FindById(jumper.PlayerId)!.RoleBase).FpcModule.CharacterControllerSettings);
             yield return jumper.TraverseJumpCourse(new[] { start - Vector3.up * rootHeight, top - Vector3.up * rootHeight }, nativeJump,
                 arrivalRadii: new[] { 0.6f, 0.6f });
-            ctx.Info($"ISSUE2 NATIVE_JUMP top={PlacementProbes.Format(top)} {nativeJump.Summary()}");
-            if (nativeJump.CompletedCourse) reachable++;
+            bool nativeReachable = nativeJump.CompletedCourse && Mathf.Abs(jumper.Position.y - top.y) <= 0.25f
+                && Issue2World.HorizontalDistance(jumper.Position, top) <= 0.6f && PlacementProbes.Ground(jumper.Position, 1.5f).Ok;
+            ctx.Info($"ISSUE2 NATIVE_JUMP top={PlacementProbes.Format(top)} landing={PlacementProbes.Format(jumper.Position)} verifiedLanding={nativeReachable} {nativeJump.Summary()}");
+            if (nativeReachable) reachable++;
             using (ctx.BeginArrangement("remove the physical reachability probe before combat pursuit"))
                 yield return jumper.ChangeRole(RoleTypeId.Spectator);
             pair.SetRoles(RoleTypeId.Scp049, RoleTypeId.Scientist);
@@ -197,10 +263,10 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
                 }
                 walk.Sample(ctx, label);
                 tested++;
-                bool reachabilityVerified = mode == "floor" || nativeJump.CompletedCourse;
+                bool reachabilityVerified = mode == "floor" || nativeReachable;
                 if ((reachabilityVerified && !walk.Arrived) || !walk.WorldOk) failed++;
                 string verdict = !walk.WorldOk ? "FAIL" : !reachabilityVerified ? "UNVERIFIED_REACHABILITY" : walk.Arrived ? "PASS" : "FAIL";
-                ctx.Info($"ISSUE2 CASE {label} verdict={verdict} nativeJumpReachable={nativeJump.CompletedCourse} {walk.Describe()}");
+                ctx.Info($"ISSUE2 CASE {label} verdict={verdict} nativeJumpReachable={nativeReachable} {walk.Describe()} targetNow={PlacementProbes.Format(pair.Target.Position)}");
             }
         }
         ctx.Info($"ISSUE2 SUMMARY greenhouse tested={tested} failed={failed} nativeReachableLevels={reachable}");
