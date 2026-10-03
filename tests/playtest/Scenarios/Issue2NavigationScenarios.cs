@@ -177,7 +177,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
     public override string Description => "Probes real LCZ Plants supports, checks native SCP-049 jumps, and compares floor/elevated pursuit of an eligible held bot target.";
     public override FidelityRange Supported => FidelityRange.Only(Fidelity.Standard);
     public override bool IncludeInRunAll => false;
-    public override float TimeoutSeconds => 300f;
+    public override float TimeoutSeconds => 600f;
 
     public override IEnumerator<float> Run(ScenarioContext ctx)
     {
@@ -196,13 +196,13 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
         float floorY = supports.Min(p => p.y);
         var floors = supports.Where(p => p.y < floorY + 0.1f).ToArray();
         var elevated = supports.Where(p => p.y > floorY + 0.35f && p.y < floorY + 1.6f)
-            .OrderByDescending(p => p.y).ThenBy(p => p.x).ThenBy(p => p.z)
+            .OrderByDescending(p => p.y).ThenBy(p => Issue2World.HorizontalDistance(p, room.transform.position))
             .Aggregate(new List<Vector3>(), (list, point) =>
             {
-                if (!list.Any(p => Mathf.Abs(p.y - point.y) < 0.15f)) list.Add(point);
+                if (!list.Any(p => Mathf.Abs(p.y - point.y) < 0.15f && Issue2World.HorizontalDistance(p, point) < 3f)) list.Add(point);
                 return list;
-            }).Take(3).ToArray();
-        ctx.Info($"ISSUE2 SUPPORTS room={room.gameObject.name} origin={PlacementProbes.Format(room.transform.position)} floorY={floorY:F3} samples={supports.Count} elevatedLevels={elevated.Length}");
+            }).Take(6).ToArray();
+        ctx.Info($"ISSUE2 SUPPORTS room={room.gameObject.name} origin={PlacementProbes.Format(room.transform.position)} floorY={floorY:F3} samples={supports.Count} elevatedPositions={elevated.Length}");
         foreach (var top in elevated)
             ctx.Info($"ISSUE2 SUPPORT point={PlacementProbes.Format(top)} local={PlacementProbes.Format(room.transform.InverseTransformPoint(top))} rise={top.y - floorY:F3}");
         ctx.Require(floors.Length > 1, "greenhouse has floor controls");
@@ -213,14 +213,15 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
         {
             var start = floors.OrderBy(p => Issue2World.HorizontalDistance(p, top))
                 .FirstOrDefault(p => Issue2World.HorizontalDistance(p, top) >= 1.5f && Issue2World.HorizontalDistance(p, top) <= 5f
-                    && Issue2World.Visible(p, top));
+                    && Issue2World.Visible(p, top) && Issue2World.OnAuthoredMesh(p));
             if (start == default)
             {
                 ctx.Info($"ISSUE2 CASE elevated={PlacementProbes.Format(top)} verdict=SETUP_SKIP reason=no-visible-floor-approach");
                 continue;
             }
-            var floorGoal = floors.OrderBy(p => Issue2World.HorizontalDistance(p, top))
-                .FirstOrDefault(p => Issue2World.HorizontalDistance(p, start) >= 2f && Issue2World.Visible(start, p));
+            var floorGoal = floors.OrderBy(p => Issue2World.HorizontalDistance(p, start))
+                .FirstOrDefault(p => Issue2World.HorizontalDistance(p, start) >= 2f && Issue2World.HorizontalDistance(p, start) <= 4f
+                    && Issue2World.ClearFloorRoute(start, p, pair.Bot) && Issue2World.OnAuthoredMesh(p));
             ctx.Require(floorGoal != default, "same-floor pursuit control has visible separated anchors");
 
             // A plain native dummy is deliberately used for the physical control. It has no bot
@@ -248,11 +249,10 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
             {
                 var goal = mode == "floor" ? floorGoal : top;
                 pair.Place(start, goal);
-                yield return ctx.Wait(0.7f);
                 Issue2World.RequireStanding(ctx, pair.Bot);
                 Issue2World.RequireStanding(ctx, pair.Target);
                 ctx.Require(Issue2World.Visible(pair.Bot.Position, pair.Target.Position), "held hostile target is visible before pursuit");
-                string label = $"greenhouse mode={mode} rise={goal.y - start.y:F3}";
+                string label = $"greenhouse mode={mode} rise={goal.y - start.y:F3} target={PlacementProbes.Format(goal)}";
                 ctx.Info($"ISSUE2 BEGIN {label} bot={pair.Bot.PlayerId} target={pair.Target.PlayerId} start={PlacementProbes.Format(pair.Bot.Position)} goal={PlacementProbes.Format(pair.Target.Position)} probe={NativeCommandAdapter.RemoteAdmin($"nav probe {Issue2World.Arguments(goal)}").Response}");
                 var walk = new Issue2Walk(pair.Bot, pair.Target.Position);
                 float deadline = Time.realtimeSinceStartup + 20f;
@@ -381,6 +381,24 @@ internal static class Issue2World
     }
     public static string Arguments(Vector3 p) => string.Format(CultureInfo.InvariantCulture, "{0:F3} {1:F3} {2:F3}", p.x, p.y, p.z);
     public static float HorizontalDistance(Vector3 a, Vector3 b) => Vector3.Distance(Vector3.ProjectOnPlane(a, Vector3.up), Vector3.ProjectOnPlane(b, Vector3.up));
+    public static bool OnAuthoredMesh(Vector3 point)
+    {
+        var result = NativeCommandAdapter.RemoteAdmin($"nav probe {Arguments(point)}");
+        return result.Success && result.Response.Contains("on_mesh=True");
+    }
+    public static bool ClearFloorRoute(Vector3 start, Vector3 goal, Player actor)
+    {
+        var settings = ((IFpcRole)actor.RoleBase).FpcModule.CharacterControllerSettings;
+        int steps = Mathf.CeilToInt(HorizontalDistance(start, goal) / 0.2f);
+        for (int i = 0; i <= steps; i++)
+        {
+            var point = Vector3.Lerp(start, goal, (float)i / steps);
+            if (!PlacementProbes.Capsule(point, settings, actor.ReferenceHub).Ok
+                || !PlacementProbes.TryFindGround(point, 2f, out var floor, out _)
+                || Mathf.Abs(point.y - floor - PlacementProbes.ExpectedRootHeight(settings)) > 0.1f) return false;
+        }
+        return true;
+    }
     public static bool Visible(Vector3 a, Vector3 b) => !Physics.Linecast(a + Vector3.up * 0.6f, b + Vector3.up * 0.6f,
         LayerMask.GetMask("Default", "Door", "InteractableNoPlayerCollision", "Glass"), QueryTriggerInteraction.Ignore);
     public static bool TryStanding(Player actor, Vector3 probe, out Vector3 point)
