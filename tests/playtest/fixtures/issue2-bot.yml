@@ -1,6 +1,6 @@
 bots_only: false
 warmup_mode: None
-warmup_bot_count: 0
+warmup_bot_count: 3
 enable_overflow_cleanup: false
 navigation:
   backend: Authored
