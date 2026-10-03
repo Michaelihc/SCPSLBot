@@ -187,6 +187,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
         using var pair = new Issue2BotPair(ctx);
         yield return ctx.WaitUntil(pair.CanBind, 12f, "both eligible SCPSLBot dummies are ready");
         pair.Bind();
+        yield return ctx.Wait(2f); // Drain the native botspike spawn's delayed ClassD role assignments.
         pair.SetRoles(RoleTypeId.Scp049, RoleTypeId.Scientist);
         yield return ctx.WaitUntil(() => pair.Bot.Role == RoleTypeId.Scp049 && pair.Target.Role == RoleTypeId.Scientist,
             5f, "pursuer and held human target have their selected roles");
@@ -201,7 +202,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
             {
                 if (!list.Any(p => Mathf.Abs(p.y - point.y) < 0.15f && Issue2World.HorizontalDistance(p, point) < 3f)) list.Add(point);
                 return list;
-            }).Take(6).ToArray();
+            }).Take(12).ToArray();
         ctx.Info($"ISSUE2 SUPPORTS room={room.gameObject.name} origin={PlacementProbes.Format(room.transform.position)} floorY={floorY:F3} samples={supports.Count} elevatedPositions={elevated.Length}");
         foreach (var top in elevated)
             ctx.Info($"ISSUE2 SUPPORT point={PlacementProbes.Format(top)} local={PlacementProbes.Format(room.transform.InverseTransformPoint(top))} rise={top.y - floorY:F3}");
