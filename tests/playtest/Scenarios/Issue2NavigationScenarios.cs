@@ -212,18 +212,21 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
         int failed = 0, tested = 0, reachable = 0;
         foreach (var top in elevated)
         {
-            var start = floors.OrderBy(p => Issue2World.HorizontalDistance(p, top))
-                .FirstOrDefault(p => Issue2World.HorizontalDistance(p, top) >= 1.5f && Issue2World.HorizontalDistance(p, top) <= 5f
-                    && Issue2World.Visible(p, top) && Issue2World.OnAuthoredMesh(p));
+            var approaches = floors.Where(p => Issue2World.HorizontalDistance(p, top) >= 1.5f && Issue2World.HorizontalDistance(p, top) <= 5f
+                    && Issue2World.Visible(p, top)).OrderBy(p => Issue2World.HorizontalDistance(p, top)).ToArray();
+            var start = approaches.FirstOrDefault(Issue2World.OnAuthoredMesh);
+            if (start == default) start = approaches.FirstOrDefault();
             if (start == default)
             {
                 ctx.Info($"ISSUE2 CASE elevated={PlacementProbes.Format(top)} verdict=SETUP_SKIP reason=no-visible-floor-approach");
                 continue;
             }
-            var floorGoal = floors.OrderBy(p => Issue2World.HorizontalDistance(p, start))
-                .FirstOrDefault(p => Issue2World.HorizontalDistance(p, start) >= 2f && Issue2World.HorizontalDistance(p, start) <= 4f
-                    && Issue2World.ClearFloorRoute(start, p, pair.Bot) && Issue2World.OnAuthoredMesh(p));
+            var controls = floors.Where(p => Issue2World.HorizontalDistance(p, start) >= 2f && Issue2World.HorizontalDistance(p, start) <= 4f
+                    && Issue2World.ClearFloorRoute(start, p, pair.Bot)).OrderBy(p => Issue2World.HorizontalDistance(p, start)).ToArray();
+            var floorGoal = controls.FirstOrDefault(Issue2World.OnAuthoredMesh);
+            if (floorGoal == default) floorGoal = controls.FirstOrDefault();
             ctx.Require(floorGoal != default, "same-floor pursuit control has visible separated anchors");
+            ctx.Info($"ISSUE2 APPROACH start={PlacementProbes.Format(start)} startOnMesh={Issue2World.OnAuthoredMesh(start)} floor={PlacementProbes.Format(floorGoal)} floorOnMesh={Issue2World.OnAuthoredMesh(floorGoal)} elevated={PlacementProbes.Format(top)} elevatedOnMesh={Issue2World.OnAuthoredMesh(top)}");
 
             // A plain native dummy is deliberately used for the physical control. It has no bot
             // movement provider, and therefore cannot borrow the subject's navigation implementation.
