@@ -1,8 +1,8 @@
 namespace SCPSLBot.Api
 {
     /// <summary>
-    /// The configured bots_only master switch. Warmup companions read it when they enable, which
-    /// load priority places after SCPSLBot, and stay dormant while it is set.
+    /// True until BotRoundControl enables server management. Warmup companions read this gate
+    /// after management's load priority, and remain dormant when only the AI plugin is installed.
     /// </summary>
     public static class BotsOnlyMode
     {

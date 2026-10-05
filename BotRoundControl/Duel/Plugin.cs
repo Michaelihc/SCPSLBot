@@ -36,13 +36,14 @@ public sealed class DuelPlugin : Plugin<BotPluginConfig>
     public override string Author => "SCPSLBot contributors";
     public override Version Version { get; } = new(1, 0, 0);
     public override Version RequiredApiVersion => new(LabApiProperties.CompiledVersion);
-    public override LoadPriority Priority => LoadPriority.Low;
+    public override LoadPriority Priority => LoadPriority.Medium;
     public override void Enable()
     {
         if (Config == null || Config.BotsOnly) return;
         if (LabApiPlugin.Instance?.Presentation == null)
             throw new InvalidOperationException("BotRoundControl requires SCPSLBot to be enabled first.");
         Instance = this;
+        BotServerPolicy.ManagementStopping = Disable;
         try
         {
             foreach (string change in Config.Normalize()) Logger.Warn("[BotRoundControl] " + change);
@@ -79,6 +80,7 @@ public sealed class DuelPlugin : Plugin<BotPluginConfig>
         controls = null;
         BotServerPolicy.CanFight = null;
         BotServerPolicy.PopulationStatus = null;
+        BotServerPolicy.ManagementStopping = null;
         WarmupManager.Instance.Terminate();
         OverflowCleanupManager.Instance.Terminate();
         humanCount?.Disable();

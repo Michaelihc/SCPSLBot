@@ -2,6 +2,7 @@ using HarmonyLib;
 using LabApi.Features;
 using LabApi.Features.Console;
 using LabApi.Loader.Features.Plugins;
+using LabApi.Loader.Features.Plugins.Enums;
 using SCPSLBot.AI;
 using SCPSLBot.Api;
 using SCPSLBot.Health;
@@ -23,6 +24,7 @@ namespace SCPSLBot
         public override string Author { get; } = "repkins(19)";
         public override Version Version { get; } = new ("1.0.0");
         public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
+        public override LoadPriority Priority => LoadPriority.High;
 
         private const string HarmonyId = "SCPSLBot";
         private Harmony harmonyInstance;
@@ -112,6 +114,10 @@ namespace SCPSLBot
         private void ShutdownComponents()
         {
             isEnabled = false;
+            try { BotServerPolicy.ManagementStopping?.Invoke(); }
+            catch (Exception exception) { Logger.Error($"Management shutdown failed: {exception}"); }
+            BotServerPolicy.ManagementStopping = null;
+            BotsOnlyMode.IsEnabled = true;
             NetworkHealth?.Disable();
             NetworkHealth = null;
 
