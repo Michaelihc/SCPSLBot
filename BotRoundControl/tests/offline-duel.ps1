@@ -35,6 +35,8 @@ $null = DuelPress -3 2.25 323 'select-first-name'
 $null = Set-LabLook -Yaw 0 -Pitch 0 -ClientId $duelClients[0] -ActorId $duelOwner
 $null = Invoke-LabInput @{frames=30;keys=@(97)} -ClientId $duelClients[0]
 $null = DuelPress -3 2.25 101 'interact-first-name'
+$null = Set-LabLook -Yaw 0 -Pitch 0 -ClientId $duelClients[0] -ActorId $duelOwner
+$null = Invoke-LabInput @{frames=30;keys=@(100)} -ClientId $duelClients[0]
 $null = DuelPress 3 2.25 323 'select-second-name'
 $null = DuelPress -3 0.4 323 'select-everyone'
 $board = Invoke-LabScreenshot -Name duel-selected-board -ClientId $duelClients[0]

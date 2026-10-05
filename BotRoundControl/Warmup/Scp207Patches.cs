@@ -9,7 +9,7 @@ namespace SCPSLBot.Warmup
         [HarmonyPrefix]
         private static bool SkipHealthDrainInStandardWarmup(Scp207 __instance)
         {
-            var config = DuelArena.DuelPlugin.Instance?.Config;
+            var config = global::BotRoundControl.BotRoundControlPlugin.Instance?.Config;
             return !WarmupManager.Instance.IsStandardWarmup
                    || config == null
                    || !config.DisableScp207HealthDrainInWarmup

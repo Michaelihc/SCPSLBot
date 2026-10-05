@@ -136,7 +136,7 @@ namespace SCPSLBot.Warmup
             }
 
             ev.IsAllowed = false;
-            LabApiPlugin.Instance?.Presentation?.ShowDisarmingDisabled(ev.Player);
+            global::BotRoundControl.BotRoundControlPlugin.Instance?.Presentation?.ShowDisarmingDisabled(ev.Player);
         }
 
         private void OnPlayerUnlockingWarheadButton(PlayerUnlockingWarheadButtonEventArgs ev)
@@ -148,7 +148,7 @@ namespace SCPSLBot.Warmup
 
             ev.IsAllowed = false;
             DisableWarheadIfNeeded();
-            LabApiPlugin.Instance?.Presentation?.ShowWarheadDisabled(ev.Player);
+            global::BotRoundControl.BotRoundControlPlugin.Instance?.Presentation?.ShowWarheadDisabled(ev.Player);
         }
 
         private void OnPlayerInteractingWarheadLever(PlayerInteractingWarheadLeverEventArgs ev)
@@ -160,7 +160,7 @@ namespace SCPSLBot.Warmup
 
             ev.IsAllowed = false;
             DisableWarheadIfNeeded();
-            LabApiPlugin.Instance?.Presentation?.ShowWarheadDisabled(ev.Player);
+            global::BotRoundControl.BotRoundControlPlugin.Instance?.Presentation?.ShowWarheadDisabled(ev.Player);
         }
 
         private void OnWarheadStarting(WarheadStartingEventArgs ev)

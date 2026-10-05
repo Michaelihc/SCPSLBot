@@ -65,7 +65,7 @@ namespace SCPSLBot.Warmup
                 botPopulation,
                 respawns,
                 hazards,
-                () => DuelArena.DuelPlugin.Instance?.SaveManagementSettings());
+                () => global::BotRoundControl.BotRoundControlPlugin.Instance?.SaveManagementSettings());
             playerSpawnProtection.Init(() => modeCoordinator.IsStandardWarmup);
             PlayerEvents.ChangedRole += OnPlayerChangedRole;
         }
@@ -115,7 +115,7 @@ namespace SCPSLBot.Warmup
             int max = Math.Max(0, Math.Min(maxBotCount, 10));
             int target = Math.Max(0, Math.Min(targetCount, max));
             config.WarmupBotCount = target;
-            DuelArena.DuelPlugin.Instance?.SaveManagementSettings();
+            global::BotRoundControl.BotRoundControlPlugin.Instance?.SaveManagementSettings();
 
             if (IsStandardWarmup)
             {

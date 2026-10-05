@@ -14,7 +14,7 @@ public sealed class DuelCommand : ICommand
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         Player? player = Player.Get(sender);
-        bool ok = player != null && DuelPlugin.Runtime?.Enter(player, player.UserId) == true;
+        bool ok = player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime?.Enter(player, player.UserId) == true;
         response = ok ? "已进入决斗台，请射击或按 E 选择对手" : "决斗台暂不可用，或正被其他玩家使用";
         return ok;
     }
@@ -29,7 +29,7 @@ public sealed class AcceptCommand : ICommand
     {
         response = "没有可接受的决斗邀请";
         Player? player = Player.Get(sender);
-        return player != null && DuelPlugin.Runtime != null && DuelPlugin.Runtime.Accept(player, out response);
+        return player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime != null && global::BotRoundControl.BotRoundControlPlugin.Runtime.Accept(player, out response);
     }
 }
 [CommandHandler(typeof(ClientCommandHandler))]
@@ -42,7 +42,7 @@ public sealed class WatchCommand : ICommand
     {
         response = "当前没有可观战的决斗";
         Player? player = Player.Get(sender);
-        return player != null && DuelPlugin.Runtime != null && DuelPlugin.Runtime.Watch(player, out response);
+        return player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime != null && global::BotRoundControl.BotRoundControlPlugin.Runtime.Watch(player, out response);
     }
 }
 [CommandHandler(typeof(ClientCommandHandler))]
@@ -54,8 +54,8 @@ public sealed class LeaveCommand : ICommand
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         Player? player = Player.Get(sender);
-        bool owned = player != null && DuelPlugin.Runtime?.Owns(player.ReferenceHub) == true;
-        if (owned) DuelPlugin.Runtime!.Leave(player!, "已退出决斗");
+        bool owned = player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime?.Owns(player.ReferenceHub) == true;
+        if (owned) global::BotRoundControl.BotRoundControlPlugin.Runtime!.Leave(player!, "已退出决斗");
         response = owned ? "已返回地表" : "你不在决斗台";
         return owned;
     }
@@ -69,7 +69,7 @@ public sealed class DuelStatusCommand : ICommand
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         if (!sender.CheckPermission(PlayerPermissions.FacilityManagement, out response)) return false;
-        response = DuelPlugin.Runtime?.Status ?? "DuelArena disabled";
-        return DuelPlugin.Runtime != null;
+        response = global::BotRoundControl.BotRoundControlPlugin.Runtime?.Status ?? "DuelArena disabled";
+        return global::BotRoundControl.BotRoundControlPlugin.Runtime != null;
     }
 }

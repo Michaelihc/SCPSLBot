@@ -8,12 +8,14 @@ namespace SCPSLBot.Presentation
     internal sealed class HsmHintDisplayProvider : IHintDisplayProvider
     {
         private readonly HintDisplayConfig config;
+        private readonly string owner;
         private HintScope scope;
         private bool loggedFailure;
 
-        public HsmHintDisplayProvider(HintDisplayConfig config) => this.config = config;
+        public HsmHintDisplayProvider(HintDisplayConfig config, string owner = "SCPSLBot")
+        { this.config = config; this.owner = owner; }
         public string Name => "hsm-adapter";
-        public void Enable() => scope ??= HsmAdapter.Hints.Acquire("SCPSLBot", config.GroupName);
+        public void Enable() => scope ??= HsmAdapter.Hints.Acquire(owner, config.GroupName);
         public void Disable() { scope?.Dispose(); scope = null; }
 
         public void Show(Player player, in HintRequest request)

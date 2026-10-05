@@ -7,27 +7,21 @@ using LabApi.Loader.Features.Plugins;
 using LabApi.Loader.Features.Plugins.Enums;
 using SCPSLBot;
 using SCPSLBot.Api;
+using SCPSLBot.Presentation;
 using SCPSLBot.Cleanup;
 using SCPSLBot.Health;
 using SCPSLBot.Warmup;
 using SCPSLBot.Warmup.Controls.Panel;
 using HarmonyLib;
+using DuelArena;
 
-namespace DuelArena;
+namespace BotRoundControl;
 
-public sealed class DuelConfig
+public sealed class BotRoundControlPlugin : Plugin<BotPluginConfig>
 {
-    public bool Enabled { get; set; } = true;
-    public float SurfaceHeightOffset { get; set; } = 180f;
-    public float InvitationSeconds { get; set; } = 30f;
-    public float LobbySeconds { get; set; } = 120f;
-    public float MatchSeconds { get; set; } = 180f;
-}
-
-public sealed class DuelPlugin : Plugin<BotPluginConfig>
-{
-    public static DuelPlugin? Instance { get; private set; }
+    public static BotRoundControlPlugin? Instance { get; private set; }
     internal static DuelRuntime? Runtime { get; private set; }
+    internal BotPresentationService? Presentation { get; private set; }
     private WarmupControlsRuntime? controls;
     private HumanPlayerCountService? humanCount;
     private Harmony? harmony;
@@ -48,9 +42,12 @@ public sealed class DuelPlugin : Plugin<BotPluginConfig>
         {
             foreach (string change in Config.Normalize()) Logger.Warn("[BotRoundControl] " + change);
             SaveConfig();
+            Presentation = new BotPresentationService(Config.HintDisplay, new BotLocalization(Config.Language),
+                new HsmHintDisplayProvider(Config.HintDisplay, "BotRoundControl"));
+            Presentation.Enable();
             BotsOnlyMode.IsEnabled = false;
             harmony = new Harmony("BotRoundControl");
-            harmony.PatchAll(typeof(DuelPlugin).Assembly);
+            harmony.PatchAll(typeof(BotRoundControlPlugin).Assembly);
             humanCount = new HumanPlayerCountService();
             humanCount.Enable();
             OverflowCleanupManager.Instance.Init(Config);
@@ -67,7 +64,7 @@ public sealed class DuelPlugin : Plugin<BotPluginConfig>
             BotServerPolicy.CanFight = (left, right) => WarmupManager.Instance.CanHubsFightInWarmup(left, right);
             BotServerPolicy.PopulationStatus = SCPSLBot.AI.Commands.BotServerStatusCommand.BuildDiagnostics;
             controls = new WarmupControlsRuntime();
-            controls.Init(Config, LabApiPlugin.Instance.Presentation);
+            controls.Init(Config, Presentation);
             Logger.Info("[BotRoundControl] Management enabled; duel service ready.");
         }
         catch { Disable(); throw; }
@@ -85,6 +82,8 @@ public sealed class DuelPlugin : Plugin<BotPluginConfig>
         OverflowCleanupManager.Instance.Terminate();
         humanCount?.Disable();
         humanCount = null;
+        Presentation?.Disable();
+        Presentation = null;
         harmony?.UnpatchAll("BotRoundControl");
         harmony = null;
         BotsOnlyMode.IsEnabled = true;
