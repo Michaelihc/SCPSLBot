@@ -11,11 +11,11 @@ namespace SCPSLBot
 {
     public sealed class BotPluginConfig
     {
-        [Description("Master switch. true runs plain AI bots: the warmup layer (round lock, respawns, arenas, managed bot population, hazard and wave overrides), overflow cleanup, the warmup Server-Specific Settings menu, WarmupSafezone and StatsBots all stay off. false enables them under their own settings. Restart the server after changing it.")]
-        public bool BotsOnly { get; set; } = true;
+        [Description("Disable BotRoundControl management and warmup companions. AI and navigation remain owned by SCPSLBot.")]
+        public bool BotsOnly { get; set; } = false;
 
-        [Description("Remove only destroyed identities from Mirror registries and observer sets; log their last known object and component identities.")]
-        public bool EnableNetworkRegistryRecovery { get; set; } = true;
+        public DuelArena.DuelConfig Duel { get; set; } = new();
+
 
         [Description("Player-facing language: empty matches a client preference when a companion exposes it; cn forces Chinese; en forces English. Chinese is the fallback. / 玩家文本语言：留空时在可用时匹配客户端偏好；cn 强制中文；en 强制英文。无法判断时回退中文。")]
         public string Language { get; set; } = string.Empty;
@@ -29,8 +29,6 @@ namespace SCPSLBot
         [Description("Personalized Server-Specific Settings presentation. / 个性化服务器专属设置界面。")]
         public WarmupPanelConfig Panel { get; set; } = WarmupPanelConfig.CreateDefault();
 
-        [Description("Bot navigation backend and runtime navmesh settings. / 机器人导航后端与运行时导航网格设置。")]
-        public NavigationConfig Navigation { get; set; } = new();
 
         [Description("Fallback used only when WarmupMode contains an invalid value; WarmupMode itself is persisted across reloads.")]
         public WarmupMode DefaultWarmupMode { get; set; } = WarmupMode.Standard;
@@ -88,21 +86,12 @@ namespace SCPSLBot
         [Description("Seconds between overflow checks. / 溢出检查间隔（秒）。")]
         public float CleanupCheckIntervalSeconds { get; set; } = 10f;
 
-        // When true, every non-standard room connector (open hallways, bulk doors, clutter) is
-        // forced to an HCZ standard door at map generation so the baked navmesh (which only links
-        // rooms that have a door) has a door at every room link. This uniformizes the map and
-        // conflicts with map-layout plugins, so it is OFF by default; bots instead get navmesh
-        // links built across door-less connectors at load time (see NavigationSystem).
-        public bool ForceStandardDoorConnectors { get; set; } = false;
-
         internal IReadOnlyList<string> Normalize()
         {
             var changes = new List<string>();
             HintDisplay ??= new HintDisplayConfig();
             Controls ??= WarmupControlsConfig.CreateDefault();
             Panel ??= WarmupPanelConfig.CreateDefault();
-            Navigation ??= new NavigationConfig();
-            Navigation.Normalize(changes);
             Controls.Language = Language ?? string.Empty;
             foreach (string restoredOption in Controls.RestoreClassicPlayerOptions())
             {

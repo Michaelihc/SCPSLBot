@@ -110,6 +110,7 @@
   
   <ItemGroup>
     <InternalsVisibleTo Include="SCPSLBot.Tests" />
+    <InternalsVisibleTo Include="BotRoundControl" />
   </ItemGroup>
 
   <ItemGroup>

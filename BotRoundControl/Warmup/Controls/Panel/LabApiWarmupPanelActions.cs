@@ -66,7 +66,7 @@ internal sealed class LabApiWarmupPanelActions :
 
     public string GetActiveArenaPresetId(Player player, string expectedFullUserId) =>
         IsCurrentRealPlayer(player, expectedFullUserId)
-            ? global::SCPSLBot.Warmup.WarmupManager.Instance.GetPlayerArenaId(player.PlayerId)
+            ? DuelArena.DuelIntegration.Owns(player.ReferenceHub) ? "duel" : global::SCPSLBot.Warmup.WarmupManager.Instance.GetPlayerArenaId(player.PlayerId)
             : string.Empty;
 
     public string? GetClientLanguage(Player player)
@@ -251,10 +251,10 @@ internal sealed class LabApiWarmupPanelActions :
     public bool IsArenaPresetAvailable(Player player, string expectedFullUserId, string presetId) =>
         IsCurrentRealPlayer(player, expectedFullUserId)
         && IsWarmupActive
-        && (controlsConfig.Presets ?? new List<ArenaPresetConfig>()).Any(
+        && (presetId == "duel" ? DuelArena.DuelIntegration.Available(player, expectedFullUserId) : (controlsConfig.Presets ?? new List<ArenaPresetConfig>()).Any(
             preset => preset != null
                 && !string.IsNullOrWhiteSpace(preset.Id)
-                && string.Equals(preset.Id, presetId, StringComparison.Ordinal));
+                && string.Equals(preset.Id, presetId, StringComparison.Ordinal)));
 
     public ControlResult TryActivateArenaPreset(Player player, string expectedFullUserId, string presetId)
     {
@@ -271,6 +271,11 @@ internal sealed class LabApiWarmupPanelActions :
                 return ControlResult.Reject(ControlResultCode.WarmupInactive, presetId);
             }
 
+            if (presetId == "duel")
+                return DuelArena.DuelIntegration.Enter(player, expectedFullUserId)
+                    ? ControlResult.Success("duel")
+                    : ControlResult.Reject(ControlResultCode.ArenaSwitchRejected, "决斗台暂不可用");
+
             ArenaPresetConfig[] exactMatches = (controlsConfig.Presets ?? new List<ArenaPresetConfig>())
                 .Where(preset => preset != null
                     && string.Equals(preset.Id, presetId, StringComparison.Ordinal))
@@ -279,6 +284,8 @@ internal sealed class LabApiWarmupPanelActions :
             {
                 return ControlResult.Reject(ControlResultCode.InvalidRequest, presetId);
             }
+
+            DuelArena.DuelIntegration.Leave(player);
 
             return global::SCPSLBot.Warmup.WarmupManager.Instance.TrySetPlayerArena(
                     player,

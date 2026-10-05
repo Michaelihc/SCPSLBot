@@ -1,15 +1,15 @@
 # Warmup features
 
-SCPSLBot's warmup layer, its companions and the `bots_only` master switch that controls them.
-Settings live in `LabAPI/configs/<port>/SCPSLBot/config.yml`; see [configuration](configuration.md).
+BotRoundControl's warmup layer, its companions and the `bots_only` master switch that controls them.
+AI/navigation settings remain in SCPSLBot. Management settings live in `LabAPI/configs/<port>/BotRoundControl/config.yml`; see [configuration](configuration.md).
 
 ## The `bots_only` master switch
 
 ```yaml
-bots_only: true   # default: plain AI bots; false turns on the warmup features
+bots_only: false  # management enabled; true disables management
 ```
 
-With `bots_only: true`, these stay off:
+Install `BotRoundControl.dll` for these server policies. With its `bots_only: true`, these stay off:
 
 - the warmup layer, so the effective mode is `None`: no round lock, respawns, arenas, managed bot
   population, or hazard and wave overrides;
@@ -23,7 +23,7 @@ untouched. Bots never target dummies SCPSLBot did not create, and the runtime na
 re-scanning the map while no bot exists.
 
 The saved `warmup_mode` is kept, so switching `bots_only` back to `false` restores it. While the
-switch is on, `bot_warmup` reports it and refuses mode changes. `bot_status` shows `bots_only=`.
+switch is on, `bot_warmup` reports it and refuses mode changes. `bot_server_status` shows `bots_only=`.
 Restart the server after changing the switch.
 
 In bots-only mode you add the bots:

@@ -4,20 +4,17 @@ using LabApi.Features.Console;
 using LabApi.Loader.Features.Plugins;
 using SCPSLBot.AI;
 using SCPSLBot.Api;
-using SCPSLBot.Cleanup;
 using SCPSLBot.Health;
 using SCPSLBot.Navigation;
 using SCPSLBot.Navigation.Mesh;
 using SCPSLBot.Presentation;
-using SCPSLBot.Warmup;
-using SCPSLBot.Warmup.Controls.Panel;
 using System;
 using System.IO;
 using System.Reflection;
 
 namespace SCPSLBot
 {
-    public class LabApiPlugin : Plugin<BotPluginConfig>
+    public class LabApiPlugin : Plugin<BotRuntimeConfig>
     {
         public static LabApiPlugin Instance { get; private set; }
 
@@ -33,14 +30,9 @@ namespace SCPSLBot
         private bool navigationSystemStarted;
         private bool navigationEditorStarted;
         private bool botManagerStarted;
-        private bool cleanupManagerStarted;
-        private bool warmupManagerStarted;
-        private bool warmupControlsStarted;
         private bool presentationStarted;
         private bool isEnabled;
         private BotPresentationService presentation;
-        private WarmupControlsRuntime warmupControls;
-        private HumanPlayerCountService humanPlayerCount;
         internal NetworkRegistryHealthService NetworkHealth { get; private set; }
 
         internal BotPresentationService Presentation => presentation;
@@ -54,7 +46,7 @@ namespace SCPSLBot
 
             Instance = this;
             // Published before anything that can fail, so companions never wake on a failed enable.
-            BotsOnlyMode.IsEnabled = Config.BotsOnly;
+            BotsOnlyMode.IsEnabled = true;
             try
             {
                 var normalizedSettings = Config.Normalize();
@@ -67,18 +59,6 @@ namespace SCPSLBot
                     SaveConfig();
                 }
 
-                if (Config.BotsOnly)
-                {
-                    Logger.Info("[SCPSLBot] bots_only is enabled: warmup, overflow cleanup, the warmup SSS menu, WarmupSafezone and StatsBots stay off.");
-                }
-
-                // The humans-only players header serves warmup servers' restart gates; a bots-only server
-                // keeps the native output other tools parse.
-                if (!Config.BotsOnly)
-                {
-                    humanPlayerCount = new HumanPlayerCountService();
-                    humanPlayerCount.Enable();
-                }
                 NetworkHealth = new NetworkRegistryHealthService(Config);
                 NetworkHealth.Enable();
 
@@ -111,14 +91,6 @@ namespace SCPSLBot
 
                 botManagerStarted = true;
                 BotManager.Instance.Init();
-                cleanupManagerStarted = true;
-                OverflowCleanupManager.Instance.Init(Config);
-                warmupManagerStarted = true;
-                WarmupManager.Instance.Init(Config);
-
-                warmupControls = new WarmupControlsRuntime();
-                warmupControlsStarted = true;
-                warmupControls.Init(Config, presentation);
 
                 isEnabled = true;
                 Logger.Info("Enabled plugin.");
@@ -140,15 +112,9 @@ namespace SCPSLBot
         private void ShutdownComponents()
         {
             isEnabled = false;
-            humanPlayerCount?.Disable();
-            humanPlayerCount = null;
             NetworkHealth?.Disable();
             NetworkHealth = null;
 
-            ShutdownComponent(ref warmupControlsStarted, () => warmupControls?.Terminate(), nameof(WarmupControlsRuntime));
-            warmupControls = null;
-            ShutdownComponent(ref warmupManagerStarted, WarmupManager.Instance.Terminate, nameof(WarmupManager));
-            ShutdownComponent(ref cleanupManagerStarted, OverflowCleanupManager.Instance.Terminate, nameof(OverflowCleanupManager));
             ShutdownComponent(ref botManagerStarted, BotManager.Instance.Terminate, nameof(BotManager));
             ShutdownComponent(ref navigationEditorStarted, NavigationMeshEditor.Instance.Terminate, nameof(NavigationMeshEditor));
             ShutdownComponent(ref navigationSystemStarted, NavigationSystem.Instance.Terminate, nameof(NavigationSystem));

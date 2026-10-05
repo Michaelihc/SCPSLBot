@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>warnings</Nullable>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
+    <AssemblyName>BotRoundControl</AssemblyName>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
+    <AssemblySearchPaths>$(SL_REFERENCES);$(AssemblySearchPaths)</AssemblySearchPaths>
+    <ServerKeybindsProject Condition="'$(ServerKeybindsProject)' == ''">$(MSBuildThisFileDirectory)..\..\ServerKeybinds\ServerKeybinds.csproj</ServerKeybindsProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SCPSLBot\SCPSLBot.csproj" />
+    <ProjectReference Include="$(ServerKeybindsProject)" Private="false" />
+    <PackageReference Include="Lib.Harmony" Version="2.3.6" />
+    <PackageReference Include="IsExternalInit" Version="1.0.3" />
+    <Reference Include="LabApi" Private="false" />
+    <Reference Include="Assembly-CSharp" Private="false" />
+    <Reference Include="Assembly-CSharp-firstpass" Private="false" />
+    <Reference Include="CommandSystem.Core" Private="false" />
+    <Reference Include="Mirror" Private="false" />
+    <Reference Include="Pooling" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" Private="false" />
+    <Reference Include="UnityEngine.PhysicsModule" Private="false" />
+    <Reference Include="UnityEngine.AIModule" Private="false" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Xml" />
+    <Reference Include="mscorlib" />
+    <Reference Include="netstandard" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <EmbeddedResource Include="Duel\Assets\arena.json" LogicalName="DuelArena.arena.json" />
+    <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
+  </ItemGroup>
+</Project>

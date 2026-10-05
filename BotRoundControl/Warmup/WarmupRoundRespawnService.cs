@@ -104,7 +104,7 @@ namespace SCPSLBot.Warmup
             var seenPlayerIds = new HashSet<int>();
             foreach (Player player in Player.ReadyList)
             {
-                if (!IsEligibleRealPlayer(player))
+                if (!IsEligibleRealPlayer(player) || DuelArena.DuelIntegration.Owns(player.ReferenceHub))
                 {
                     continue;
                 }

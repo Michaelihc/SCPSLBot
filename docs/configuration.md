@@ -1,9 +1,9 @@
 # Configuration
 
-SCPSLBot defaults (`LabAPI/configs/<port>/SCPSLBot/config.yml`):
+BotRoundControl management defaults (`LabAPI/configs/<port>/BotRoundControl/config.yml`):
 
 ```yaml
-bots_only: true                                # master switch; false turns on the warmup features
+bots_only: false                               # management enabled; true disables management
 language: ""                                   # "en", "cn", or "" (client language, Chinese fallback)
 warmup_mode: Standard                          # Standard or None
 default_warmup_mode: Standard                  # fallback when warmup_mode is invalid
@@ -27,21 +27,7 @@ disable_scp207_health_drain_in_warmup: true
 enable_overflow_cleanup: true                  # with bots_only: false; independent of warmup_mode
 cleanup_item_threshold: 80
 cleanup_check_interval_seconds: 10
-enable_network_registry_recovery: true
-force_standard_door_connectors: false
-navigation:
-  backend: Runtime                             # Runtime (needs the patched server assets) or Authored
-  reconcile_interval_seconds: 5
-  voxel_size: 0.09
-  keycard_area_routing: true
-  blocked_crossing_seconds: 45
-panel:
-  enabled: true                                # register the warmup SSS menu (read at plugin enable)
-  show_arena_preset: true
-  role_change_cooldown_seconds: 6
-  item_grant_cooldown_seconds: 1
-  teleport_cooldown_seconds: 1
-  arena_switch_cooldown_seconds: 5
+
 ```
 
 - `bots_only` and everything it gates are described in [warmup features](warmup.md).
@@ -63,3 +49,27 @@ foreign_settings: Block
 ```
 
 See the [ServerKeybinds README](https://github.com/Michaelihc/serverkeybinds#foreign-settings).
+
+## AI and navigation
+
+These settings belong to `LabAPI/configs/<port>/SCPSLBot/config.yml`:
+
+```yaml
+enable_network_registry_recovery: true
+force_standard_door_connectors: false
+navigation:
+  backend: Runtime                             # Runtime (needs the patched server assets) or Authored
+  reconcile_interval_seconds: 5
+  voxel_size: 0.09
+  keycard_area_routing: true
+  blocked_crossing_seconds: 45
+panel:
+  enabled: true                                # register the warmup SSS menu (read at plugin enable)
+  show_arena_preset: true
+  role_change_cooldown_seconds: 6
+  item_grant_cooldown_seconds: 1
+  teleport_cooldown_seconds: 1
+  arena_switch_cooldown_seconds: 5
+```
+
+Duel configuration and player commands: [BotRoundControl](../BotRoundControl/README.md).

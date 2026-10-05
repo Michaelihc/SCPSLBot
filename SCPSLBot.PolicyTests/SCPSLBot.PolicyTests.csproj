@@ -27,9 +27,9 @@
              Link="NavigationPolicy\%(Filename)%(Extension)" />
     <Compile Include="..\SCPSLBot\Navigation\Runtime\RuntimeNavigationTiming.cs"
              Link="NavigationRuntime\RuntimeNavigationTiming.cs" />
-    <Compile Include="..\SCPSLBot\Warmup\Controls\Policy\*.cs"
+    <Compile Include="..\BotRoundControl\Warmup\Controls\Policy\*.cs"
              Link="Policy\%(Filename)%(Extension)" />
-    <Compile Include="..\SCPSLBot\Warmup\Policy\*.cs"
+    <Compile Include="..\BotRoundControl\Warmup\Policy\*.cs"
              Link="WarmupPolicy\%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>

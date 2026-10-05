@@ -124,6 +124,14 @@ namespace SCPSLBot.Warmup
 
         public string GetPlayerArenaId(int playerId) => ToId(GetPlayerArena(playerId));
 
+        internal bool ReturnFromExternalArena(LabPlayer player)
+        {
+            if (!WarmupParticipation.IsParticipant(player)) return false;
+            lastArenaSwitchTimes.Remove(player.PlayerId);
+            playerArenas[player.PlayerId] = WarmupArena.SurfacePve;
+            return TrySetPlayerArena(player, "surface", out _);
+        }
+
         public bool TrySetPlayerArena(int playerId, string arenaId, out string response)
         {
             if (!LabPlayer.TryGet(playerId, out LabPlayer player))
@@ -145,7 +153,7 @@ namespace SCPSLBot.Warmup
                 return false;
             }
 
-            if (!WarmupParticipation.IsParticipant(player))
+            if (!WarmupParticipation.IsParticipant(player) || DuelArena.DuelIntegration.Owns(player.ReferenceHub))
             {
                 response = "The player is no longer available.";
                 return false;
@@ -372,7 +380,7 @@ namespace SCPSLBot.Warmup
             int lczPlayers = 0;
             foreach (LabPlayer player in LabPlayer.ReadyList)
             {
-                if (!WarmupParticipation.IsParticipant(player))
+                if (!WarmupParticipation.IsParticipant(player) || DuelArena.DuelIntegration.Owns(player.ReferenceHub))
                 {
                     continue;
                 }
@@ -467,6 +475,8 @@ namespace SCPSLBot.Warmup
 
         public bool CanHubsFight(ReferenceHub left, ReferenceHub right)
         {
+            if (DuelArena.DuelIntegration.Owns(left) || DuelArena.DuelIntegration.Owns(right))
+                return DuelArena.DuelIntegration.CanFight(left, right);
             if (!IsStandardWarmup() || left == null || right == null)
             {
                 return true;
@@ -502,6 +512,7 @@ namespace SCPSLBot.Warmup
         public void SynchronizePlayerArena(LabPlayer player)
         {
             if (!IsStandardWarmup()
+                || DuelArena.DuelIntegration.Owns(player.ReferenceHub)
                 || !WarmupParticipation.IsParticipant(player)
                 || !TryGetPhysicalArena(player.Position, out WarmupArena physicalArena))
             {
@@ -545,6 +556,8 @@ namespace SCPSLBot.Warmup
 
         private void OnPlayerChangingRole(PlayerChangingRoleEventArgs ev)
         {
+            if (DuelArena.DuelIntegration.Owns(ev.Player.ReferenceHub)) return;
+
             if (!IsStandardWarmup() || !WarmupParticipation.IsParticipant(ev.Player, ev.NewRole))
             {
                 return;
@@ -568,6 +581,8 @@ namespace SCPSLBot.Warmup
 
         private void OnPlayerSpawning(PlayerSpawningEventArgs ev)
         {
+            if (DuelArena.DuelIntegration.Owns(ev.Player.ReferenceHub)) return;
+
             if (!IsStandardWarmup() || ev.Player == null || ev.Player.IsDestroyed)
             {
                 return;
@@ -690,6 +705,8 @@ namespace SCPSLBot.Warmup
 
         private void OnPlayerSpawned(PlayerSpawnedEventArgs ev)
         {
+            if (DuelArena.DuelIntegration.Owns(ev.Player.ReferenceHub)) return;
+
             if (!IsStandardWarmup() || ev.Player == null || ev.Player.IsDestroyed)
             {
                 return;
@@ -981,7 +998,7 @@ namespace SCPSLBot.Warmup
             Vector2 originalLookRotation,
             WarmupArena previousArena)
         {
-            if (!WarmupParticipation.IsParticipant(player))
+            if (!WarmupParticipation.IsParticipant(player) || DuelArena.DuelIntegration.Owns(player.ReferenceHub))
             {
                 return false;
             }

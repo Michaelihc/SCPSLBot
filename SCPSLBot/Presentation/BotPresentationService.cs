@@ -10,6 +10,8 @@ namespace SCPSLBot.Presentation
     /// </summary>
     internal sealed class BotPresentationService
     {
+        private static bool IsPresentationPlayer(LabApi.Features.Wrappers.Player player) => player != null && !player.IsDestroyed && player.IsPlayer && player.IsReady && player.Role != PlayerRoles.RoleTypeId.Tutorial;
+
         private readonly HintDisplayConfig config;
         private readonly BotLocalization localization;
         private readonly IHintDisplayProvider display;
@@ -30,7 +32,7 @@ namespace SCPSLBot.Presentation
 
         public void ShowSurfaceEvacuation(Player player, bool toLightContainment)
         {
-            if (!Warmup.WarmupParticipation.IsParticipant(player))
+            if (!IsPresentationPlayer(player))
             {
                 return;
             }
@@ -171,7 +173,7 @@ namespace SCPSLBot.Presentation
 
         private void ShowNotice(Player player, string tag, BotMessage message)
         {
-            if (!Warmup.WarmupParticipation.IsParticipant(player))
+            if (!IsPresentationPlayer(player))
             {
                 return;
             }

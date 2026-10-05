@@ -937,6 +937,9 @@ public sealed class WarmupSssController
 
     private ArenaPresetConfig[] GetAvailableArenaPresets(Player player, string userId) =>
         (controlsConfig.Presets ?? new List<ArenaPresetConfig>())
+        .Concat(DuelArena.DuelIntegration.Available(player, userId)
+            ? new[] { new ArenaPresetConfig { Id = "duel", EnglishLabel = "Duel / 1v1", ChineseLabel = "决斗 / 1v1" } }
+            : Array.Empty<ArenaPresetConfig>())
         .Where(preset => preset != null && !string.IsNullOrWhiteSpace(preset.Id))
         .GroupBy(preset => preset.Id, StringComparer.Ordinal)
         .Select(group => group.First())
@@ -1035,6 +1038,12 @@ public sealed class WarmupSssController
     {
         if (!TryGetIdentity(player, out fullUserId))
         {
+            return false;
+        }
+
+        if (action.HasValue && action != PanelActionKind.Arena && DuelArena.DuelIntegration.Owns(player.ReferenceHub))
+        {
+            player.SendBroadcast("决斗或观战中无法更换角色、领取物品或传送；请先输入 .leave", 5);
             return false;
         }
 

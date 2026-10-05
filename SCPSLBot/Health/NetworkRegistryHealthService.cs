@@ -19,7 +19,7 @@ internal sealed class NetworkRegistryHealthService
     private readonly Dictionary<uint, IdentityRecord> known = new();
     private readonly List<KeyValuePair<uint, NetworkIdentity>> destroyed = new();
     private readonly List<uint> departed = new();
-    private readonly BotPluginConfig config;
+    private readonly BotRuntimeConfig config;
     private Action<NetworkConnectionToClient> hookedConnect;
     private double nextAudit;
     private double nextFaultLog;
@@ -30,7 +30,7 @@ internal sealed class NetworkRegistryHealthService
     private string lastRepair = "none";
     private string lastFault = "none";
 
-    internal NetworkRegistryHealthService(BotPluginConfig config) => this.config = config;
+    internal NetworkRegistryHealthService(BotRuntimeConfig config) => this.config = config;
 
     internal void Enable()
     {

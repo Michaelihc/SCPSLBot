@@ -1,7 +1,7 @@
 using MapGeneration;
 using PlayerRoles;
 using UnityEngine;
-using SCPSLBot.Warmup;
+using SCPSLBot.Api;
 
 namespace SCPSLBot.AI.FirstPersonControl.Combat
 {
@@ -229,7 +229,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return false;
             }
 
-            if (!WarmupManager.Instance.CanHubsFightInWarmup(bot, candidate))
+            if (!BotServerPolicy.AllowsCombat(bot, candidate))
             {
                 return false;
             }
@@ -268,7 +268,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return false;
             }
 
-            if (!WarmupManager.Instance.CanHubsFightInWarmup(bot, candidate.Hub))
+            if (!BotServerPolicy.AllowsCombat(bot, candidate.Hub))
             {
                 return false;
             }

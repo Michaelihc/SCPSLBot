@@ -80,9 +80,9 @@ How it works, the asset patch and the authored fallback: [docs/navigation.md](do
 
 ## Optional features
 
-SCPSLBot also ships a warmup-server layer and two companion plugins. They are all off by default:
-the `bots_only` master switch is `true`, so a fresh install runs plain AI bots in normal rounds.
-Set `bots_only: false` in `LabAPI/configs/<port>/SCPSLBot/config.yml` and restart the server to turn the
+The independent [BotRoundControl](BotRoundControl/README.md) plugin owns warmup-server management,
+the player SSS menu and duels. SCPSLBot alone runs plain AI bots in normal rounds.
+Install `BotRoundControl.dll` and configure `LabAPI/configs/<port>/BotRoundControl/config.yml` to turn the
 features below on; each then follows its own setting.
 
 | Feature | What it adds | Its own setting (with `bots_only: false`) |
@@ -105,14 +105,14 @@ A shot fired inside the SCP-914 safezone is blocked.</td>
 ### The `bots_only` master switch
 
 ```yaml
-# LabAPI/configs/<port>/SCPSLBot/config.yml
-bots_only: true   # default: plain AI bots; false turns on the warmup features above
+# LabAPI/configs/<port>/BotRoundControl/config.yml
+bots_only: false  # management enabled; true disables this plugin's server features
 ```
 
 With the switch on, SCPSLBot only runs bots: nothing above is active, the native `players` output and
 other plugins' Server-Specific Settings menus are left alone, and bots ignore dummies they did not
 create. Add bots with `bot_add` and make them any role, SCPs included, with native RA force-class.
-Restart the server after changing the switch. Details: [docs/warmup.md](docs/warmup.md).
+Restart the server after changing management settings. Details: [BotRoundControl](BotRoundControl/README.md).
 
 ## Install
 
@@ -122,8 +122,8 @@ Restart the server after changing the switch. Details: [docs/warmup.md](docs/war
    | From the zip | To |
    |---|---|
    | `plugins/` (`SCPSLBot.dll`, `SCPSLBot.Components.dll`, `HsmAdapter.dll`) | `LabAPI/plugins/<port>/` |
-   | `dependencies/` (`0Harmony.dll`, `ServerKeybinds.dll`) | `LabAPI/dependencies/<port>/` |
-   | `optional/plugins/` (`WarmupSafezone.dll`, `StatsBots.dll`) | `LabAPI/plugins/<port>/`, only if you want them |
+   | `dependencies/` (`0Harmony.dll`) | `LabAPI/dependencies/<port>/` |
+   | `optional/plugins/` (`BotRoundControl.dll`, `ServerKeybinds.dll`, `WarmupSafezone.dll`, `StatsBots.dll`) | `LabAPI/plugins/<port>/`, only if you want server management |
 
 3. Install [HintServiceMeow](https://github.com/MeowServer/HintServiceMeow) for on-screen text. StatsBots
    also needs [StatsSystem](https://github.com/MedveMarci/StatsSystem) 2.2.

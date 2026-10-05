@@ -65,7 +65,7 @@ namespace SCPSLBot.Warmup
                 botPopulation,
                 respawns,
                 hazards,
-                () => LabApiPlugin.Instance?.SaveSettings());
+                () => DuelArena.DuelPlugin.Instance?.SaveManagementSettings());
             playerSpawnProtection.Init(() => modeCoordinator.IsStandardWarmup);
             PlayerEvents.ChangedRole += OnPlayerChangedRole;
         }
@@ -115,7 +115,7 @@ namespace SCPSLBot.Warmup
             int max = Math.Max(0, Math.Min(maxBotCount, 10));
             int target = Math.Max(0, Math.Min(targetCount, max));
             config.WarmupBotCount = target;
-            LabApiPlugin.Instance?.SaveSettings();
+            DuelArena.DuelPlugin.Instance?.SaveManagementSettings();
 
             if (IsStandardWarmup)
             {
@@ -195,6 +195,7 @@ namespace SCPSLBot.Warmup
         }
 
         public string GetPlayerArenaId(int playerId) => arenas.GetPlayerArenaId(playerId);
+        public bool ReturnFromExternalArena(Player player) => arenas.ReturnFromExternalArena(player);
 
         public bool TrySetPlayerArena(int playerId, string arenaId, out string response) =>
             arenas.TrySetPlayerArena(playerId, arenaId, out response);

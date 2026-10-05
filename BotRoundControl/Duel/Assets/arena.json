@@ -1,0 +1,468 @@
+{
+  "RootObjectId": -3754,
+  "Blocks": [
+    {
+      "Name": "Cube (2)",
+      "ObjectId": -2760,
+      "ParentId": -3754,
+      "Position": {
+        "x": 0.0,
+        "y": 0.55,
+        "z": -14.5
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 20.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Cube (1)",
+      "ObjectId": -2074,
+      "ParentId": -3754,
+      "Position": {
+        "x": 0.0,
+        "y": 0.8,
+        "z": -10.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 20.0,
+        "y": 1.5,
+        "z": 0.1
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Cube",
+      "ObjectId": -1868,
+      "ParentId": -3754,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 20.0,
+        "y": 0.1,
+        "z": 30.0
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Cube (3)",
+      "ObjectId": -4652,
+      "ParentId": -3754,
+      "Position": {
+        "x": 0.0,
+        "y": 0.8,
+        "z": 10.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 20.0,
+        "y": 1.5,
+        "z": 0.1
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Cube (4)",
+      "ObjectId": -4846,
+      "ParentId": -3754,
+      "Position": {
+        "x": 0.0,
+        "y": 0.55,
+        "z": 14.5
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 20.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Cube (5)",
+      "ObjectId": -4988,
+      "ParentId": -3754,
+      "Position": {
+        "x": 9.95,
+        "y": 0.8,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 90.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 30.0,
+        "y": 1.5,
+        "z": 0.1
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Cube (6)",
+      "ObjectId": -5344,
+      "ParentId": -3754,
+      "Position": {
+        "x": -9.95,
+        "y": 0.8,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 90.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 30.0,
+        "y": 1.5,
+        "z": 0.1
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light (4)",
+      "ObjectId": -6708,
+      "ParentId": -3754,
+      "Position": {
+        "x": -7.815151,
+        "y": 2.77485037,
+        "z": -7.702072
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light (3)",
+      "ObjectId": -6686,
+      "ParentId": -3754,
+      "Position": {
+        "x": -7.855152,
+        "y": 2.77485037,
+        "z": 6.90792847
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light (2)",
+      "ObjectId": -6664,
+      "ParentId": -3754,
+      "Position": {
+        "x": 6.91484833,
+        "y": 2.77485037,
+        "z": 5.90792847
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light (1)",
+      "ObjectId": -6642,
+      "ParentId": -3754,
+      "Position": {
+        "x": 7.17485046,
+        "y": 2.77485037,
+        "z": -6.93207169
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light",
+      "ObjectId": -6620,
+      "ParentId": -3754,
+      "Position": {
+        "x": 0.594848633,
+        "y": 2.77485037,
+        "z": 0.407928467
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    }
+  ]
+}

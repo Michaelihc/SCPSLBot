@@ -67,6 +67,7 @@ internal sealed class WarmupPlayerSpawnProtectionService
     private void OnPlayerChangedRole(PlayerChangedRoleEventArgs ev)
     {
         Player player = ev.Player;
+        if (DuelArena.DuelIntegration.Owns(player.ReferenceHub)) return;
         bool isRealPlayer = WarmupParticipation.IsParticipant(player, ev.NewRole.RoleTypeId);
         ReferenceHub? hub = isRealPlayer ? player.ReferenceHub : null;
         bool hasPendingDeathRespawn = hub != null && pendingDeathRespawns.Contains(hub);
