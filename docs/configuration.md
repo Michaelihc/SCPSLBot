@@ -27,6 +27,13 @@ disable_scp207_health_drain_in_warmup: true
 enable_overflow_cleanup: true                  # with bots_only: false; independent of warmup_mode
 cleanup_item_threshold: 80
 cleanup_check_interval_seconds: 10
+panel:
+  enabled: true                                # register the warmup SSS menu (read at plugin enable)
+  show_arena_preset: true
+  role_change_cooldown_seconds: 6
+  item_grant_cooldown_seconds: 1
+  teleport_cooldown_seconds: 1
+  arena_switch_cooldown_seconds: 5
 
 ```
 
@@ -63,13 +70,7 @@ navigation:
   voxel_size: 0.09
   keycard_area_routing: true
   blocked_crossing_seconds: 45
-panel:
-  enabled: true                                # register the warmup SSS menu (read at plugin enable)
-  show_arena_preset: true
-  role_change_cooldown_seconds: 6
-  item_grant_cooldown_seconds: 1
-  teleport_cooldown_seconds: 1
-  arena_switch_cooldown_seconds: 5
+
 ```
 
 Duel configuration and player commands: [BotRoundControl](../BotRoundControl/README.md).
