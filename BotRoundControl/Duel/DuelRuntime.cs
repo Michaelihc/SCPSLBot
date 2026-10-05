@@ -297,6 +297,7 @@ internal sealed class DuelRuntime
     private void OnDeath(PlayerDeathEventArgs ev) => Leave(ev.Player, "决斗结束");
     private void OnChangedRole(PlayerChangedRoleEventArgs ev)
     {
+        if (ev.ChangeReason == RoleChangeReason.Died) return;
         if (!transitioning && Owns(ev.Player.ReferenceHub)) Leave(ev.Player, "角色发生变化，决斗结束");
     }
     private void OnHurting(PlayerHurtingEventArgs ev)

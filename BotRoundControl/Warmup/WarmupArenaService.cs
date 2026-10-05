@@ -864,6 +864,7 @@ namespace SCPSLBot.Warmup
         private static bool TrySetPosition(LabPlayer player, Vector3 position)
         {
             if (player?.ReferenceHub == null
+                || DuelArena.DuelIntegration.Owns(player.ReferenceHub)
                 || player.ReferenceHub.roleManager.CurrentRole is not IFpcRole fpcRole
                 || !fpcRole.FpcModule.ModuleReady)
             {
