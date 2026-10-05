@@ -47,9 +47,9 @@ internal sealed class DuelRuntime
 
     private static bool Current(Player player, string userId) => player != null && !player.IsDestroyed
         && player.ReferenceHub != null && player.IsReady && player.IsPlayer && !player.IsDummy && !player.IsHost
-        && player.Role != RoleTypeId.Tutorial && player.Role != RoleTypeId.Overwatch
+        && player.Role != RoleTypeId.Tutorial && player.Role != RoleTypeId.Overwatch && player.Role != RoleTypeId.Scp079
         && string.Equals(player.UserId, userId, StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(userId);
-    private static bool Eligible(Player player) => Current(player, player.UserId) && player.Role != RoleTypeId.Scp079;
+    private static bool Eligible(Player player) => Current(player, player.UserId);
     internal bool Available(Player player, string userId) => enabled && arena.Ready
         && (ModeActive?.Invoke() ?? true) && Current(player, userId);
     internal bool Owns(ReferenceHub hub) => !ReferenceEquals(hub, null) && participants.ContainsKey(hub);
@@ -396,19 +396,19 @@ internal sealed class DuelRuntime
     private void AddRow(Vector3 local, string label, string action, Player? candidate)
     {
         Vector3 position = arena.Origin + local;
-        var background = PrimitiveObjectToy.Create(position + new Vector3(0, 0, 0.04f), Quaternion.identity,
-            new Vector3(5.15f, 0.42f, 0.04f), networkSpawn: false);
+        var background = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(position + new Vector3(0, 0, 0.04f), Quaternion.identity,
+            new Vector3(5.15f, 0.42f, 0.04f)));
         background.Type = PrimitiveType.Cube;
         background.Flags = AdminToys.PrimitiveFlags.Visible;
         background.Color = new Color(0.05f, 0.08f, 0.12f);
         background.IsStatic = true;
         background.Spawn();
-        var text = TextToy.Create(position, Quaternion.identity, Vector3.one * 0.9f, networkSpawn: false);
+        var text = TextToy.Get(ToyFactory.Create<AdminToys.TextToy>(position, Quaternion.identity, Vector3.one * 0.9f));
         text.DisplaySize = new Vector2(110, 9);
         text.TextFormat = "<align=center><size=7>" + label + "</size></align>";
         text.IsStatic = true;
         text.Spawn();
-        var interactable = InteractableToy.Create(position, Quaternion.identity, new Vector3(5f, 0.38f, 0.1f), networkSpawn: false);
+        var interactable = InteractableToy.Get(ToyFactory.Create<AdminToys.InvisibleInteractableToy>(position, Quaternion.identity, new Vector3(5f, 0.38f, 0.1f)));
         interactable.IsStatic = true;
         interactable.InteractionDuration = 0;
         interactable.Spawn();
@@ -422,7 +422,7 @@ internal sealed class DuelRuntime
     }
     private void AddPrimitive(Vector3 position, Vector3 scale, Color color)
     {
-        var toy = PrimitiveObjectToy.Create(position, Quaternion.identity, scale, networkSpawn: false);
+        var toy = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(position, Quaternion.identity, scale));
         toy.Type = PrimitiveType.Cube;
         toy.Flags = AdminToys.PrimitiveFlags.Visible | AdminToys.PrimitiveFlags.Collidable;
         toy.Color = color;

@@ -31,8 +31,8 @@ internal sealed class ArenaModel
                     throw new InvalidOperationException("Arena asset must contain root-local blocks.");
                 if (block.BlockType == 1)
                 {
-                    var toy = PrimitiveObjectToy.Create(origin + block.Position.Vector,
-                        Quaternion.Euler(block.Rotation.Vector), block.Scale.Vector, networkSpawn: false);
+                    var toy = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(origin + block.Position.Vector,
+                        Quaternion.Euler(block.Rotation.Vector), block.Scale.Vector));
                     toys.Add(toy);
                     toy.Type = (PrimitiveType)block.Properties.PrimitiveType;
                     toy.Flags = (AdminToys.PrimitiveFlags)block.Properties.PrimitiveFlags;
@@ -42,7 +42,7 @@ internal sealed class ArenaModel
                 }
                 else if (block.BlockType == 2)
                 {
-                    var light = LightSourceToy.Create(origin + block.Position.Vector, networkSpawn: false);
+                    var light = LightSourceToy.Get(ToyFactory.Create<AdminToys.LightSourceToy>(origin + block.Position.Vector, Quaternion.identity, Vector3.one));
                     toys.Add(light);
                     light.Color = Color.white;
                     light.Type = LightType.Point;

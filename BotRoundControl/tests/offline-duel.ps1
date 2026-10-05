@@ -28,7 +28,8 @@ $duelOrigin = @{x=[double]$Matches[1];y=[double]$Matches[2];z=[double]$Matches[3
 $null = Invoke-LabSetup '.duel' -ClientId $duelClients[1]
 if ((DuelActor $duelOpponent).position.y -gt $duelOrigin.y-50) { throw 'A second challenger entered the reserved arena' }
 $duelChecks.Add('single reservation')
-$null = Invoke-LabInventory -Slot 1 -Expect GunE11SR -ClientId $duelClients[0] -ActorId $duelOwner
+$gunActor = DuelActor $duelOwner
+if ($gunActor.held -ne 'GunE11SR') { $null = Invoke-LabInventory -Slot 1 -Expect GunE11SR -ClientId $duelClients[0] -ActorId $duelOwner }
 $null = DuelPress -3 2.25 323 'select-first-name'
 # Move near the left-hand row through native walking, then E toggles the selected name.
 $null = Set-LabLook -Yaw 0 -Pitch 0 -ClientId $duelClients[0] -ActorId $duelOwner
@@ -56,10 +57,14 @@ Start-Sleep -Seconds 2
 if ((DuelActor $duelViewer).position.y -gt $duelOrigin.y-50) { throw 'Spectator toggle did not return to Surface' }
 $duelChecks.Add('spectator toggle')
 # Sustained native fire into the side wall, depletion, reload, then a lethal native fight.
-$null = Invoke-LabInventory -Slot 1 -Expect GunE11SR -ClientId $duelClients[0] -ActorId $duelOwner
+$gunActor = DuelActor $duelOwner
+if ($gunActor.held -ne 'GunE11SR') { $null = Invoke-LabInventory -Slot 1 -Expect GunE11SR -ClientId $duelClients[0] -ActorId $duelOwner }
 $null = Set-LabAim -Target (DuelPoint 9.95 1 -8) -ClientId $duelClients[0] -ActorId $duelOwner
 $empty = Invoke-LabInput @{id='duel-sustained-fire';frames=420;keys=@(323);capture=$true;audio=$true;expectAudio=$true} -ClientId $duelClients[0]
+if ((DuelActor $duelOwner).firearm.ammo -ne 0) { throw 'Sustained fire did not deplete the magazine' }
 $reload = Invoke-LabInput @{id='duel-reload';frames=240;inputFrames=2;keys=@(114);capture=$true;audio=$true} -ClientId $duelClients[0]
+if ((DuelActor $duelOwner).firearm.ammo -le 0) { throw 'Native reload did not refill the magazine' }
+$duelChecks.Add('native depletion and reload')
 $target = DuelActor $duelOpponent
 $null = Set-LabAim -Target @{x=$target.position.x;y=$target.position.y+0.45;z=$target.position.z} -ClientId $duelClients[0] -ActorId $duelOwner
 $fight = Invoke-LabInput @{id='duel-native-fight';frames=180;keys=@(323);capture=$true;audio=$true;expectAudio=$true} -ClientId $duelClients[0]
