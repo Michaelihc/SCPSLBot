@@ -36,6 +36,24 @@ remain separate live/manual gates.
 
 ## Runtime navmesh gates
 
+## Normal rounds and autonomous escape
+
+Build the plugin, shared harness and scenario assembly with deployment disabled, then run:
+
+```powershell
+python tests/playtest/tools/check_normal_round.py
+python tests/playtest/tools/check_normal_round.py --escape
+```
+
+The driver packages the committed candidate, verifies prepared server assets, and uses the offline
+host runner's fresh isolated slot. The Standard population case uses the native team queue to assign
+three independent spectators, then checks that an admin-selected spectator remains unmanaged. The
+E2E escape case uses a single native Scientist spawn and observes autonomous travel, actual item
+pickups and the native escape event for up to ten minutes. Neither case injects SCPSLBot orders or
+reflects into SCPSLBot. Other gameplay plugins are removed from the disposable overlay.
+
+## Runtime navmesh gates
+
 All 8891 drivers verify the dedicated-server asset patch (`tools/NavMeshAssetPatcher verify`) before
 booting. `scpslbot-runtime-navmesh-gate` reads `bot_status`, `nav status`, `nav probe` and `nav path`
 and requires the runtime backend with zero unreadable meshes, zero uncovered rooms, elevator links,

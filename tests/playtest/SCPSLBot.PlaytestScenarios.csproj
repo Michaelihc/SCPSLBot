@@ -13,6 +13,7 @@
     <PublishRepositoryUrl>false</PublishRepositoryUrl>
     <EmbedUntrackedSources>false</EmbedUntrackedSources>
     <SCP_SL_MANAGED Condition="'$(SCP_SL_MANAGED)' == ''">C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed</SCP_SL_MANAGED>
+    <PlaytestHarnessAssembly Condition="'$(PlaytestHarnessAssembly)' == ''">$(MSBuildThisFileDirectory)..\..\..\.tests\Playtest\bin\Release\PlaytestHarness.dll</PlaytestHarnessAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,7 +31,7 @@
     <Reference Include="UnityEngine.PhysicsModule" HintPath="$(SCP_SL_MANAGED)\UnityEngine.PhysicsModule.dll" Private="false" />
     <Reference Include="UnityEngine.AIModule" HintPath="$(SCP_SL_MANAGED)\UnityEngine.AIModule.dll" Private="false" />
     <Reference Include="PlaytestHarness"
-               HintPath="..\..\..\.tests\Playtest\bin\Release\PlaytestHarness.dll"
+               HintPath="$(PlaytestHarnessAssembly)"
                Private="false" />
   </ItemGroup>
 </Project>

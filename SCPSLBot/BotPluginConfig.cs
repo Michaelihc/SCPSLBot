@@ -53,6 +53,9 @@ namespace SCPSLBot
 
         public int WarmupBotCount { get; set; } = 3;
 
+        [Description("Number of independent spectator bots created before normal-round role assignment (0-10). Native round allocation and reinforcement waves choose their roles; no warmup population management applies.")]
+        public int NormalRoundBotCount { get; set; } = 0;
+
         public RoleTypeId WarmupBotRole { get; set; } = RoleTypeId.ChaosRifleman;
 
         public RoleTypeId WarmupHumanRole { get; set; } = RoleTypeId.NtfPrivate;
@@ -161,6 +164,7 @@ namespace SCPSLBot
             SpectatorRespawnDelayMs = NormalizeRange(nameof(SpectatorRespawnDelayMs), SpectatorRespawnDelayMs, 50, 300000, changes);
             RespawnScanIntervalSeconds = NormalizeRange(nameof(RespawnScanIntervalSeconds), RespawnScanIntervalSeconds, 0.1f, 5f, changes);
             WarmupBotCount = NormalizeRange(nameof(WarmupBotCount), WarmupBotCount, 0, 10, changes);
+            NormalRoundBotCount = NormalizeRange(nameof(NormalRoundBotCount), NormalRoundBotCount, 0, 10, changes);
             SurfacePveMaxBotCount = NormalizeRange(nameof(SurfacePveMaxBotCount), SurfacePveMaxBotCount, 2, 6, changes);
             HeavyEntrancePvpveBotCount = NormalizeRange(nameof(HeavyEntrancePvpveBotCount), HeavyEntrancePvpveBotCount, 2, 5, changes);
             LightContainmentScpBotCount = NormalizeRange(nameof(LightContainmentScpBotCount), LightContainmentScpBotCount, 1, 1, changes);

@@ -35,6 +35,8 @@ namespace SCPSLBot
         private bool botManagerStarted;
         private bool cleanupManagerStarted;
         private bool warmupManagerStarted;
+        private bool normalRoundBotsStarted;
+        private readonly NormalRoundBotSpawner normalRoundBots = new();
         private bool warmupControlsStarted;
         private bool presentationStarted;
         private bool isEnabled;
@@ -115,6 +117,8 @@ namespace SCPSLBot
                 OverflowCleanupManager.Instance.Init(Config);
                 warmupManagerStarted = true;
                 WarmupManager.Instance.Init(Config);
+                normalRoundBotsStarted = true;
+                normalRoundBots.Init(Config);
 
                 warmupControls = new WarmupControlsRuntime();
                 warmupControlsStarted = true;
@@ -147,6 +151,7 @@ namespace SCPSLBot
 
             ShutdownComponent(ref warmupControlsStarted, () => warmupControls?.Terminate(), nameof(WarmupControlsRuntime));
             warmupControls = null;
+            ShutdownComponent(ref normalRoundBotsStarted, normalRoundBots.Terminate, nameof(NormalRoundBotSpawner));
             ShutdownComponent(ref warmupManagerStarted, WarmupManager.Instance.Terminate, nameof(WarmupManager));
             ShutdownComponent(ref cleanupManagerStarted, OverflowCleanupManager.Instance.Terminate, nameof(OverflowCleanupManager));
             ShutdownComponent(ref botManagerStarted, BotManager.Instance.Terminate, nameof(BotManager));

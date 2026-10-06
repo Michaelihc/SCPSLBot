@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add `normal_round_bot_count`: independent spectator bots enter native normal-round role allocation
+  and reinforcement waves without warmup population management.
+- Restrict Surface idle to Standard warmup so normal-round escape planning continues on Surface.
+
 - Arena placement skips a position write when the spawned role's movement module is not ready yet
   (another role change in the same event); the scheduled placement retries instead of throwing.
 

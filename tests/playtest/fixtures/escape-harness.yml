@@ -1,0 +1,3 @@
+auto_run_scenario: scpslbot-autonomous-escape
+auto_run_level: e2e
+auto_run_delay_seconds: 20

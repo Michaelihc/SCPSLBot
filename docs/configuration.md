@@ -4,6 +4,7 @@ SCPSLBot defaults (`LabAPI/configs/<port>/SCPSLBot/config.yml`):
 
 ```yaml
 bots_only: true                                # master switch; false turns on the warmup features
+normal_round_bot_count: 0                      # 0-10 independent spectator bots before normal-round allocation
 language: ""                                   # "en", "cn", or "" (client language, Chinese fallback)
 warmup_mode: Standard                          # Standard or None
 default_warmup_mode: Standard                  # fallback when warmup_mode is invalid
@@ -45,6 +46,10 @@ panel:
 ```
 
 - `bots_only` and everything it gates are described in [warmup features](warmup.md).
+- `normal_round_bot_count` creates independent spectator bots before native role assignment when
+  warmup is off. Native round allocation and reinforcement waves choose their roles. They are not
+  maintained or automatically replaced after death; the configured population is created again
+  for the next round. Set the count before restarting the server.
 - `navigation` is described in [navigation](navigation.md).
 - `controls` holds the item policy, native spawn-anchor overrides, the three arena presets, cooldown
   groups, allowed item roles and zones, and limits. High-impact items share a 60-second cooldown and

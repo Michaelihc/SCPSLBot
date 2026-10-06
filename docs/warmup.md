@@ -28,6 +28,9 @@ Restart the server after changing the switch.
 
 In bots-only mode you add the bots:
 
+- Set `normal_round_bot_count` (0–10, default 0) to create independent spectators before each normal
+  round. Native role allocation chooses their starting roles; warmup population control stays off.
+
 - `bot_add` spawns an AI bot (at most 10 at a time). Use native RA force-class to make it any role,
   SCPs included, and the AI takes over on the new role.
 - Bots are removed on round restart.
