@@ -39,6 +39,7 @@ plugins = [repo / "SCPSLBot/bin/x64/Release/net48/SCPSLBot.dll",
     workspace / "HsmAdapter/bin/x64/Release/net48/HsmAdapter.dll",
     workspace / "ServerKeybinds/bin/x64/Release/net48/ServerKeybinds.dll"]
 keep = {"plugins/8910/HintServiceMeow.dll", *("plugins/8910/" + path.name for path in plugins)}
+keep.update(name for name in baseline if Path(name).name.startswith(("System.", "Microsoft.")))
 # Only SCPSLBot's subjects and dependencies load; gameplay-altering production plugins are absent.
 remove = [name for name in baseline if name.startswith("plugins/") and name.endswith(".dll") and name not in keep]
 files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",
@@ -63,6 +64,8 @@ try:
                 continue
             if "job" in message:
                 job = message["job"]
+            if message.get("phase") == "server-ready" and message.get("errors"):
+                raise RuntimeError(f"Candidate setup has loader errors; inspect {artifacts / 'host.log'}")
             if message.get("state") != "held":
                 continue
             # The job record identifies this run's exact evidence, never the newest shared run.
@@ -70,6 +73,8 @@ try:
             evidence = Path(record["evidence"])
             deadline = time.monotonic() + (690 if args.escape else 120)
             while time.monotonic() < deadline:
+                if process.poll() is not None:
+                    break
                 matches = list((evidence / "playtest-runs").glob("*.summary.json"))
                 # While held, harness outputs remain inside this job's private server AppData.
                 if not matches:

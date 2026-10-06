@@ -20,7 +20,11 @@ namespace SCPSLBot.AI
 
         public void Init(BotPluginConfig pluginConfig)
         {
+            if (initialized)
+                return;
+
             config = pluginConfig;
+            created = 0;
             initialized = true;
             ServerEvents.WaitingForPlayers += BeginWaiting;
             ServerEvents.RoundRestarted += OnRoundRestarted;
@@ -42,6 +46,7 @@ namespace SCPSLBot.AI
             RoleAssigner.OnBeforePlayersSpawned -= BeforeRoleAssignment;
             WarmupManager.Instance.ModeChanged -= OnModeChanged;
             config = null;
+            created = 0;
         }
 
         private bool IsNormalRound => initialized && !WarmupManager.Instance.IsStandardWarmup;
