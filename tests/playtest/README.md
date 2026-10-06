@@ -34,8 +34,6 @@ raycasts, dummy settle checks, and a real multi-room bot walk. Construction-stag
 100-cycle native-memory/handle baselines, 20 cold boots/restarts, and production-free reload driving
 remain separate live/manual gates.
 
-## Runtime navmesh gates
-
 ## Normal rounds and autonomous escape
 
 Build the plugin, shared harness and scenario assembly with deployment disabled, then run:
