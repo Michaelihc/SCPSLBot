@@ -117,7 +117,7 @@ internal sealed class DuelRuntime
         selected.Clear();
         try
         {
-            Prepare(challenger, RoleTypeId.NtfPrivate, arena.Origin + new Vector3(0, 1, -12));
+            Prepare(challenger, RoleTypeId.NtfPrivate, arena.Origin + new Vector3(0, 1, -13));
             Logger.Info($"[DuelArena] Lobby entered: player={player.PlayerId}; life={player.LifeId}; position={player.Position}");
             RefreshBoard();
             Tell(player, "射击或按 E 选择名字（可多选），然后选择「发送邀请」；首位输入 .accept 或 .yes 的玩家进入决斗");
@@ -387,43 +387,46 @@ internal sealed class DuelRuntime
         if (key == rosterKey) return;
         DestroyBoard();
         rosterKey = key;
-        AddRow(new Vector3(0, 2.8f, -10.5f), "<b>决斗台 · 选择对手</b>", "header", null);
+        AddRow(new Vector3(0, 2.4f, -10.5f), "<b>决斗台 · 选择对手</b>", "header", null);
         int index = 0;
         foreach (Player candidate in candidates.Skip(page * 8).Take(8))
         {
-            float x = index % 2 == 0 ? -3f : 3f;
-            float y = 2.25f - index / 2 * 0.45f;
+            float x = index % 2 == 0 ? -1.15f : 1.15f;
+            float y = 2.05f - index / 2 * 0.33f;
             AddRow(new Vector3(x, y, -10.5f), $"{(selected.Contains(candidate.ReferenceHub) ? "●" : "○")} {Safe(candidate.Nickname)}", "player", candidate);
             index++;
         }
-        AddRow(new Vector3(-3, 0.4f, -10.5f), "选择所有玩家", "all", null);
-        AddRow(new Vector3(3, 0.4f, -10.5f), invited.Count == 0 ? "发送邀请" : "等待接受…", "invite", null);
+        AddRow(new Vector3(-1.15f, 0.7f, -10.5f), "选择所有玩家", "all", null);
+        AddRow(new Vector3(1.15f, 0.7f, -10.5f), invited.Count == 0 ? "发送邀请" : "等待接受…", "invite", null);
         if (pages > 1)
         {
-            AddRow(new Vector3(-3, 3.3f, -10.5f), $"上一页  {page + 1}/{pages}", "previous", null);
-            AddRow(new Vector3(3, 3.3f, -10.5f), "下一页", "next", null);
+            AddRow(new Vector3(-1.15f, 2.85f, -10.5f), $"上一页  {page + 1}/{pages}", "previous", null);
+            AddRow(new Vector3(1.15f, 2.85f, -10.5f), "下一页", "next", null);
         }
     }
     private void AddRow(Vector3 local, string label, string action, Player? candidate)
     {
         Vector3 position = arena.Origin + local;
+        float width = action == "header" ? 4.5f : 2.2f;
+        float glyphWidth = label.Sum(c => c < 128 ? 0.55f : 1f);
+        float fontSize = Math.Min(2.2f, width / (0.09f * Math.Max(1f, glyphWidth)));
         var background = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(position + new Vector3(0, 0, 0.04f), Quaternion.identity,
-            new Vector3(5.15f, 0.42f, 0.04f)));
+            new Vector3(width, 0.3f, 0.04f)));
         background.Type = PrimitiveType.Cube;
         background.Flags = AdminToys.PrimitiveFlags.Visible;
         background.Color = new Color(0.05f, 0.08f, 0.12f);
         background.IsStatic = true;
         background.Spawn();
         var text = TextToy.Get(ToyFactory.Create<AdminToys.TextToy>(position, Quaternion.identity, Vector3.one * 0.9f));
-        text.DisplaySize = new Vector2(110, 9);
-        text.TextFormat = "<align=center><size=7>" + label + "</size></align>";
+        text.DisplaySize = new Vector2(width / 0.09f, 3.4f);
+        text.TextFormat = "<align=center><size=" + fontSize.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + ">" + label + "</size></align>";
         text.IsStatic = true;
         text.Spawn();
-        var interactable = InteractableToy.Get(ToyFactory.Create<AdminToys.InvisibleInteractableToy>(position, Quaternion.identity, new Vector3(5f, 0.38f, 0.1f)));
+        var interactable = InteractableToy.Get(ToyFactory.Create<AdminToys.InvisibleInteractableToy>(position, Quaternion.identity, new Vector3(width, 0.3f, 0.1f)));
         interactable.IsStatic = true;
         interactable.InteractionDuration = 0;
         interactable.Spawn();
-        rows.Add(new Row(text, interactable, background, new Bounds(position, new Vector3(5f, 0.38f, 0.1f)), action, candidate));
+        rows.Add(new Row(text, interactable, background, new Bounds(position, new Vector3(width, 0.3f, 0.1f)), action, candidate));
     }
     private readonly List<PrimitiveObjectToy> extras = new();
     private void DestroyExtras()

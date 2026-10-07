@@ -20,7 +20,7 @@ Start-Sleep -Seconds 2
 $null = Invoke-LabSetup '.duel' -ClientId $duelClients[0]
 Start-Sleep -Seconds 2
 $entered = DuelActor $duelOwner
-$duelOrigin = @{x=$entered.position.x;y=$entered.position.y-1;z=$entered.position.z+12}
+$duelOrigin = @{x=$entered.position.x;y=$entered.position.y-1;z=$entered.position.z+13}
 # Root settles on the floor after entry; use the model's floor top plus FPC half-height.
 $status = (Invoke-LabServer '/duel_status') -join ' '
 if ($status -notmatch 'origin=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing arena position in status: $status" }
@@ -30,17 +30,17 @@ if ((DuelActor $duelOpponent).position.y -gt $duelOrigin.y-50) { throw 'A second
 $duelChecks.Add('single reservation')
 $gunActor = DuelActor $duelOwner
 if ($gunActor.held -ne 'GunE11SR') { $null = Invoke-LabInventory -Slot 1 -Expect GunE11SR -ClientId $duelClients[0] -ActorId $duelOwner }
-$null = DuelPress -3 2.25 323 'select-first-name'
+$null = DuelPress -1.15 2.05 323 'select-first-name'
 # Move near the left-hand row through native walking, then E toggles the selected name.
 $null = Set-LabLook -Yaw 0 -Pitch 0 -ClientId $duelClients[0] -ActorId $duelOwner
 $null = Invoke-LabInput @{frames=30;keys=@(97)} -ClientId $duelClients[0]
-$null = DuelPress -3 2.25 101 'interact-first-name'
+$null = DuelPress -1.15 2.05 101 'interact-first-name'
 $null = Set-LabLook -Yaw 0 -Pitch 0 -ClientId $duelClients[0] -ActorId $duelOwner
 $null = Invoke-LabInput @{frames=30;keys=@(100)} -ClientId $duelClients[0]
-$null = DuelPress 3 2.25 323 'select-second-name'
-$null = DuelPress -3 0.4 323 'select-everyone'
+$null = DuelPress 1.15 2.05 323 'select-second-name'
+$null = DuelPress -1.15 0.7 323 'select-everyone'
 $board = Invoke-LabScreenshot -Name duel-selected-board -ClientId $duelClients[0]
-$null = DuelPress 3 0.4 323 'send-duel-invitations'
+$null = DuelPress 1.15 0.7 323 'send-duel-invitations'
 $null = Invoke-LabSetup '.yes' -ClientId $duelClients[1]
 Start-Sleep -Seconds 1
 $first = DuelActor $duelOpponent
