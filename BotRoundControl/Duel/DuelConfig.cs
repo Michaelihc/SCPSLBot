@@ -8,4 +8,3 @@ public sealed class DuelConfig
     public float LobbySeconds { get; set; } = 120f;
     public float MatchSeconds { get; set; } = 180f;
 }
-

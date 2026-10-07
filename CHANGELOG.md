@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Split bot-server management into `BotRoundControl.dll`; SCPSLBot owns AI and navigation.
+  Management configuration and commands live with BotRoundControl.
+- Add the fourth Duel / 1v1 warmup zone using the supplied enclosed arena above Surface.
+  World-space names support shooting or interaction, multiple/all invitations and first acceptance.
+  Add `.accept` / `.yes`, protected `.spectate` / `.view` / `.watch`, and lifecycle cleanup that
+  returns players to Surface and releases the single match slot.
 - Arena placement skips a position write when the spawned role's movement module is not ready yet
   (another role change in the same event); the scheduled placement retries instead of throwing.
 
