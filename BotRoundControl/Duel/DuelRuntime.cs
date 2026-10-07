@@ -26,6 +26,7 @@ internal sealed class DuelRuntime
     private readonly List<Row> rows = new();
     private Participant? challenger;
     private Participant? opponent;
+    private Participant? pendingDeath;
     private float expires;
     private float matchStart;
     private float lastClick;
@@ -255,6 +256,7 @@ internal sealed class DuelRuntime
     }
     private void Reset(bool returnToSurface)
     {
+        pendingDeath = null;
         challenger = null;
         opponent = null;
         invited.Clear();
@@ -275,6 +277,12 @@ internal sealed class DuelRuntime
         {
             try
             {
+                // Finish after the native damage/role stack has unwound. Changing
+                // either role from inside Death can leave FPC at its previous position.
+                Participant? deceased = pendingDeath;
+                pendingDeath = null;
+                if (deceased != null && participants.ContainsKey(deceased.Hub))
+                    Leave(deceased.Player, "决斗结束");
                 if (ModeActive?.Invoke() == false && participants.Count != 0) Reset(true);
                 if (challenger != null)
                 {
@@ -306,7 +314,10 @@ internal sealed class DuelRuntime
         if (!departing.Viewer)
             Finish("玩家离开服务器", ReferenceEquals(departing, challenger) ? opponent : challenger);
     }
-    private void OnDeath(PlayerDeathEventArgs ev) => Leave(ev.Player, "决斗结束");
+    private void OnDeath(PlayerDeathEventArgs ev)
+    {
+        if (participants.TryGetValue(ev.Player.ReferenceHub, out Participant deceased)) pendingDeath = deceased;
+    }
     private void OnChangedRole(PlayerChangedRoleEventArgs ev)
     {
         if (ev.ChangeReason == RoleChangeReason.Died) return;
