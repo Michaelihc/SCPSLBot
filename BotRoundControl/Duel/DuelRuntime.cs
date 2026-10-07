@@ -118,6 +118,7 @@ internal sealed class DuelRuntime
         try
         {
             Prepare(challenger, RoleTypeId.NtfPrivate, arena.Origin + new Vector3(0, 1, -12));
+            Logger.Info($"[DuelArena] Lobby entered: player={player.PlayerId}; life={player.LifeId}; position={player.Position}");
             RefreshBoard();
             Tell(player, "射击或按 E 选择名字（可多选），然后选择「发送邀请」；首位输入 .accept 或 .yes 的玩家进入决斗");
             return true;
@@ -241,6 +242,9 @@ internal sealed class DuelRuntime
     }
     private void Finish(string reason, Participant? winner)
     {
+        Logger.Info($"[DuelArena] Slot released: challenger={challenger?.Player.PlayerId}; "
+            + $"position={challenger?.Player.Position}; role={challenger?.Player.Role}; "
+            + $"opponent={opponent?.Player.PlayerId}; winner={winner?.Player.PlayerId}");
         foreach (Participant participant in participants.Values.ToArray())
             if (Valid(participant)) Tell(participant.Player, winner == null ? reason : $"{Safe(winner.Player.Nickname)} 获胜！{reason}");
         Reset(true);
@@ -298,7 +302,11 @@ internal sealed class DuelRuntime
     private void OnChangedRole(PlayerChangedRoleEventArgs ev)
     {
         if (ev.ChangeReason == RoleChangeReason.Died) return;
-        if (!transitioning && Owns(ev.Player.ReferenceHub)) Leave(ev.Player, "角色发生变化，决斗结束");
+        if (!transitioning && Owns(ev.Player.ReferenceHub))
+        {
+            Logger.Info($"[DuelArena] External role change: player={ev.Player.PlayerId}; role={ev.Player.Role}; reason={ev.ChangeReason}");
+            Leave(ev.Player, "角色发生变化，决斗结束");
+        }
     }
     private void OnHurting(PlayerHurtingEventArgs ev)
     {
