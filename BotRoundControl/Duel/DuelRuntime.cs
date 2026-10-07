@@ -97,7 +97,7 @@ internal sealed class DuelRuntime
         arena.Spawn(surface.Position + Vector3.up * Mathf.Clamp(config.SurfaceHeightOffset, 100f, 400f));
         // A separate protected viewing deck keeps observers out of the match and its hitboxes.
         AddPrimitive(arena.Origin + new Vector3(0, 2.5f, 18f), new Vector3(12, 0.2f, 5), Color.gray);
-        Logger.Info($"[DuelArena] Model spawned: 7 primitives, 5 lights; {Status}");
+        Logger.Info($"[DuelArena] Model spawned: {arena.PrimitiveCount} primitives, {arena.LightCount} lights; {Status}");
     }
     private void OnRestart() { Reset(false); DestroyExtras(); arena.Destroy(); }
     private void OnMapGenerated(MapGeneratedEventArgs ev) => OnMapGenerated();

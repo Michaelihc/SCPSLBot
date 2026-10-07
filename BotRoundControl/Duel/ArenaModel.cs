@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using LabApi.Features.Wrappers;
@@ -12,6 +13,8 @@ internal sealed class ArenaModel
     private readonly List<AdminToy> toys = new();
     public Vector3 Origin { get; private set; }
     public bool Ready => toys.Count != 0;
+    public int PrimitiveCount => toys.Count(toy => toy is PrimitiveObjectToy);
+    public int LightCount => toys.Count(toy => toy is LightSourceToy);
     public bool Contains(Vector3 position)
     {
         Vector3 local = position - Origin;

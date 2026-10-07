@@ -1,10 +1,10 @@
 {
-  "RootObjectId": -3754,
+  "RootObjectId": 23390,
   "Blocks": [
     {
       "Name": "Cube (2)",
-      "ObjectId": -2760,
-      "ParentId": -3754,
+      "ObjectId": -1432,
+      "ParentId": 23390,
       "Position": {
         "x": 0.0,
         "y": 0.55,
@@ -32,8 +32,8 @@
     },
     {
       "Name": "Cube (1)",
-      "ObjectId": -2074,
-      "ParentId": -3754,
+      "ObjectId": -1236,
+      "ParentId": 23390,
       "Position": {
         "x": 0.0,
         "y": 0.8,
@@ -61,8 +61,8 @@
     },
     {
       "Name": "Cube",
-      "ObjectId": -1868,
-      "ParentId": -3754,
+      "ObjectId": -1476,
+      "ParentId": 23390,
       "Position": {
         "x": 0.0,
         "y": 0.0,
@@ -90,8 +90,8 @@
     },
     {
       "Name": "Cube (3)",
-      "ObjectId": -4652,
-      "ParentId": -3754,
+      "ObjectId": -1402,
+      "ParentId": 23390,
       "Position": {
         "x": 0.0,
         "y": 0.8,
@@ -119,8 +119,8 @@
     },
     {
       "Name": "Cube (4)",
-      "ObjectId": -4846,
-      "ParentId": -3754,
+      "ObjectId": -1282,
+      "ParentId": 23390,
       "Position": {
         "x": 0.0,
         "y": 0.55,
@@ -148,11 +148,11 @@
     },
     {
       "Name": "Cube (5)",
-      "ObjectId": -4988,
-      "ParentId": -3754,
+      "ObjectId": -1442,
+      "ParentId": 23390,
       "Position": {
         "x": 9.95,
-        "y": 0.8,
+        "y": 1.41,
         "z": 0.0
       },
       "Rotation": {
@@ -162,7 +162,7 @@
       },
       "Scale": {
         "x": 30.0,
-        "y": 1.5,
+        "y": 3.0,
         "z": 0.1
       },
       "BlockType": 1,
@@ -177,11 +177,11 @@
     },
     {
       "Name": "Cube (6)",
-      "ObjectId": -5344,
-      "ParentId": -3754,
+      "ObjectId": -1342,
+      "ParentId": 23390,
       "Position": {
         "x": -9.95,
-        "y": 0.8,
+        "y": 1.48,
         "z": 0.0
       },
       "Rotation": {
@@ -191,7 +191,7 @@
       },
       "Scale": {
         "x": 30.0,
-        "y": 1.5,
+        "y": 3.0,
         "z": 0.1
       },
       "BlockType": 1,
@@ -206,8 +206,8 @@
     },
     {
       "Name": "Point Light (4)",
-      "ObjectId": -6708,
-      "ParentId": -3754,
+      "ObjectId": -1486,
+      "ParentId": 23390,
       "Position": {
         "x": -7.815151,
         "y": 2.77485037,
@@ -258,8 +258,8 @@
     },
     {
       "Name": "Point Light (3)",
-      "ObjectId": -6686,
-      "ParentId": -3754,
+      "ObjectId": -1468,
+      "ParentId": 23390,
       "Position": {
         "x": -7.855152,
         "y": 2.77485037,
@@ -310,8 +310,8 @@
     },
     {
       "Name": "Point Light (2)",
-      "ObjectId": -6664,
-      "ParentId": -3754,
+      "ObjectId": -1326,
+      "ParentId": 23390,
       "Position": {
         "x": 6.91484833,
         "y": 2.77485037,
@@ -362,8 +362,8 @@
     },
     {
       "Name": "Point Light (1)",
-      "ObjectId": -6642,
-      "ParentId": -3754,
+      "ObjectId": -1310,
+      "ParentId": 23390,
       "Position": {
         "x": 7.17485046,
         "y": 2.77485037,
@@ -414,8 +414,8 @@
     },
     {
       "Name": "Point Light",
-      "ObjectId": -6620,
-      "ParentId": -3754,
+      "ObjectId": -1452,
+      "ParentId": 23390,
       "Position": {
         "x": 0.594848633,
         "y": 2.77485037,
@@ -460,6 +460,64 @@
             "Actions": []
           }
         ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Cube (7)",
+      "ObjectId": -6182,
+      "ParentId": 23390,
+      "Position": {
+        "x": 0.0,
+        "y": 1.45,
+        "z": 14.95
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 20.0,
+        "y": 3.0,
+        "z": 0.1
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Cube (8)",
+      "ObjectId": -6554,
+      "ParentId": 23390,
+      "Position": {
+        "x": 0.0,
+        "y": 1.45,
+        "z": -14.95
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 20.0,
+        "y": 3.0,
+        "z": 0.1
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
         "Static": false,
         "MovementSmoothing": 60
       }
