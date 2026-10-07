@@ -28,6 +28,14 @@ internal sealed class ArenaModel
         var asset = (Asset)new DataContractJsonSerializer(typeof(Asset)).ReadObject(stream);
         try
         {
+            // FPC positions are compressed relative to a native waypoint within
+            // +/-128 meters. Give the elevated arena its own bounded origin.
+            var waypoint = WaypointToy.Get(ToyFactory.Create<AdminToys.WaypointToy>(origin, Quaternion.identity, Vector3.one));
+            toys.Add(waypoint);
+            waypoint.BoundsSize = new Vector3(40, 30, 50);
+            waypoint.PriorityBias = 50;
+            waypoint.VisualizeBounds = false;
+            waypoint.Spawn();
             foreach (Block block in asset.Blocks)
             {
                 if (block.ParentId != asset.RootObjectId)

@@ -203,6 +203,9 @@ internal sealed class DuelRuntime
     private void Prepare(Participant participant, RoleTypeId role, Vector3 position)
     {
         if (!Valid(participant)) throw new InvalidOperationException("Participant identity changed.");
+        var encoded = new RelativePositioning.RelativePosition(position);
+        if (encoded.OutOfRange || Vector3.Distance(encoded.Position, position) > 0.02f)
+            throw new InvalidOperationException("Arena position cannot be synchronized by the native waypoint.");
         transitioning = true;
         try
         {
