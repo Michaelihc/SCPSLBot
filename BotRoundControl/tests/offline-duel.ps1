@@ -69,13 +69,21 @@ if ((DuelActor $duelOwner).firearm.ammo -ne 0) { throw 'Sustained fire did not d
 $reload = Invoke-LabInput @{id='duel-reload';frames=240;inputFrames=2;keys=@(114);capture=$true;audio=$true} -ClientId $duelClients[0]
 if ((DuelActor $duelOwner).firearm.ammo -le 0) { throw 'Native reload did not refill the magazine' }
 $duelChecks.Add('native depletion and reload')
-$target = DuelActor $duelOpponent
-$null = Set-LabAim -Target @{x=$target.position.x;y=$target.position.y+0.45;z=$target.position.z} -ClientId $duelClients[0] -ActorId $duelOwner
-$fight = Invoke-LabInput @{id='duel-native-fight';frames=180;keys=@(323);capture=$true;audio=$true;expectAudio=$true} -ClientId $duelClients[0]
+$fight = @()
+# Native recoil lifts long bursts above the target. Reacquire the torso between short bursts.
+for ($burst = 0; $burst -lt 12; $burst++) {
+    $target = DuelActor $duelOpponent
+    if ($target.position.y -lt $duelOrigin.y-50) { break }
+    $null = Set-LabAim -Target @{x=$target.position.x;y=$target.position.y+0.2;z=$target.position.z} -ClientId $duelClients[0] -ActorId $duelOwner
+    $fight += Invoke-LabInput @{id="duel-native-fight-$burst";frames=30;inputFrames=12;keys=@(323,324);capture=$true;audio=$true;expectAudio=$true} -ClientId $duelClients[0]
+}
 Start-Sleep -Seconds 2
 $afterOwner = DuelActor $duelOwner
 $afterOpponent = DuelActor $duelOpponent
-if ($afterOwner.position.y -gt $duelOrigin.y-50 -or $afterOpponent.position.y -gt $duelOrigin.y-50) { throw 'Native duel death did not release both participants to Surface' }
+if ($afterOwner.position.y -gt $duelOrigin.y-50 -or $afterOpponent.position.y -gt $duelOrigin.y-50) {
+    @{owner=$afterOwner;opponent=$afterOpponent;status=(Invoke-LabServer '/duel_status')} | ConvertTo-Json -Depth 10 | Set-Content "$($Context.Evidence)/duel-fight-failure.json" -Encoding utf8
+    throw 'Native duel death did not release both participants to Surface'
+}
 $duelChecks.Add('combat and death cleanup')
 # A fresh entry proves the slot was released after native death.
 $null = Invoke-LabSetup '.duel' -ClientId $duelClients[2]
@@ -83,5 +91,19 @@ Start-Sleep -Seconds 1
 if ((DuelActor $duelViewer).position.y -lt $duelOrigin.y-2) { throw 'Released match slot could not be reused' }
 $null = Invoke-LabSetup '.leave' -ClientId $duelClients[2]
 $duelChecks.Add('slot reuse')
+$null = Invoke-LabSetup '.duel' -ClientId $duelClients[2]
+$null = Invoke-LabServer "/forcerole $duelViewer Tutorial"
+Start-Sleep -Seconds 1
+if ((DuelActor $duelViewer).role -ne 'Tutorial' -or ((Invoke-LabServer '/duel_status') -join ' ') -notmatch 'state=idle') { throw 'External Tutorial transition retained duel ownership or changed the native role' }
+$duelChecks.Add('external role transition')
+$null = Invoke-LabServer "/forcerole $duelViewer NtfPrivate"
+$null = Invoke-LabSetup '.duel' -ClientId $duelClients[2]
+$null = Invoke-LabSetup 'disconnect' -ClientId $duelClients[2]
+Start-Sleep -Seconds 2
+if (((Invoke-LabServer '/duel_status') -join ' ') -notmatch 'state=idle') { throw 'Disconnected challenger retained the slot' }
+$null = Invoke-LabSetup '.duel' -ClientId $duelClients[0]
+if ((DuelActor $duelOwner).position.y -lt $duelOrigin.y-2) { throw 'Disconnected challenger slot could not be reused' }
+$null = Invoke-LabSetup '.leave' -ClientId $duelClients[0]
+$duelChecks.Add('native disconnect and slot reuse')
 @{checks=@($duelChecks);board=$board;viewer=$viewShot;depletion=$empty;reload=$reload;fight=$fight;owner=$afterOwner;opponent=$afterOpponent} |
     ConvertTo-Json -Depth 10 | Set-Content "$($Context.Evidence)/duel-walkthrough.json" -Encoding utf8

@@ -42,7 +42,7 @@ internal sealed class DuelRuntime
     internal bool Fighting => opponent != null;
     internal Vector3 Origin => arena.Origin;
     internal string Status => $"ready={arena.Ready}; state={(Fighting ? "fighting" : challenger != null ? "lobby" : "idle")}; "
-        + $"challenger={challenger?.Player.PlayerId ?? 0}; opponent={opponent?.Player.PlayerId ?? 0}; invited={invited.Count}; "
+        + $"challenger={challenger?.PlayerId ?? 0}; opponent={opponent?.PlayerId ?? 0}; invited={invited.Count}; "
         + $"viewers={participants.Values.Count(p => p.Viewer)}; origin={Origin}";
 
     private static bool Current(Player player, string userId) => player != null && !player.IsDestroyed
@@ -245,12 +245,13 @@ internal sealed class DuelRuntime
     }
     private void Finish(string reason, Participant? winner)
     {
-        Logger.Info($"[DuelArena] Slot released: challenger={challenger?.Player.PlayerId}; "
-            + $"position={challenger?.Player.Position}; role={challenger?.Player.Role}; "
-            + $"opponent={opponent?.Player.PlayerId}; winner={winner?.Player.PlayerId}");
-        foreach (Participant participant in participants.Values.ToArray())
-            if (Valid(participant)) Tell(participant.Player, winner == null ? reason : $"{Safe(winner.Player.Nickname)} 获胜！{reason}");
+        Logger.Info($"[DuelArena] Slot released: challenger={challenger?.PlayerId}; "
+            + $"opponent={opponent?.PlayerId}; winner={winner?.PlayerId}");
+        Participant[] recipients = participants.Values.ToArray();
+        string message = winner != null && Valid(winner) ? $"{Safe(winner.Player.Nickname)} 获胜！{reason}" : reason;
         Reset(true);
+        foreach (Participant participant in recipients)
+            if (Valid(participant)) Tell(participant.Player, message);
     }
     private void Reset(bool returnToSurface)
     {
@@ -299,7 +300,11 @@ internal sealed class DuelRuntime
     {
         invited.Remove(ev.Player.ReferenceHub);
         selected.Remove(ev.Player.ReferenceHub);
-        Leave(ev.Player, "玩家离开服务器");
+        // The departing hub is already being destroyed. Never route or respawn it.
+        if (!participants.TryGetValue(ev.Player.ReferenceHub, out Participant departing)) return;
+        participants.Remove(departing.Hub);
+        if (!departing.Viewer)
+            Finish("玩家离开服务器", ReferenceEquals(departing, challenger) ? opponent : challenger);
     }
     private void OnDeath(PlayerDeathEventArgs ev) => Leave(ev.Player, "决斗结束");
     private void OnChangedRole(PlayerChangedRoleEventArgs ev)
@@ -466,11 +471,13 @@ internal sealed class DuelRuntime
     {
         public Participant(Player player, bool viewer)
         {
-            Player = player; Hub = player.ReferenceHub; UserId = player.UserId; Viewer = viewer; ReturnPosition = player.Position;
+            Player = player; Hub = player.ReferenceHub; UserId = player.UserId; PlayerId = player.PlayerId;
+            Viewer = viewer; ReturnPosition = player.Position;
         }
         public Player Player { get; }
         public ReferenceHub Hub { get; }
         public string UserId { get; }
+        public int PlayerId { get; }
         public bool Viewer { get; }
         public Vector3 ReturnPosition { get; }
         public int LifeId { get; set; }
