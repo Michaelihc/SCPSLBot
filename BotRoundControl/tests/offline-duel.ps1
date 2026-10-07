@@ -33,10 +33,12 @@ if ($gunActor.held -ne 'GunE11SR') { $null = Invoke-LabInventory -Slot 1 -Expect
 $null = DuelPress -1.15 2.05 323 'select-first-name'
 # Move near the left-hand row through native walking, then E toggles the selected name.
 $null = Set-LabLook -Yaw 0 -Pitch 0 -ClientId $duelClients[0] -ActorId $duelOwner
-$null = Invoke-LabInput @{frames=30;keys=@(97)} -ClientId $duelClients[0]
+$null = Invoke-LabInput @{frames=12;keys=@(119)} -ClientId $duelClients[0]
+$null = Invoke-LabInput @{frames=18;keys=@(97)} -ClientId $duelClients[0]
 $null = DuelPress -1.15 2.05 101 'interact-first-name'
 $null = Set-LabLook -Yaw 0 -Pitch 0 -ClientId $duelClients[0] -ActorId $duelOwner
-$null = Invoke-LabInput @{frames=30;keys=@(100)} -ClientId $duelClients[0]
+$null = Invoke-LabInput @{frames=18;keys=@(100)} -ClientId $duelClients[0]
+$null = Invoke-LabInput @{frames=12;keys=@(115)} -ClientId $duelClients[0]
 $null = DuelPress 1.15 2.05 323 'select-second-name'
 $null = DuelPress -1.15 0.7 323 'select-everyone'
 $board = Invoke-LabScreenshot -Name duel-selected-board -ClientId $duelClients[0]
