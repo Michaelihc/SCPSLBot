@@ -32,6 +32,8 @@ namespace SCPSLBot
         private bool navigationSystemStarted;
         private bool navigationEditorStarted;
         private bool botManagerStarted;
+        private bool normalRoundBotsStarted;
+        private readonly NormalRoundBotSpawner normalRoundBots = new();
         private bool presentationStarted;
         private bool isEnabled;
         private BotPresentationService presentation;
@@ -93,6 +95,8 @@ namespace SCPSLBot
 
                 botManagerStarted = true;
                 BotManager.Instance.Init();
+                normalRoundBotsStarted = true;
+                normalRoundBots.Init(Config);
 
                 isEnabled = true;
                 Logger.Info("Enabled plugin.");
@@ -121,6 +125,7 @@ namespace SCPSLBot
             NetworkHealth?.Disable();
             NetworkHealth = null;
 
+            ShutdownComponent(ref normalRoundBotsStarted, normalRoundBots.Terminate, nameof(NormalRoundBotSpawner));
             ShutdownComponent(ref botManagerStarted, BotManager.Instance.Terminate, nameof(BotManager));
             ShutdownComponent(ref navigationEditorStarted, NavigationMeshEditor.Instance.Terminate, nameof(NavigationMeshEditor));
             ShutdownComponent(ref navigationSystemStarted, NavigationSystem.Instance.Terminate, nameof(NavigationSystem));

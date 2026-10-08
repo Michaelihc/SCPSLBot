@@ -52,6 +52,9 @@ public sealed class BotRoundControlPlugin : Plugin<BotPluginConfig>
             humanCount.Enable();
             OverflowCleanupManager.Instance.Init(Config);
             WarmupManager.Instance.Init(Config);
+            BotServerPolicy.StandardWarmup = () => WarmupManager.Instance.IsStandardWarmup;
+            WarmupManager.Instance.ModeChanged += OnModeChanged;
+            BotServerPolicy.NotifyModeChanged();
             if (Config.Duel.Enabled)
             {
                 Runtime = new DuelRuntime(Config.Duel)
@@ -78,7 +81,10 @@ public sealed class BotRoundControlPlugin : Plugin<BotPluginConfig>
         BotServerPolicy.CanFight = null;
         BotServerPolicy.PopulationStatus = null;
         BotServerPolicy.ManagementStopping = null;
+        WarmupManager.Instance.ModeChanged -= OnModeChanged;
         WarmupManager.Instance.Terminate();
+        BotServerPolicy.StandardWarmup = null;
+        BotServerPolicy.NotifyModeChanged();
         OverflowCleanupManager.Instance.Terminate();
         humanCount?.Disable();
         humanCount = null;
@@ -90,4 +96,5 @@ public sealed class BotRoundControlPlugin : Plugin<BotPluginConfig>
         Instance = null;
     }
     public void SaveManagementSettings() => SaveConfig();
+    private void OnModeChanged(WarmupMode mode) => BotServerPolicy.NotifyModeChanged();
 }

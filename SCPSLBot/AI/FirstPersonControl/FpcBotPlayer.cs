@@ -214,7 +214,8 @@ namespace SCPSLBot.AI.FirstPersonControl
 
         private bool ShouldIdleOnSurfaceWithoutTarget()
         {
-            return RoomUtils.TryGetRoom(PlayerPosition, out var room) && room.Zone == FacilityZone.Surface;
+            return SCPSLBot.Api.BotServerPolicy.IsStandardWarmup
+                && RoomUtils.TryGetRoom(PlayerPosition, out var room) && room.Zone == FacilityZone.Surface;
         }
 
         public void OnRoleChanged()

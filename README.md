@@ -143,6 +143,7 @@ active. `HsmAdapter` and `ServerKeybinds` are open source at
 | Goal | Command (Remote Admin) |
 |---|---|
 | Spawn an AI bot | `bot_add` |
+| Add bots to normal rounds automatically | set `normal_round_bot_count: 3` with warmup off, then restart |
 | Make it an SCP or any other role | native force-class on the bot |
 | Change bot skill | `bot_difficulty easy\|normal\|hard\|hardest` |
 | Turn the warmup features on | set `bots_only: false` in the config and restart |
@@ -165,7 +166,7 @@ active. `HsmAdapter` and `ServerKeybinds` are open source at
 - Generic SCP bots use their primary attack only: no SCP-049 revive, SCP-939 lunge, amnestic cloud
   or mimicry, SCP-106 stalk or portals, or SCP-3114 disguise or strangle.
 - Bots do not use medkits, grenades or armor, and do not cuff.
-- With no target in sight, bots on Surface hold position instead of roaming.
+- During Standard warmup, bots on Surface hold position until they find a target.
 - Do not install the legacy `WarmupPlayerPanel` or `ScpslPluginStarter.dll` alongside this suite.
 
 ## Credits
