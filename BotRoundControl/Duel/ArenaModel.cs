@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Json;
+using System.IO;
 using LabApi.Features.Wrappers;
 using UnityEngine;
 
@@ -25,7 +24,12 @@ internal sealed class ArenaModel
         Destroy();
         Origin = origin;
         using var stream = typeof(ArenaModel).Assembly.GetManifestResourceStream("DuelArena.arena.json");
-        var asset = (Asset)new DataContractJsonSerializer(typeof(Asset)).ReadObject(stream);
+        if (stream == null) throw new InvalidOperationException("Bundled arena model is missing.");
+        using var reader = new StreamReader(stream);
+        // Unity's native JSON reader avoids Mono's machine.config serializer sections.
+        var asset = JsonUtility.FromJson<Asset>(reader.ReadToEnd());
+        if (asset?.Blocks == null || asset.Blocks.Count == 0)
+            throw new InvalidOperationException("Bundled arena model has no blocks.");
         try
         {
             // FPC positions are compressed relative to a native waypoint within
@@ -74,32 +78,32 @@ internal sealed class ArenaModel
             if (toy.Base != null) toy.Destroy();
         toys.Clear();
     }
-    [DataContract] private sealed class Asset
+    [Serializable] private sealed class Asset
     {
-        [DataMember] public int RootObjectId;
-        [DataMember] public List<Block> Blocks = new();
+        public int RootObjectId;
+        public List<Block> Blocks = new();
     }
-    [DataContract] private sealed class Block
+    [Serializable] private sealed class Block
     {
-        [DataMember] public int ParentId;
-        [DataMember] public int BlockType;
-        [DataMember] public Coordinates Position = new();
-        [DataMember] public Coordinates Rotation = new();
-        [DataMember] public Coordinates Scale = new();
-        [DataMember] public Properties Properties = new();
+        public int ParentId;
+        public int BlockType;
+        public Coordinates Position = new();
+        public Coordinates Rotation = new();
+        public Coordinates Scale = new();
+        public Properties Properties = new();
     }
-    [DataContract] private sealed class Coordinates
+    [Serializable] private sealed class Coordinates
     {
-        [DataMember] public float x;
-        [DataMember] public float y;
-        [DataMember] public float z;
+        public float x;
+        public float y;
+        public float z;
         public Vector3 Vector => new(x, y, z);
     }
-    [DataContract] private sealed class Properties
+    [Serializable] private sealed class Properties
     {
-        [DataMember] public int PrimitiveType;
-        [DataMember] public int PrimitiveFlags;
-        [DataMember] public float Intensity;
-        [DataMember] public float Range;
+        public int PrimitiveType;
+        public int PrimitiveFlags;
+        public float Intensity;
+        public float Range;
     }
 }
