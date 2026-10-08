@@ -25,8 +25,9 @@ public sealed class NormalRoundPopulationScenario : Scenario
         yield return ctx.WaitUntil(() => NormalRoundWorld.Bots().Length == 3, 10f, "three configured round bots exist");
         Player[] bots = NormalRoundWorld.Bots();
         ctx.Require(bots.All(bot => bot.Role == RoleTypeId.Spectator), "all configured bots start as spectators");
-        BotStatusSnapshot before = BotStatusSnapshot.Read();
-        ctx.Require(before.Owned == 0 && before.Independent == 3 && before.Mode == "None", "spectators are independent with warmup off");
+        ctx.Require(!NativeCommandAdapter.RemoteAdmin("bot_server_status").Success,
+            "optional management is absent for this standalone AI fixture");
+        ctx.Require(NormalRoundWorld.Tracked() == 3, "all three spectators are tracked by standalone AI");
         yield return ctx.EnsureRoundStarted();
         yield return ctx.WaitUntil(() => bots.All(bot => bot.IsAlive), 5f, "native round allocation spawned every bot");
         ctx.Require(bots.Select(bot => bot.Role).Distinct().Count() == 3,
@@ -41,7 +42,7 @@ public sealed class NormalRoundPopulationScenario : Scenario
             NativeCommandAdapter.RemoteAdmin($"forcerole {selected.PlayerId} Spectator"), "admin releases one bot to spectator");
         yield return ctx.Wait(4f);
         ctx.Require(selected.Role == RoleTypeId.Spectator, "bot stayed spectator past delayed role callbacks and warmup respawn timing");
-        ctx.Require(NormalRoundWorld.Bots().Length == 3 && BotStatusSnapshot.Read().Owned == 0,
+        ctx.Require(NormalRoundWorld.Bots().Length == 3 && NormalRoundWorld.Tracked() == 3,
             "no maintained replacement or role repair appeared");
     }
 }
@@ -59,7 +60,8 @@ public sealed class AutonomousEscapeScenario : Scenario
         ctx.Require(!Round.IsRoundStarted, "escape begins before native round spawn");
         yield return ctx.WaitUntil(() => NormalRoundWorld.Bots().Length == 1, 10f, "one configured spectator exists");
         Player bot = NormalRoundWorld.Bots().Single();
-        ctx.Require(bot.Role == RoleTypeId.Spectator && BotStatusSnapshot.Read().Owned == 0,
+        ctx.Require(bot.Role == RoleTypeId.Spectator && NormalRoundWorld.Tracked() == 1
+            && !NativeCommandAdapter.RemoteAdmin("bot_server_status").Success,
             "candidate is an unmanaged spectator");
         bool escaped = false;
         RoleTypeId escapedFrom = RoleTypeId.None;
@@ -120,6 +122,15 @@ public sealed class AutonomousEscapeScenario : Scenario
 
 internal static class NormalRoundWorld
 {
+    public static int Tracked()
+    {
+        NativeCommandResult status = NativeCommandAdapter.RemoteAdmin("bot_status");
+        if (!status.Success || !CommandFields.Parse(status.Response, ';').TryGetValue("tracked", out string count)
+            || !int.TryParse(count, out int tracked))
+            throw new RequireException($"Standalone AI diagnostics are unavailable: {status}");
+        return tracked;
+    }
+
     public static Player[] Bots() => Player.ReadyList.Where(player => player.IsDummy && !player.IsDestroyed
         && player.Nickname.StartsWith("SCPSL Round Bot ", StringComparison.Ordinal)).ToArray();
 }
