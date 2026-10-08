@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Load the duel model with Unity's native JSON reader so Linux Mono configuration does not
+- Load the duel model with the game's shipped JSON reader so Linux Mono configuration does not
   prevent the arena and fourth zone option from becoming available.
 - Split bot-server management into `BotRoundControl.dll`; SCPSLBot owns AI and navigation.
   Management configuration and commands live with BotRoundControl.

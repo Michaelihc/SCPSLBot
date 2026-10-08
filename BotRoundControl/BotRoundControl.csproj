@@ -24,7 +24,8 @@
     <Reference Include="UnityEngine.CoreModule" Private="false" />
     <Reference Include="UnityEngine.PhysicsModule" Private="false" />
     <Reference Include="UnityEngine.AIModule" Private="false" />
-    <Reference Include="UnityEngine.JSONSerializeModule" Private="false" />
+    <Reference Include="System.Text.Json" Private="false" />
+    <Reference Include="System.Memory" Private="false" />
     <Reference Include="mscorlib" />
     <Reference Include="netstandard" />
     <Reference Include="System" />

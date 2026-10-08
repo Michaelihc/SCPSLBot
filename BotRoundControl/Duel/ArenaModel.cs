@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Text.Json;
 using LabApi.Features.Wrappers;
 using UnityEngine;
 
@@ -26,9 +27,11 @@ internal sealed class ArenaModel
         using var stream = typeof(ArenaModel).Assembly.GetManifestResourceStream("DuelArena.arena.json");
         if (stream == null) throw new InvalidOperationException("Bundled arena model is missing.");
         using var reader = new StreamReader(stream);
-        // Unity's native JSON reader avoids Mono's machine.config serializer sections.
-        var asset = JsonUtility.FromJson<Asset>(reader.ReadToEnd());
-        if (asset?.Blocks == null || asset.Blocks.Count == 0)
+        // Use the game's shipped JSON parser without Mono machine.config or Unity type registration.
+        using var asset = JsonDocument.Parse(reader.ReadToEnd());
+        int rootObjectId = asset.RootElement.GetProperty("RootObjectId").GetInt32();
+        JsonElement blocks = asset.RootElement.GetProperty("Blocks");
+        if (blocks.ValueKind != JsonValueKind.Array || blocks.GetArrayLength() == 0)
             throw new InvalidOperationException("Bundled arena model has no blocks.");
         try
         {
@@ -40,29 +43,32 @@ internal sealed class ArenaModel
             waypoint.PriorityBias = 50;
             waypoint.VisualizeBounds = false;
             waypoint.Spawn();
-            foreach (Block block in asset.Blocks)
+            foreach (JsonElement block in blocks.EnumerateArray())
             {
-                if (block.ParentId != asset.RootObjectId)
+                if (block.GetProperty("ParentId").GetInt32() != rootObjectId)
                     throw new InvalidOperationException("Arena asset must contain root-local blocks.");
-                if (block.BlockType == 1)
+                int blockType = block.GetProperty("BlockType").GetInt32();
+                Vector3 position = Coordinates(block.GetProperty("Position"));
+                JsonElement properties = block.GetProperty("Properties");
+                if (blockType == 1)
                 {
-                    var toy = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(origin + block.Position.Vector,
-                        Quaternion.Euler(block.Rotation.Vector), block.Scale.Vector));
+                    var toy = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(origin + position,
+                        Quaternion.Euler(Coordinates(block.GetProperty("Rotation"))), Coordinates(block.GetProperty("Scale"))));
                     toys.Add(toy);
-                    toy.Type = (PrimitiveType)block.Properties.PrimitiveType;
-                    toy.Flags = (AdminToys.PrimitiveFlags)block.Properties.PrimitiveFlags;
+                    toy.Type = (PrimitiveType)properties.GetProperty("PrimitiveType").GetInt32();
+                    toy.Flags = (AdminToys.PrimitiveFlags)properties.GetProperty("PrimitiveFlags").GetInt32();
                     toy.Color = Color.white;
                     toy.IsStatic = true;
                     toy.Spawn();
                 }
-                else if (block.BlockType == 2)
+                else if (blockType == 2)
                 {
-                    var light = LightSourceToy.Get(ToyFactory.Create<AdminToys.LightSourceToy>(origin + block.Position.Vector, Quaternion.identity, Vector3.one));
+                    var light = LightSourceToy.Get(ToyFactory.Create<AdminToys.LightSourceToy>(origin + position, Quaternion.identity, Vector3.one));
                     toys.Add(light);
                     light.Color = Color.white;
                     light.Type = LightType.Point;
-                    light.Intensity = block.Properties.Intensity;
-                    light.Range = block.Properties.Range;
+                    light.Intensity = properties.GetProperty("Intensity").GetSingle();
+                    light.Range = properties.GetProperty("Range").GetSingle();
                     light.ShadowType = LightShadows.None;
                     light.IsStatic = true;
                     light.Spawn();
@@ -78,32 +84,6 @@ internal sealed class ArenaModel
             if (toy.Base != null) toy.Destroy();
         toys.Clear();
     }
-    [Serializable] private sealed class Asset
-    {
-        public int RootObjectId;
-        public List<Block> Blocks = new();
-    }
-    [Serializable] private sealed class Block
-    {
-        public int ParentId;
-        public int BlockType;
-        public Coordinates Position = new();
-        public Coordinates Rotation = new();
-        public Coordinates Scale = new();
-        public Properties Properties = new();
-    }
-    [Serializable] private sealed class Coordinates
-    {
-        public float x;
-        public float y;
-        public float z;
-        public Vector3 Vector => new(x, y, z);
-    }
-    [Serializable] private sealed class Properties
-    {
-        public int PrimitiveType;
-        public int PrimitiveFlags;
-        public float Intensity;
-        public float Range;
-    }
+    private static Vector3 Coordinates(JsonElement value) => new(
+        value.GetProperty("x").GetSingle(), value.GetProperty("y").GetSingle(), value.GetProperty("z").GetSingle());
 }
