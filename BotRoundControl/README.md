@@ -22,11 +22,21 @@ Tutorial, Overwatch, SCP-079, NPCs and unauthenticated clients are excluded.
 
 Players fight as NTF and Chaos with matching E11 rifles, 100 health and 180 reserve rounds.
 Damage starts after a three-second countdown. Role and inventory changes are locked during
-duels and viewing; entering resets the player's loadout. Death, departure, leaving the arena,
-timeout or `.leave` ends the duel and returns participants to Surface with its normal loadout.
+duels and viewing; entering resets the player's loadout. Death, departure, leaving the arena
+or timeout ends the duel and moves the remaining fighters to the protected viewing deck.
+The winner and respawned loser stay there with the other viewers between matches.
+`.leave` exits to Surface with its normal loadout and forfeits an active duel.
 
-`.spectate`, `.view` and `.watch` toggle a protected viewing deck alongside an active duel.
-Observers cannot shoot or affect the match. Repeat any alias to return to Surface.
+`.spectate`, `.view` and `.watch` toggle the protected viewing deck, including between matches.
+Multiple players can view together. `.duel` joins viewing while the match slot is reserved;
+when it is free, a viewer can use `.duel` to challenge and invite other viewers or players.
+Observers cannot shoot or affect the match. Repeat any viewing alias to return to Surface.
+Viewers can also send `.challenge [arena player ID]` to a living player on the arena.
+With one player on the arena the ID is optional; during a fight choose either fighter's ID.
+The recipient uses `.accept [viewer ID]` to accept a request (without an ID, the oldest request).
+Requests made during a fight wait until it ends and then expire after `duel.invitation_seconds`.
+Death, disconnect or leaving cancels that player's requests. Accepting either invitation path
+claims the single match slot and clears competing invitations and requests.
 `duel.invitation_seconds`, `duel.lobby_seconds` and `duel.match_seconds` bound each phase.
 RA `duel_status` reports readiness and ownership; `bot_server_status` reports managed population.
 SCPSLBot's `bot_status` reports AI/navigation without requiring management.

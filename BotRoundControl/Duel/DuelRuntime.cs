@@ -23,6 +23,7 @@ internal sealed class DuelRuntime
     private readonly Dictionary<ReferenceHub, Participant> participants = new(HubComparer.Instance);
     private readonly HashSet<ReferenceHub> selected = new(HubComparer.Instance);
     private readonly Dictionary<ReferenceHub, string> invited = new(HubComparer.Instance);
+    private readonly List<ChallengeRequest> requests = new();
     private readonly List<Row> rows = new();
     private Participant? challenger;
     private Participant? opponent;
@@ -40,11 +41,12 @@ internal sealed class DuelRuntime
 
     public DuelRuntime(DuelConfig config) => this.config = config;
     private static float Now => Time.realtimeSinceStartup;
+    private Vector3 ViewingPosition => arena.Origin + new Vector3(0, 3.5f, 18);
     internal bool Fighting => opponent != null;
     internal Vector3 Origin => arena.Origin;
     internal string Status => $"ready={arena.Ready}; state={(Fighting ? "fighting" : challenger != null ? "lobby" : "idle")}; "
         + $"challenger={challenger?.PlayerId ?? 0}; opponent={opponent?.PlayerId ?? 0}; invited={invited.Count}; "
-        + $"viewers={participants.Values.Count(p => p.Viewer)}; origin={Origin}";
+        + $"viewers={participants.Values.Count(p => p.Viewer)}; requests={requests.Count}; origin={Origin}";
 
     private static bool Current(Player player, string userId) => player != null && !player.IsDestroyed
         && player.ReferenceHub != null && player.IsReady && player.IsPlayer && !player.IsDummy && !player.IsHost
@@ -106,13 +108,17 @@ internal sealed class DuelRuntime
     internal bool Enter(Player player, string userId)
     {
         if (!Available(player, userId)) return false;
-        if (ReferenceEquals(challenger?.Player, player)) return true;
-        if (challenger != null || Owns(player.ReferenceHub))
+        if (ReferenceEquals(challenger?.Player, player) || IsFighting(player)) return true;
+        if (challenger != null)
         {
-            Tell(player, "决斗台正在使用，请稍后再试；输入 .spectate 可观战");
-            return false;
+            if (participants.TryGetValue(player.ReferenceHub, out Participant existing) && existing.Viewer)
+            {
+                Tell(player, "决斗台正在使用，你可以留在观众席等待下一场");
+                return true;
+            }
+            return JoinViewing(player, out _);
         }
-        challenger = Capture(player, false);
+        challenger = ClaimFighter(player);
         expires = Now + Mathf.Clamp(config.LobbySeconds, 15f, 600f);
         invited.Clear();
         selected.Clear();
@@ -131,14 +137,56 @@ internal sealed class DuelRuntime
             return false;
         }
     }
-    internal bool Accept(Player player, out string response)
+    internal bool RequestChallenge(Player player, int? targetId, out string response)
+    {
+        response = "请先进入观众席，再输入 .challenge [擂台玩家 ID] 申请挑战";
+        if (!Available(player, player.UserId) || !participants.TryGetValue(player.ReferenceHub, out Participant viewer)
+            || !viewer.Viewer || !Valid(viewer) || !player.IsAlive) return false;
+        Participant? target = targetId.HasValue
+            ? new[] { challenger, opponent }.FirstOrDefault(p => p != null && p.PlayerId == targetId.Value)
+            : Fighting ? null : challenger;
+        if (target == null || !Valid(target) || !target.Player.IsAlive)
+        {
+            response = Fighting
+                ? $"输入 .challenge {challenger!.PlayerId} 或 .challenge {opponent!.PlayerId} 选择擂台上的玩家"
+                : "当前没有可挑战的擂台玩家；输入 .duel 发起决斗";
+            return false;
+        }
+        requests.RemoveAll(request => ReferenceEquals(request.Viewer, viewer));
+        float lifetime = Mathf.Clamp(config.InvitationSeconds, 5f, 120f);
+        requests.Add(new ChallengeRequest(viewer, target, Now + lifetime + (Fighting ? Mathf.Clamp(config.MatchSeconds, 15f, 600f) + 3f : 0f)));
+        Tell(target.Player, $"观众 {Safe(player.Nickname)}（ID {player.PlayerId}）申请挑战你\n{(Fighting ? "本场结束后" : "")}输入 .accept {player.PlayerId} 接受；挑战仍为 1v1");
+        response = Fighting ? "挑战申请已发送，等待本场结束后由对方接受" : "挑战申请已发送，等待对方接受";
+        return true;
+    }
+    internal bool Accept(Player player, out string response, int? requesterId = null)
     {
         response = "没有可接受的决斗邀请，或邀请已过期";
+        if (!Available(player, player.UserId)) return false;
+        PruneRequests();
+        ChallengeRequest? request = requests.FirstOrDefault(r => ReferenceEquals(r.Target.Player, player)
+            && (!requesterId.HasValue || r.Viewer.PlayerId == requesterId.Value));
+        if (request != null)
+        {
+            if (Fighting) { response = "请在本场决斗结束后接受观众的挑战申请"; return false; }
+            if (challenger != null && !ReferenceEquals(challenger, request.Target))
+            { response = "决斗台正在使用，请等待空闲后再接受挑战"; return false; }
+            challenger = request.Target;
+            challenger.Viewer = false;
+            return BeginMatch(request.Viewer.Player, out response);
+        }
+        if (requesterId.HasValue) return false;
         if (!Available(player, player.UserId) || challenger == null || Fighting || Now >= expires
             || !invited.TryGetValue(player.ReferenceHub, out string userId) || !Current(player, userId)
-            || Owns(player.ReferenceHub) || !Valid(challenger)) return false;
+            || (participants.TryGetValue(player.ReferenceHub, out Participant existing) && !existing.Viewer)
+            || !Valid(challenger)) return false;
+        return BeginMatch(player, out response);
+    }
+    private bool BeginMatch(Player player, out string response)
+    {
         // Claim synchronously before any native role callbacks. Later accepts see Fighting immediately.
-        opponent = Capture(player, false);
+        opponent = ClaimFighter(player);
+        requests.Clear();
         invited.Clear();
         selected.Clear();
         DestroyBoard();
@@ -146,9 +194,9 @@ internal sealed class DuelRuntime
         expires = matchStart + Mathf.Clamp(config.MatchSeconds, 15f, 600f);
         try
         {
-            Prepare(challenger, RoleTypeId.NtfPrivate, arena.Origin + new Vector3(0, 1, -8));
+            Prepare(challenger!, RoleTypeId.NtfPrivate, arena.Origin + new Vector3(0, 1, -8));
             Prepare(opponent, RoleTypeId.ChaosConscript, arena.Origin + new Vector3(0, 1, 8));
-            Tell(challenger.Player, $"{Safe(player.Nickname)} 已接受！3 秒后开始决斗");
+            Tell(challenger!.Player, $"对手：{Safe(player.Nickname)}；3 秒后开始决斗");
             Tell(player, "已接受决斗！3 秒后开始；输入 .leave 可认输");
             Logger.Info($"[DuelArena] Accepted: {challenger.UserId} vs {opponent.UserId}");
             response = "已进入决斗，3 秒后开始";
@@ -164,7 +212,7 @@ internal sealed class DuelRuntime
     }
     internal bool Watch(Player player, out string response)
     {
-        response = "当前没有可观战的决斗";
+        response = "决斗观众席暂不可用";
         if (!Available(player, player.UserId)) return false;
         if (participants.TryGetValue(player.ReferenceHub, out Participant existing))
         {
@@ -173,14 +221,16 @@ internal sealed class DuelRuntime
             response = "已退出观战，返回地表";
             return true;
         }
-        if (!Fighting) return false;
+        return JoinViewing(player, out response);
+    }
+    private bool JoinViewing(Player player, out string response)
+    {
+        response = "决斗观众席暂不可用";
         Participant viewer = Capture(player, true);
         try
         {
-            Prepare(viewer, RoleTypeId.NtfPrivate, arena.Origin + new Vector3(0, 3.5f, 18));
-            player.ClearInventory();
-            player.Rotation = Quaternion.Euler(0, 180, 0);
-            Tell(player, "观战中；再次输入 .spectate / .view / .watch 返回地表");
+            PrepareViewer(viewer);
+            Tell(player, "已进入观众席；输入 .challenge [擂台玩家 ID] 申请挑战，或接受邀请\n空闲时 .duel 发起决斗；.leave 或再次 .spectate 返回地表");
             response = "已进入决斗观战区";
             return true;
         }
@@ -189,8 +239,10 @@ internal sealed class DuelRuntime
     internal void Leave(Player player, string reason)
     {
         if (!participants.TryGetValue(player.ReferenceHub, out Participant participant)) return;
-        if (participant.Viewer) Release(participant, true);
-        else Finish(reason, ReferenceEquals(participant, challenger) ? opponent : challenger);
+        bool viewer = participant.Viewer;
+        Participant? winner = ReferenceEquals(participant, challenger) ? opponent : challenger;
+        Release(participant, true);
+        if (!viewer) Finish(reason, winner);
     }
 
     private Participant Capture(Player player, bool viewer)
@@ -198,6 +250,20 @@ internal sealed class DuelRuntime
         var participant = new Participant(player, viewer);
         participants.Add(participant.Hub, participant);
         return participant;
+    }
+    private Participant ClaimFighter(Player player)
+    {
+        Participant participant = participants.TryGetValue(player.ReferenceHub, out Participant existing)
+            ? existing : Capture(player, false);
+        participant.Viewer = false;
+        RemoveRequests(participant);
+        return participant;
+    }
+    private void PrepareViewer(Participant participant)
+    {
+        participant.Viewer = true;
+        Prepare(participant, RoleTypeId.NtfPrivate, ViewingPosition);
+        participant.Player.Rotation = Quaternion.Euler(0, 180, 0);
     }
     private static bool Valid(Participant participant) => Current(participant.Player, participant.UserId)
         && ReferenceEquals(participant.Player.ReferenceHub, participant.Hub);
@@ -230,6 +296,7 @@ internal sealed class DuelRuntime
     private void Release(Participant participant, bool returnToSurface)
     {
         participants.Remove(participant.Hub);
+        RemoveRequests(participant);
         if (!Valid(participant) || !returnToSurface) return;
         transitioning = true;
         try
@@ -249,27 +316,50 @@ internal sealed class DuelRuntime
         Logger.Info($"[DuelArena] Slot released: challenger={challenger?.PlayerId}; "
             + $"opponent={opponent?.PlayerId}; winner={winner?.PlayerId}");
         Participant[] recipients = participants.Values.ToArray();
+        Participant?[] fighters = { challenger, opponent };
         string message = winner != null && Valid(winner) ? $"{Safe(winner.Player.Nickname)} 获胜！{reason}" : reason;
-        Reset(true);
+        ClearMatch();
+        foreach (Participant? participant in fighters)
+        {
+            if (participant == null || !participants.ContainsKey(participant.Hub)) continue;
+            if (!Valid(participant)) { participants.Remove(participant.Hub); continue; }
+            try { PrepareViewer(participant); }
+            catch (Exception ex)
+            {
+                Logger.Warn($"[DuelArena] Viewing transition failed: {ex}");
+                Release(participant, true);
+            }
+        }
         foreach (Participant participant in recipients)
-            if (Valid(participant)) Tell(participant.Player, message);
+            if (Valid(participant)) Tell(participant.Player, message + "\n留在观众席等待下一场；输入 .duel 发起决斗，.leave 返回地表");
+        PruneRequests();
+        foreach (ChallengeRequest request in requests)
+        {
+            request.Expires = Now + Mathf.Clamp(config.InvitationSeconds, 5f, 120f);
+            Tell(request.Target.Player, $"观众 {Safe(request.Viewer.Player.Nickname)} 的挑战申请等待接受\n输入 .accept {request.Viewer.PlayerId} 接受（{Mathf.CeilToInt(request.Expires - Now)} 秒内）");
+        }
     }
-    private void Reset(bool returnToSurface)
+    private void ClearMatch()
     {
         pendingDeath = null;
         challenger = null;
         opponent = null;
         invited.Clear();
         selected.Clear();
+        DestroyBoard();
+        expires = 0;
+        page = 0;
+    }
+    private void Reset(bool returnToSurface)
+    {
+        ClearMatch();
+        requests.Clear();
         foreach (Participant participant in participants.Values.ToArray())
         {
             try { Release(participant, returnToSurface); }
             catch (Exception ex) { Logger.Warn($"[DuelArena] Participant release failed: {ex}"); }
         }
         participants.Clear();
-        DestroyBoard();
-        expires = 0;
-        page = 0;
     }
     private IEnumerator<float> Pump()
     {
@@ -282,8 +372,12 @@ internal sealed class DuelRuntime
                 Participant? deceased = pendingDeath;
                 pendingDeath = null;
                 if (deceased != null && participants.ContainsKey(deceased.Hub))
-                    Leave(deceased.Player, "决斗结束");
+                {
+                    if (deceased.Viewer) PrepareViewer(deceased);
+                    else Finish("决斗结束", ReferenceEquals(deceased, challenger) ? opponent : challenger);
+                }
                 if (ModeActive?.Invoke() == false && participants.Count != 0) Reset(true);
+                PruneRequests();
                 if (challenger != null)
                 {
                     if (!Valid(challenger) || (Fighting && !Valid(opponent!))) Finish("玩家离开决斗", null);
@@ -295,9 +389,9 @@ internal sealed class DuelRuntime
                 foreach (Participant viewer in participants.Values.Where(p => p.Viewer).ToArray())
                 {
                     if (!Valid(viewer)) { participants.Remove(viewer.Hub); continue; }
-                    Vector3 delta = viewer.Player.Position - (arena.Origin + new Vector3(0, 3.5f, 18));
+                    Vector3 delta = viewer.Player.Position - ViewingPosition;
                     if (Math.Abs(delta.x) > 6 || Math.Abs(delta.z) > 2.5f || Math.Abs(delta.y) > 2)
-                        viewer.Hub.TryOverridePosition(arena.Origin + new Vector3(0, 3.5f, 18));
+                        viewer.Hub.TryOverridePosition(ViewingPosition);
                 }
             }
             catch (Exception ex) { Logger.Warn($"[DuelArena] Runtime recovery: {ex}"); Reset(true); }
@@ -311,12 +405,17 @@ internal sealed class DuelRuntime
         // The departing hub is already being destroyed. Never route or respawn it.
         if (!participants.TryGetValue(ev.Player.ReferenceHub, out Participant departing)) return;
         participants.Remove(departing.Hub);
+        RemoveRequests(departing);
         if (!departing.Viewer)
             Finish("玩家离开服务器", ReferenceEquals(departing, challenger) ? opponent : challenger);
     }
     private void OnDeath(PlayerDeathEventArgs ev)
     {
-        if (participants.TryGetValue(ev.Player.ReferenceHub, out Participant deceased)) pendingDeath = deceased;
+        if (participants.TryGetValue(ev.Player.ReferenceHub, out Participant deceased))
+        {
+            RemoveRequests(deceased);
+            pendingDeath = deceased;
+        }
     }
     private void OnChangedRole(PlayerChangedRoleEventArgs ev)
     {
@@ -324,7 +423,10 @@ internal sealed class DuelRuntime
         if (!transitioning && Owns(ev.Player.ReferenceHub))
         {
             Logger.Info($"[DuelArena] External role change: player={ev.Player.PlayerId}; role={ev.Player.Role}; reason={ev.ChangeReason}");
-            Leave(ev.Player, "角色发生变化，决斗结束");
+            Participant participant = participants[ev.Player.ReferenceHub];
+            Release(participant, false);
+            if (!participant.Viewer)
+                Finish("角色发生变化，决斗结束", ReferenceEquals(participant, challenger) ? opponent : challenger);
         }
     }
     private void OnHurting(PlayerHurtingEventArgs ev)
@@ -367,14 +469,22 @@ internal sealed class DuelRuntime
             selected.Clear();
             if (!clear) foreach (Player candidate in pool) selected.Add(candidate.ReferenceHub);
         }
-        else if (row.Candidate != null && Current(row.Candidate, row.UserId) && !Owns(row.Candidate.ReferenceHub))
+        else if (row.Candidate != null && Current(row.Candidate, row.UserId) && IsCandidate(row.Candidate))
         {
             if (!selected.Add(row.Candidate.ReferenceHub)) selected.Remove(row.Candidate.ReferenceHub);
         }
         rosterKey = "";
         RefreshBoard();
     }
-    private Player[] Candidates() => Player.ReadyList.Where(p => Eligible(p) && !Owns(p.ReferenceHub))
+    private bool IsCandidate(Player player) => !participants.TryGetValue(player.ReferenceHub, out Participant participant) || participant.Viewer;
+    private void RemoveRequests(Participant participant) => requests.RemoveAll(request =>
+        ReferenceEquals(request.Viewer, participant) || ReferenceEquals(request.Target, participant));
+    private void PruneRequests() => requests.RemoveAll(request => Now >= request.Expires
+        || !Valid(request.Viewer) || !Valid(request.Target) || !request.Viewer.Viewer
+        || !participants.TryGetValue(request.Viewer.Hub, out Participant viewer) || !ReferenceEquals(viewer, request.Viewer)
+        || !participants.TryGetValue(request.Target.Hub, out Participant target) || !ReferenceEquals(target, request.Target)
+        || !request.Viewer.Player.IsAlive || !request.Target.Player.IsAlive);
+    private Player[] Candidates() => Player.ReadyList.Where(p => Eligible(p) && IsCandidate(p))
         .OrderBy(p => p.PlayerId).ToArray();
     private void Invite()
     {
@@ -489,7 +599,7 @@ internal sealed class DuelRuntime
         public ReferenceHub Hub { get; }
         public string UserId { get; }
         public int PlayerId { get; }
-        public bool Viewer { get; }
+        public bool Viewer { get; set; }
         public Vector3 ReturnPosition { get; }
         public int LifeId { get; set; }
     }
@@ -504,6 +614,14 @@ internal sealed class DuelRuntime
         public string Action { get; }
         public Player? Candidate { get; }
         public string UserId { get; }
+    }
+    private sealed class ChallengeRequest
+    {
+        public ChallengeRequest(Participant viewer, Participant target, float expires)
+        { Viewer = viewer; Target = target; Expires = expires; }
+        public Participant Viewer { get; }
+        public Participant Target { get; }
+        public float Expires { get; set; }
     }
     private sealed class HubComparer : IEqualityComparer<ReferenceHub>
     {

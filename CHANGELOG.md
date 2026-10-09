@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep duel fighters on the protected viewing deck after a match, alongside other viewers.
+  Allow viewing between matches and invitations/rematches from the deck while keeping combat 1v1.
+- Add viewer-to-fighter challenge requests alongside the arena player's existing invitations.
+  Incoming challenges wait for the active 1v1 to finish and require the recipient's acceptance.
 - Load the duel model with the game's shipped JSON reader so Linux Mono configuration does not
   prevent the arena and fourth zone option from becoming available.
 - Split bot-server management into `BotRoundControl.dll`; SCPSLBot owns AI and navigation.

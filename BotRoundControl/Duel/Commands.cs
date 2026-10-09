@@ -15,8 +15,29 @@ public sealed class DuelCommand : ICommand
     {
         Player? player = Player.Get(sender);
         bool ok = player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime?.Enter(player, player.UserId) == true;
-        response = ok ? "已进入决斗台，请射击或按 E 选择对手" : "决斗台暂不可用，或正被其他玩家使用";
+        response = ok ? "已进入决斗区；发起者可射击或按 E 选择对手，其他玩家在观众席等待" : "决斗台暂不可用";
         return ok;
+    }
+}
+[CommandHandler(typeof(ClientCommandHandler))]
+public sealed class ChallengeCommand : ICommand
+{
+    public string Command => "challenge";
+    public string[] Aliases => new[] { "duelchallenge" };
+    public string Description => "Request a challenge from the viewing deck: .challenge [arena player ID].";
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+    {
+        response = "用法：.challenge [擂台玩家 ID]";
+        int? targetId = null;
+        if (arguments.Count > 1) return false;
+        if (arguments.Count == 1)
+        {
+            if (!int.TryParse(arguments.At(0), out int parsed)) return false;
+            targetId = parsed;
+        }
+        Player? player = Player.Get(sender);
+        return player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime != null
+            && global::BotRoundControl.BotRoundControlPlugin.Runtime.RequestChallenge(player, targetId, out response);
     }
 }
 [CommandHandler(typeof(ClientCommandHandler))]
@@ -28,8 +49,15 @@ public sealed class AcceptCommand : ICommand
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         response = "没有可接受的决斗邀请";
+        int? requesterId = null;
+        if (arguments.Count > 1) { response = "用法：.accept [挑战者 ID]"; return false; }
+        if (arguments.Count == 1)
+        {
+            if (!int.TryParse(arguments.At(0), out int parsed)) { response = "用法：.accept [挑战者 ID]"; return false; }
+            requesterId = parsed;
+        }
         Player? player = Player.Get(sender);
-        return player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime != null && global::BotRoundControl.BotRoundControlPlugin.Runtime.Accept(player, out response);
+        return player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime != null && global::BotRoundControl.BotRoundControlPlugin.Runtime.Accept(player, out response, requesterId);
     }
 }
 [CommandHandler(typeof(ClientCommandHandler))]
@@ -40,7 +68,7 @@ public sealed class WatchCommand : ICommand
     public string Description => "Toggle protected duel viewing; toggle again to return to Surface.";
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
-        response = "当前没有可观战的决斗";
+        response = "决斗观众席暂不可用";
         Player? player = Player.Get(sender);
         return player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime != null && global::BotRoundControl.BotRoundControlPlugin.Runtime.Watch(player, out response);
     }
