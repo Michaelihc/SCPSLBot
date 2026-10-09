@@ -256,7 +256,7 @@ internal sealed class DuelRuntime
         Participant participant = participants.TryGetValue(player.ReferenceHub, out Participant existing)
             ? existing : Capture(player, false);
         participant.Viewer = false;
-        RemoveRequests(participant);
+        requests.RemoveAll(request => ReferenceEquals(request.Viewer, participant));
         return participant;
     }
     private void PrepareViewer(Participant participant)

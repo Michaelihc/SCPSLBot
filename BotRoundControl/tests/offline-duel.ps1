@@ -142,6 +142,7 @@ if (((Invoke-LabServer '/duel_status') -join ' ') -notmatch 'state=idle.*viewers
 $null = Set-LabAim -Target (DuelPoint 0 1 0) -ClientId $duelClients[0] -ActorId $duelOwner
 $afterMatchShot = Invoke-LabScreenshot -Name duel-post-match-viewers -ClientId $duelClients[0]
 $duelChecks.Add('native death returns both fighters to viewers and retains existing viewers')
+$null = Invoke-LabSetup '.duel' -ClientId $duelClients[0]
 $null = Invoke-LabSetup ".accept $duelViewer" -ClientId $duelClients[0]
 Start-Sleep -Seconds 1
 if ((DuelActor $duelViewer).role -ne 'ChaosConscript') { throw 'Surviving fighter could not accept the queued viewer challenge' }
