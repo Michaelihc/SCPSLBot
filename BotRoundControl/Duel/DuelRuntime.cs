@@ -52,6 +52,7 @@ internal sealed partial class DuelRuntime
     };
     private Vector3 ViewerPosition(Participant participant) => ViewingPosition + ViewingOffsets[participant.ViewingSlot % ViewingOffsets.Length];
     internal bool Fighting => opponent != null;
+    internal bool KingOfTheHill => config.KeepWinnerInArena;
     internal Vector3 Origin => arena.Origin;
     internal string Status => $"ready={arena.Ready}; state={(Fighting ? "fighting" : "idle")}; "
         + $"challenger={challenger?.PlayerId ?? 0}; opponent={opponent?.PlayerId ?? 0}; "
@@ -153,7 +154,9 @@ internal sealed partial class DuelRuntime
         try
         {
             PrepareViewer(viewer);
-            Tell(player, "已进入观众席；按 E 选择对手并发送邀请，或输入 .duel 玩家ID\n配对后按顺序进场；.challenge 擂台玩家ID 申请挑战，.leave 返回地表");
+            Tell(player, config.KeepWinnerInArena
+                ? "已进入守擂观众席；.challenge 加入个人挑战队列\n按 E 或 .duel 玩家ID 邀请玩家参加；.leave 返回地表"
+                : "已进入观众席；按 E 选择对手并发送邀请，或输入 .duel 玩家ID\n配对后按顺序进场；.challenge 擂台玩家ID 申请挑战，.leave 返回地表");
             response = "已进入决斗观众席";
             return true;
         }

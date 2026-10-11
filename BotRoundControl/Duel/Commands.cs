@@ -24,7 +24,11 @@ public sealed class DuelCommand : ICommand
                 && global::BotRoundControl.BotRoundControlPlugin.Runtime.Invite(player, targetIds, out response);
         }
         bool ok = player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime?.Enter(player, player.UserId) == true;
-        response = ok ? "已进入观众席；按 E 选择对手，或 .duel 玩家ID 邀请；配对后排队进入擂台" : "决斗台暂不可用";
+        response = ok
+            ? global::BotRoundControl.BotRoundControlPlugin.Runtime!.KingOfTheHill
+                ? "已进入守擂观众席；.challenge 加入个人挑战队列，或邀请玩家参加"
+                : "已进入观众席；按 E 选择对手，或 .duel 玩家ID 邀请；配对后排队进入擂台"
+            : "决斗台暂不可用";
         return ok;
     }
 }
