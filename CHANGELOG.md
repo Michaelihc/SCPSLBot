@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Queue accepted duel pairs in arrival order while unpaired viewers continue inviting.
+  Show individual selection, invitation and queue status on the HUD. Both fighters return to
+  viewing by default; `duel.keep_winner_in_arena` retains the winner until the next pair enters.
 - Accept an arena invitation with the inviter's ID as well as without an ID. Distinguish
   invitation rejection reasons in player responses and server logs. Pending viewer challenges
   no longer block accepting an invitation to the current arena without an ID.

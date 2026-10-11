@@ -7,3 +7,4 @@ duel:
   invitation_seconds: 30
   lobby_seconds: 600
   match_seconds: 600
+  keep_winner_in_arena: false

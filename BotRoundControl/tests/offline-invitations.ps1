@@ -1,107 +1,114 @@
 param($Context)
 $ErrorActionPreference = 'Stop'
-if ($Context.ClientIds.Count -ne 3) { throw 'This walkthrough needs three authenticated clients' }
+if ($Context.ClientIds.Count -ne 4) { throw 'This walkthrough needs four authenticated clients' }
 $duelClients = @($Context.ClientIds)
 $duelActors = @($Context.Actors)
-$duelOwner = $duelActors[0].id
-$duelRecipient = $duelActors[1].id
-$duelOther = $duelActors[2].id
-$duelBoardIndex = 0
+$duelIds = @($duelActors | ForEach-Object { $_.id })
 $duelChecks = [Collections.Generic.List[string]]::new()
-function DuelActor([int]$Id) { @(Observe -ClientsOnly | Where-Object id -eq $Id)[0] }
+function DuelActor([int]$Index) { @(Observe -ClientsOnly | Where-Object id -eq $duelIds[$Index])[0] }
 function DuelStatus { (Invoke-LabServer '/duel_status') -join ' ' }
-function DuelPoint([double]$X, [double]$Y, [double]$Z) { @{x=$duelOrigin.x+$X;y=$duelOrigin.y+$Y;z=$duelOrigin.z+$Z} }
-function DuelPress([double]$X, [string]$Name) {
-    $null = Set-LabAim -Target (DuelPoint $X 0.7 -10.5) -ClientId $duelClients[$duelBoardIndex] -ActorId $duelActors[$duelBoardIndex].id
-    if ($Name -match '^invite-') { $script:duelSentAt = [DateTime]::UtcNow }
-    $null = Invoke-LabInput @{id=$Name;frames=60;inputFrames=2;keys=@(323);capture=$true;audio=$true} -ClientId $duelClients[$duelBoardIndex]
-}
-function SendDuelInvitations([string]$Case) {
-    $arenaOwner = $duelActors[$duelBoardIndex].id
-    $null = Invoke-LabSetup '.duel' -ClientId $duelClients[$duelBoardIndex]
-    Start-Sleep -Seconds 1
-    $gunActor = DuelActor $arenaOwner
-    if ($gunActor.held -ne 'GunE11SR') { $null = Invoke-LabInventory -Slot 1 -Expect GunE11SR -ClientId $duelClients[$duelBoardIndex] -ActorId $arenaOwner }
-    DuelPress -1.15 "select-$Case"
-    DuelPress 1.15 "invite-$Case"
-    if ((DuelStatus) -notmatch "state=lobby; challenger=$arenaOwner; opponent=0; invited=2") { throw "Invitations were not sent for $Case" }
-}
-function AssertDuelMatch([int]$Opponent, [int]$ArenaOwner = $duelOwner) {
-    $owner = DuelActor $ArenaOwner
-    $target = DuelActor $Opponent
-    if ($owner.role -ne 'NtfPrivate' -or $target.role -ne 'ChaosConscript' -or
-        [Math]::Abs($owner.position.y-$duelOrigin.y) -gt 3 -or [Math]::Abs($target.position.y-$duelOrigin.y) -gt 3 -or
-        [Math]::Abs($target.position.z-$duelOrigin.z) -gt 10 -or @($target.items | Where-Object { $_ -eq 'GunE11SR' }).Count -ne 1) {
-        throw "Acceptance did not create the native duel: $($target | ConvertTo-Json -Depth 7 -Compress)"
+function DuelPoint([double]$X,[double]$Y,[double]$Z) { @{x=$duelOrigin.x+$X;y=$duelOrigin.y+$Y;z=$duelOrigin.z+$Z} }
+function DuelCommand([int]$Index,[string]$Command) { $null = Invoke-LabSetup $Command -ClientId $duelClients[$Index] }
+function AssertDuelViewer([int]$Index) {
+    $actor = DuelActor $Index
+    if ($actor.role -ne 'NtfPrivate' -or [Math]::Abs($actor.position.z-($duelOrigin.z+18)) -gt 3 -or [Math]::Abs($actor.position.y-($duelOrigin.y+3.5)) -gt 2 -or @($actor.items).Count -ne 0) {
+        throw "Player $($duelIds[$Index]) is not an unarmed viewer: $($actor | ConvertTo-Json -Depth 8 -Compress)"
     }
-    if ((DuelStatus) -notmatch "state=fighting; challenger=$ArenaOwner; opponent=$Opponent; invited=0") { throw 'Accepted match did not claim and clear the invitation slot' }
+}
+function AssertDuelMatch([int]$Left,[int]$Right) {
+    $status = DuelStatus
+    if ($status -notmatch "state=fighting; challenger=$($duelIds[$Left]); opponent=$($duelIds[$Right]);") { throw "Wrong active pair: $status" }
+    foreach ($index in @($Left,$Right)) {
+        $actor = DuelActor $index
+        if (@($actor.items) -notcontains 'GunE11SR' -or [Math]::Abs($actor.position.y-$duelOrigin.y) -gt 2 -or [Math]::Abs($actor.position.z-$duelOrigin.z) -gt 15) {
+            throw "Pair acceptance did not create native duel loadout/placement: $($actor | ConvertTo-Json -Depth 8 -Compress)"
+        }
+    }
+    if ((DuelActor $Right).role -ne 'ChaosConscript') { throw 'Opponent did not enter the native Chaos role' }
+}
+function DuelBoard([double]$X,[double]$Y,[string]$Name,[int]$Index=0) {
+    $null = Set-LabAim -Target (DuelPoint $X $Y 15.5) -ClientId $duelClients[$Index] -ActorId $duelIds[$Index]
+    Invoke-LabInput @{id=$Name;frames=60;inputFrames=2;keys=@(101);capture=$true;audio=$true} -ClientId $duelClients[$Index]
 }
 $null = Invoke-LabServer '/forcestart'
 Start-Sleep -Seconds 4
 foreach ($actor in $duelActors) { $null = Invoke-LabServer "/forcerole $($actor.id) NtfPrivate" }
 Start-Sleep -Seconds 2
-$surface = DuelActor $duelOwner
-$null = Invoke-LabSetup '.duel' -ClientId $duelClients[0]
 $status = DuelStatus
-if ($status -notmatch 'origin=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing arena position: $status" }
+if ($status -notmatch 'origin=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing arena origin: $status" }
 $duelOrigin = @{x=[double]$Matches[1];y=[double]$Matches[2];z=[double]$Matches[3]}
-if ($duelOrigin.y -lt $surface.position.y+100) { throw 'Arena was not above Surface' }
-SendDuelInvitations 'no-id'
+$settings = Get-LabSettings -ClientId $duelClients[0]
+if (-not ($settings.settings | Where-Object { $_.type -eq 'SSDropdownSetting' -and ($_.options -join ' ') -match '1v1' })) {
+    throw 'Authenticated client did not receive the duel zone option'
+}
+foreach ($index in 0..3) { DuelCommand $index '.duel' }
+Start-Sleep -Seconds 1
+foreach ($index in 0..3) { AssertDuelViewer $index }
+$beforeRepeat = DuelActor 0
+DuelCommand 0 '.duel'
+if ((DuelActor 0).life -ne $beforeRepeat.life) { throw 'Repeated entry reset the viewer' }
+$duelChecks.Add('all authenticated players enter viewing; repeated entry preserves life')
+$null = DuelBoard -1.15 3.2 'duel-select-everyone'
+$board = Invoke-LabScreenshot -Name duel-viewer-selection -ClientId $duelClients[0]
+$null = DuelBoard 1.15 3.2 'duel-invite-everyone'
+if ((DuelStatus) -notmatch 'invited=3') { throw 'Native E board did not invite the three other eligible players' }
+$invitation = Invoke-LabScreenshot -Name duel-invitation -ClientId $duelClients[1]
+DuelCommand 1 ".accept $($duelIds[2])"
+if ((DuelStatus) -notmatch 'state=idle') { throw 'Wrong sender ID claimed the arena' }
 Start-Sleep -Seconds 20
-$elapsed = ([DateTime]::UtcNow-$duelSentAt).TotalSeconds
-if ($elapsed -ge 28) { throw "Setup consumed the invitation window ($elapsed seconds)" }
-$null = Invoke-LabSetup '.yes' -ClientId $duelClients[1]
+DuelCommand 1 ".accept $($duelIds[0])"
 Start-Sleep -Seconds 1
-AssertDuelMatch $duelRecipient
-$duelChecks.Add('no-ID acceptance after more than 20 seconds of a 30-second invitation')
-$late = DuelActor $duelOther
-$null = Invoke-LabSetup '.accept' -ClientId $duelClients[2]
-$lateAfter = DuelActor $duelOther
-if ($lateAfter.life -ne $late.life -or $lateAfter.position.y -gt $duelOrigin.y-50) { throw 'Late acceptance moved the third player into the match' }
-AssertDuelMatch $duelRecipient
-$duelChecks.Add('first acceptance excludes later recipients')
-$null = Invoke-LabSetup '.leave' -ClientId $duelClients[1]
+AssertDuelMatch 0 1
+DuelCommand 2 '.yes'
+AssertDuelViewer 2
+AssertDuelViewer 3
+$duelChecks.Add('native board invitation accepts inviter ID within 30 seconds; first acceptance wins')
+DuelCommand 1 '.leave'
 Start-Sleep -Seconds 1
-$null = Invoke-LabSetup '.spectate' -ClientId $duelClients[1]
-$null = Invoke-LabSetup '.spectate' -ClientId $duelClients[2]
-SendDuelInvitations 'sender-id'
-$viewerBefore = DuelActor $duelRecipient
-$null = Invoke-LabSetup ".accept $duelOther" -ClientId $duelClients[1]
-if ((DuelStatus) -notmatch 'state=lobby.*invited=2' -or (DuelActor $duelRecipient).life -ne $viewerBefore.life) { throw 'Incorrect sender ID consumed an invitation' }
-$elapsed = ([DateTime]::UtcNow-$duelSentAt).TotalSeconds
-if ($elapsed -ge 28) { throw "Sender-ID setup consumed the invitation window ($elapsed seconds)" }
-$null = Invoke-LabSetup ".accept $duelOwner" -ClientId $duelClients[1]
-Start-Sleep -Seconds 1
-AssertDuelMatch $duelRecipient
-$duelChecks.Add('inviter ID accepts an ordinary invitation from the viewing deck; wrong ID leaves it usable')
-$accepted = Invoke-LabScreenshot -Name duel-sender-id-accepted -ClientId $duelClients[1]
-$null = Invoke-LabSetup ".challenge $duelOwner" -ClientId $duelClients[2]
-$null = Invoke-LabSetup ".accept $duelOther" -ClientId $duelClients[0]
-AssertDuelMatch $duelRecipient
-$null = Invoke-LabSetup '.leave' -ClientId $duelClients[1]
-$null = Invoke-LabSetup ".accept $duelOther" -ClientId $duelClients[0]
-Start-Sleep -Seconds 1
-AssertDuelMatch $duelOther
-$duelChecks.Add('spectator request waits for the current match and accepts by sender ID afterwards')
-$null = Invoke-LabSetup '.spectate' -ClientId $duelClients[1]
-$null = Invoke-LabSetup ".challenge $duelOwner" -ClientId $duelClients[1]
-$null = Invoke-LabSetup '.leave' -ClientId $duelClients[2]
-$duelBoardIndex = 2
-SendDuelInvitations 'overlapping-request'
-if ((DuelStatus) -notmatch 'invited=2.*requests=1') { throw 'Overlapping-request setup lost its pending viewer challenge' }
-$null = Invoke-LabSetup '.accept' -ClientId $duelClients[0]
-Start-Sleep -Seconds 1
-AssertDuelMatch $duelOwner $duelOther
-if ((DuelStatus) -notmatch 'requests=0') { throw 'Accepted invitation retained a competing request' }
-$duelChecks.Add('no-ID acceptance prefers the current arena invitation over an older incoming viewer challenge')
-$overlap = Invoke-LabScreenshot -Name duel-overlapping-invitation-accepted -ClientId $duelClients[0]
-$null = Invoke-LabSetup '.leave' -ClientId $duelClients[0]
-$duelBoardIndex = 0
-SendDuelInvitations 'expiry'
+AssertDuelViewer 0
+DuelCommand 1 '.duel'
+DuelCommand 0 ".duel $($duelIds[1])"
+DuelCommand 1 '.yes'
+AssertDuelMatch 0 1
+DuelCommand 2 '.challenge 999999'
+if ((DuelStatus) -notmatch 'requests=0') { throw 'Invalid arena target created a request' }
+foreach ($iteration in 1..2) { DuelCommand 2 ".challenge $($duelIds[0])" }
+if ((DuelStatus) -notmatch 'requests=1') { throw 'Repeated challenges were missing or duplicated' }
+DuelCommand 0 ".accept $($duelIds[2])"
+AssertDuelMatch 0 1
+$duelChecks.Add('spectator challenges replace duplicates and cannot interrupt active combat')
+DuelCommand 1 '.leave'
+AssertDuelViewer 0
+DuelCommand 3 ".duel $($duelIds[0])"
+DuelCommand 0 '.accept'
+AssertDuelMatch 3 0
+if ((DuelStatus) -notmatch 'requests=0') { throw 'Accepting an ordinary invitation retained the competing viewer request' }
+$duelChecks.Add('no-ID acceptance prefers an ordinary offer over an older incoming viewer challenge')
+DuelCommand 0 '.leave'
+DuelCommand 0 '.duel'
+DuelCommand 1 '.duel'
+DuelCommand 0 ".duel $($duelIds[1])"
 Start-Sleep -Seconds 31
-$beforeExpiredAccept = DuelActor $duelRecipient
-$null = Invoke-LabSetup ".accept $duelOwner" -ClientId $duelClients[1]
-if ((DuelStatus) -notmatch 'state=idle' -or (DuelActor $duelRecipient).life -ne $beforeExpiredAccept.life) { throw 'An expired invitation started a match' }
-$duelChecks.Add('expired invitation cannot claim the arena')
-@{checks=@($duelChecks);origin=$duelOrigin;accepted=$accepted;overlap=$overlap;status=(DuelStatus)} |
-    ConvertTo-Json -Depth 8 | Set-Content "$($Context.Evidence)/duel-invitations.json" -Encoding utf8
+$beforeExpiry = DuelActor 1
+DuelCommand 1 ".accept $($duelIds[0])"
+if ((DuelStatus) -notmatch 'state=idle' -or (DuelActor 1).life -ne $beforeExpiry.life) { throw 'Expired invitation started a duel' }
+$duelChecks.Add('expired invitation cannot claim a match')
+DuelCommand 0 ".duel $($duelIds[1])"
+DuelCommand 1 '.accept'
+AssertDuelMatch 0 1
+DuelCommand 2 ".duel $($duelIds[3])"
+DuelCommand 3 ".duel $($duelIds[2])"
+if ((DuelStatus) -notmatch 'invited=2') { throw 'Unpaired viewers could not maintain independent offers during combat' }
+DuelCommand 3 ".accept $($duelIds[2])"
+if ((DuelStatus) -notmatch "queued=1;.*queue=$($duelIds[2])\+$($duelIds[3]);") { throw 'Accepted pair did not queue behind the active pair' }
+AssertDuelMatch 0 1
+AssertDuelViewer 2
+AssertDuelViewer 3
+$queuedBefore = DuelActor 3
+DuelCommand 3 '.accept'
+DuelCommand 3 ".duel $($duelIds[0])"
+if ((DuelActor 3).life -ne $queuedBefore.life -or (DuelStatus) -notmatch 'queued=1') { throw 'Repeated actions changed an already queued pair' }
+$queued = Invoke-LabScreenshot -Name duel-pair-queue -ClientId $duelClients[2]
+$duelChecks.Add('independent invitations continue during combat; accepted pair waits intact and repeated actions preserve it')
+@{checks=@($duelChecks);origin=$duelOrigin;board=$board;invitation=$invitation;queue=$queued;status=(DuelStatus)} |
+    ConvertTo-Json -Depth 10 | Set-Content "$($Context.Evidence)/duel-invitations.json" -Encoding utf8

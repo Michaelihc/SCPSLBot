@@ -1,0 +1,10 @@
+bots_only: false
+language: cn
+warmup_mode: Standard
+duel:
+  enabled: true
+  surface_height_offset: 180
+  invitation_seconds: 30
+  lobby_seconds: 600
+  match_seconds: 600
+  keep_winner_in_arena: true

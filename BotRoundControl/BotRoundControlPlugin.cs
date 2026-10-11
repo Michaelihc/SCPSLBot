@@ -57,7 +57,7 @@ public sealed class BotRoundControlPlugin : Plugin<BotPluginConfig>
             BotServerPolicy.NotifyModeChanged();
             if (Config.Duel.Enabled)
             {
-                Runtime = new DuelRuntime(Config.Duel)
+                Runtime = new DuelRuntime(Config.Duel, new HsmHintDisplayProvider(Config.HintDisplay, "BotRoundControl.Duel"))
                 {
                     ModeActive = () => WarmupManager.Instance.IsStandardWarmup,
                     ReturnToSurface = player => WarmupManager.Instance.ReturnFromExternalArena(player),

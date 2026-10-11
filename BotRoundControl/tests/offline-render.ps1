@@ -16,9 +16,9 @@ $null = Invoke-LabSetup '.duel'
 Start-Sleep -Seconds 2
 $entered = @(Observe -ClientsOnly)[0]
 if ($entered.position.y -lt $before.position.y + 100) { throw 'Duel command did not place the authenticated actor above Surface' }
-$null = Set-LabLook -Yaw 0 -Pitch 0
+$null = Set-LabLook -Yaw 180 -Pitch 0
 $board = Invoke-LabScreenshot -Name duel-board
-$null = Set-LabLook -Yaw 0 -Pitch -15
+$null = Set-LabLook -Yaw 180 -Pitch -15
 $arenaClip = Invoke-LabInput @{id='duel-arena-render';frames=180;capture=$true;audio=$true}
 $arenaImage = Invoke-LabScreenshot -Name duel-arena
 # Applying the same entry twice must not reset role/life/health or spawn another arena.

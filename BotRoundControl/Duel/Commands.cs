@@ -10,12 +10,21 @@ public sealed class DuelCommand : ICommand
 {
     public string Command => "duel";
     public string[] Aliases => new[] { "1v1" };
-    public string Description => "Enter the duel arena and select opponents.";
+    public string Description => "Enter the viewing deck or invite opponents: .duel [player IDs].";
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         Player? player = Player.Get(sender);
+        if (arguments.Count > 0)
+        {
+            int[] targetIds = new int[arguments.Count];
+            for (int index = 0; index < arguments.Count; index++)
+                if (!int.TryParse(arguments.At(index), out targetIds[index])) { response = "用法：.duel [玩家 ID ...]"; return false; }
+            response = "决斗台暂不可用";
+            return player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime != null
+                && global::BotRoundControl.BotRoundControlPlugin.Runtime.Invite(player, targetIds, out response);
+        }
         bool ok = player != null && global::BotRoundControl.BotRoundControlPlugin.Runtime?.Enter(player, player.UserId) == true;
-        response = ok ? "已进入决斗区；发起者可射击或按 E 选择对手，其他玩家在观众席等待" : "决斗台暂不可用";
+        response = ok ? "已进入观众席；按 E 选择对手，或 .duel 玩家ID 邀请；配对后排队进入擂台" : "决斗台暂不可用";
         return ok;
     }
 }
