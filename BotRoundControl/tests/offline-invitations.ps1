@@ -27,7 +27,7 @@ function AssertDuelMatch([int]$Left,[int]$Right) {
     if ((DuelActor $Right).role -ne 'ChaosConscript') { throw 'Opponent did not enter the native Chaos role' }
 }
 function DuelBoard([double]$X,[double]$Y,[string]$Name,[int]$Index=0) {
-    $null = Set-LabAim -Target (DuelPoint $X $Y 15.5) -ClientId $duelClients[$Index] -ActorId $duelIds[$Index]
+    $null = Set-LabAim -Target (DuelPoint $X $Y 16.5) -ClientId $duelClients[$Index] -ActorId $duelIds[$Index]
     Invoke-LabInput @{id=$Name;frames=60;inputFrames=2;keys=@(101);capture=$true;audio=$true} -ClientId $duelClients[$Index]
 }
 $null = Invoke-LabServer '/forcestart'
