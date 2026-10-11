@@ -57,7 +57,7 @@ Death, disconnect or leaving cancels that player's requests. Accepting either in
 forms a pair in the same queue and clears competing invitations and requests.
 `duel.invitation_seconds` bounds offers, `duel.lobby_seconds` bounds unsent opponent
 selections, and `duel.match_seconds` bounds combat.
-RA `duel_status` reports readiness, active players, resident winner and paired queue;
+RA `duel_status` reports readiness, active players, resident winner and the paired or individual queue;
 `bot_server_status` reports managed population.
 SCPSLBot's `bot_status` reports AI/navigation without requiring management.
 
