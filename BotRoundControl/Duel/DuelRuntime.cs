@@ -514,7 +514,7 @@ internal sealed class DuelRuntime
         foreach (Player target in targets)
         {
             invited[target.ReferenceHub] = target.UserId;
-            Tell(target, $"{Safe(challenger.Player.Nickname)} 邀请你进行 1v1 决斗\n在控制台输入 .accept 或 .yes；首位接受者进入（{Mathf.CeilToInt(expires - Now)} 秒）");
+            Tell(target, $"{Safe(challenger.Player.Nickname)}（ID {challenger.PlayerId}）邀请你进行 1v1 决斗\n在控制台输入 .accept、.yes 或 .accept {challenger.PlayerId}；首位接受者进入（{Mathf.CeilToInt(expires - Now)} 秒）");
         }
         Tell(challenger.Player, $"已邀请 {targets.Length} 名玩家；等待首位接受者");
         Logger.Info($"[DuelArena] Invitations sent: challenger={challenger.PlayerId}; "
