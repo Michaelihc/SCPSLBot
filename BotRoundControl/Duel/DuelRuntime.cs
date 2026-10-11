@@ -161,26 +161,45 @@ internal sealed class DuelRuntime
     }
     internal bool Accept(Player player, out string response, int? requesterId = null)
     {
-        response = "没有可接受的决斗邀请，或邀请已过期";
-        if (!Available(player, player.UserId)) return false;
+        if (!enabled || !arena.Ready || !(ModeActive?.Invoke() ?? true))
+            return RejectAccept(player, requesterId, "unavailable", "决斗功能当前未开放，请稍后再试", out response);
+        if (!Current(player, player.UserId))
+            return RejectAccept(player, requesterId, "ineligible", "当前角色或连接状态无法参加决斗", out response);
         PruneRequests();
         ChallengeRequest? request = requests.FirstOrDefault(r => ReferenceEquals(r.Target.Player, player)
             && (!requesterId.HasValue || r.Viewer.PlayerId == requesterId.Value));
         if (request != null)
         {
-            if (Fighting) { response = "请在本场决斗结束后接受观众的挑战申请"; return false; }
+            if (Fighting)
+                return RejectAccept(player, requesterId, "request-during-match", "请在本场决斗结束后接受观众的挑战申请", out response);
             if (challenger != null && !ReferenceEquals(challenger, request.Target))
-            { response = "决斗台正在使用，请等待空闲后再接受挑战"; return false; }
+                return RejectAccept(player, requesterId, "slot-reserved", "决斗台正在使用，请等待空闲后再接受挑战", out response);
             challenger = request.Target;
             challenger.Viewer = false;
             return BeginMatch(request.Viewer.Player, out response);
         }
-        if (requesterId.HasValue) return false;
-        if (!Available(player, player.UserId) || challenger == null || Fighting || Now >= expires
-            || !invited.TryGetValue(player.ReferenceHub, out string userId) || !Current(player, userId)
-            || (participants.TryGetValue(player.ReferenceHub, out Participant existing) && !existing.Viewer)
-            || !Valid(challenger)) return false;
+        if (Fighting)
+            return RejectAccept(player, requesterId, "match-started", "本场决斗已经开始，无法再接受邀请；输入 .spectate 可观战", out response);
+        if (challenger == null)
+            return RejectAccept(player, requesterId, "no-lobby", "当前没有等待中的决斗邀请或挑战申请，请让对方重新发送", out response);
+        if (!invited.TryGetValue(player.ReferenceHub, out string userId) || !Current(player, userId))
+            return RejectAccept(player, requesterId, "not-invited", "没有发给你的决斗邀请或对应挑战申请，请让对方重新发送", out response);
+        if (requesterId.HasValue && requesterId.Value != challenger.PlayerId)
+            return RejectAccept(player, requesterId, "wrong-inviter", $"邀请者 ID 不匹配；输入 .accept {challenger.PlayerId} 或 .accept 接受", out response);
+        if (Now >= expires)
+            return RejectAccept(player, requesterId, "expired", "决斗邀请已过期，请让对方重新发送", out response);
+        if (!Valid(challenger) || !challenger.Player.IsAlive)
+            return RejectAccept(player, requesterId, "inviter-unavailable", "邀请者已离开或死亡，请等待新的邀请", out response);
+        if (participants.TryGetValue(player.ReferenceHub, out Participant existing) && !existing.Viewer)
+            return RejectAccept(player, requesterId, "already-participating", "你已在决斗台上，无法接受这份邀请", out response);
         return BeginMatch(player, out response);
+    }
+    private bool RejectAccept(Player player, int? requesterId, string reason, string message, out string response)
+    {
+        Logger.Info($"[DuelArena] Acceptance rejected: player={player.PlayerId}; requester={requesterId?.ToString() ?? "auto"}; "
+            + $"reason={reason}; remaining={Math.Max(0f, expires - Now):0.0}; {Status}");
+        response = message;
+        return false;
     }
     private bool BeginMatch(Player player, out string response)
     {
@@ -314,7 +333,7 @@ internal sealed class DuelRuntime
     private void Finish(string reason, Participant? winner)
     {
         Logger.Info($"[DuelArena] Slot released: challenger={challenger?.PlayerId}; "
-            + $"opponent={opponent?.PlayerId}; winner={winner?.PlayerId}");
+            + $"opponent={opponent?.PlayerId}; winner={winner?.PlayerId}; reason={reason}");
         Participant[] recipients = participants.Values.ToArray();
         Participant?[] fighters = { challenger, opponent };
         string message = winner != null && Valid(winner) ? $"{Safe(winner.Player.Nickname)} 获胜！{reason}" : reason;
@@ -498,6 +517,8 @@ internal sealed class DuelRuntime
             Tell(target, $"{Safe(challenger.Player.Nickname)} 邀请你进行 1v1 决斗\n在控制台输入 .accept 或 .yes；首位接受者进入（{Mathf.CeilToInt(expires - Now)} 秒）");
         }
         Tell(challenger.Player, $"已邀请 {targets.Length} 名玩家；等待首位接受者");
+        Logger.Info($"[DuelArena] Invitations sent: challenger={challenger.PlayerId}; "
+            + $"targets={string.Join(",", targets.Select(target => target.PlayerId))}; seconds={Mathf.CeilToInt(expires - Now)}");
         rosterKey = "";
         RefreshBoard();
     }

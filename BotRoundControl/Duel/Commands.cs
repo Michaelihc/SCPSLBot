@@ -45,15 +45,15 @@ public sealed class AcceptCommand : ICommand
 {
     public string Command => "accept";
     public string[] Aliases => new[] { "yes", "y", "duelaccept" };
-    public string Description => "Accept a pending duel invitation; the first acceptance wins.";
+    public string Description => "Accept a pending duel invitation or challenge: .accept [sender ID].";
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         response = "没有可接受的决斗邀请";
         int? requesterId = null;
-        if (arguments.Count > 1) { response = "用法：.accept [挑战者 ID]"; return false; }
+        if (arguments.Count > 1) { response = "用法：.accept [邀请者或挑战者 ID]"; return false; }
         if (arguments.Count == 1)
         {
-            if (!int.TryParse(arguments.At(0), out int parsed)) { response = "用法：.accept [挑战者 ID]"; return false; }
+            if (!int.TryParse(arguments.At(0), out int parsed)) { response = "用法：.accept [邀请者或挑战者 ID]"; return false; }
             requesterId = parsed;
         }
         Player? player = Player.Get(sender);
