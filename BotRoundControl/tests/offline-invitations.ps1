@@ -44,6 +44,13 @@ if (-not ($settings.settings | Where-Object { $_.type -eq 'SSDropdownSetting' -a
 foreach ($index in 0..3) { DuelCommand $index '.duel' }
 Start-Sleep -Seconds 1
 foreach ($index in 0..3) { AssertDuelViewer $index }
+for ($left = 0; $left -lt 4; $left++) {
+    for ($right = $left+1; $right -lt 4; $right++) {
+        $a = (DuelActor $left).position
+        $b = (DuelActor $right).position
+        if ([Math]::Sqrt([Math]::Pow($a.x-$b.x,2)+[Math]::Pow($a.z-$b.z,2)) -lt 1) { throw 'Viewers spawned on top of one another' }
+    }
+}
 $beforeRepeat = DuelActor 0
 DuelCommand 0 '.duel'
 if ((DuelActor 0).life -ne $beforeRepeat.life) { throw 'Repeated entry reset the viewer' }

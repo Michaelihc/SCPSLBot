@@ -35,6 +35,7 @@ internal sealed partial class DuelRuntime
                 {
                     InvitationOffer? outgoing = invitations.FirstOrDefault(offer => ReferenceEquals(offer.Sender, participant));
                     text.AppendLine(outgoing != null ? $"等待 {outgoing.Targets.Count} 人接受 · 剩余 {Mathf.CeilToInt(outgoing.Expires - Now)} 秒"
+                        : ReferenceEquals(residentWinner, participant) ? "留在擂台 · .duel 玩家ID 邀请，.leave 返回地表"
                         : "未配对 · 按 E 选对手，或 .duel 玩家ID 邀请");
                     if (participant.Selected.Count > 0)
                         text.AppendLine("已选 ID：" + string.Join(",", participant.Selected.Values.Take(4).Select(selected => selected.Player.PlayerId))

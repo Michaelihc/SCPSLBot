@@ -43,6 +43,13 @@ internal sealed partial class DuelRuntime
     private static float Now => Time.realtimeSinceStartup;
     private float InvitationLifetime => Mathf.Clamp(config.InvitationSeconds, 5f, 120f);
     private Vector3 ViewingPosition => arena.Origin + new Vector3(0, 3.5f, 18);
+    private static readonly Vector3[] ViewingOffsets =
+    {
+        Vector3.zero, new(2, 0, 0), new(-2, 0, 0), new(4, 0, 0), new(-4, 0, 0),
+        new(0, 0, 1.5f), new(2, 0, 1.5f), new(-2, 0, 1.5f), new(4, 0, 1.5f), new(-4, 0, 1.5f),
+        new(0, 0, -1.5f), new(2, 0, -1.5f), new(-2, 0, -1.5f), new(4, 0, -1.5f), new(-4, 0, -1.5f),
+    };
+    private Vector3 ViewerPosition(Participant participant) => ViewingPosition + ViewingOffsets[participant.ViewingSlot % ViewingOffsets.Length];
     internal bool Fighting => opponent != null;
     internal Vector3 Origin => arena.Origin;
     internal string Status => $"ready={arena.Ready}; state={(Fighting ? "fighting" : "idle")}; "
@@ -165,14 +172,17 @@ internal sealed partial class DuelRuntime
     }
     private Participant Capture(Player player)
     {
-        var participant = new Participant(player);
+        // Authored poses on the 12 x 5 m deck; keep capsules away from its edges.
+        // Reserve a pose through combat so returning fighters do not stack on viewers.
+        int slot = Enumerable.Range(0, participants.Count + 1).First(index => participants.Values.All(p => p.ViewingSlot != index));
+        var participant = new Participant(player, slot);
         participants.Add(participant.Hub, participant);
         return participant;
     }
     private void PrepareViewer(Participant participant)
     {
         participant.Viewer = true;
-        Prepare(participant, RoleTypeId.NtfPrivate, ViewingPosition);
+        Prepare(participant, RoleTypeId.NtfPrivate, ViewerPosition(participant));
         participant.Player.Rotation = Quaternion.Euler(0, 180, 0);
     }
     private void Prepare(Participant participant, RoleTypeId role, Vector3 position)
@@ -343,7 +353,7 @@ internal sealed partial class DuelRuntime
                     if (!Valid(viewer)) { Release(viewer, false, "玩家连接已失效"); continue; }
                     if (!viewer.Viewer) continue;
                     Vector3 delta = viewer.Player.Position - ViewingPosition;
-                    if (Math.Abs(delta.x) > 6 || Math.Abs(delta.z) > 2.5f || Math.Abs(delta.y) > 2) viewer.Hub.TryOverridePosition(ViewingPosition);
+                    if (Math.Abs(delta.x) > 5.5f || Math.Abs(delta.z) > 2f || Math.Abs(delta.y) > 2) viewer.Hub.TryOverridePosition(ViewerPosition(viewer));
                 }
                 if (residentWinner != null && (!Valid(residentWinner) || !arena.Contains(residentWinner.Player.Position)))
                 {
@@ -396,12 +406,13 @@ internal sealed partial class DuelRuntime
     }
     private sealed class Participant
     {
-        public Participant(Player player)
-        { Player = player; Hub = player.ReferenceHub; UserId = player.UserId; PlayerId = player.PlayerId; ReturnPosition = player.Position; }
+        public Participant(Player player, int viewingSlot)
+        { Player = player; Hub = player.ReferenceHub; UserId = player.UserId; PlayerId = player.PlayerId; ReturnPosition = player.Position; ViewingSlot = viewingSlot; }
         public Player Player { get; }
         public ReferenceHub Hub { get; }
         public string UserId { get; }
         public int PlayerId { get; }
+        public int ViewingSlot { get; }
         public Vector3 ReturnPosition { get; }
         public bool Viewer { get; set; } = true;
         public float LastClick { get; set; }
