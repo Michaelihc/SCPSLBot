@@ -19,6 +19,7 @@ opponents, choose everyone if desired, then select **Send invitations**. Pages c
 full eligible player list. Invitations are sent as broadcasts. The first invited player
 to type `.accept`, `.yes`, `.y` or `.duelaccept` claims the match; later accepts are rejected.
 An optional sender ID selects the invitation explicitly: `.accept <inviter ID>`.
+Without an ID, an invitation to the current arena takes priority over an incoming viewer request.
 Tutorial, Overwatch, SCP-079, NPCs and unauthenticated clients are excluded.
 
 Players fight as NTF and Chaos with matching E11 rifles, 100 health and 180 reserve rounds.

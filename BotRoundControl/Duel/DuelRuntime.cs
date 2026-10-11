@@ -166,9 +166,12 @@ internal sealed class DuelRuntime
         if (!Current(player, player.UserId))
             return RejectAccept(player, requesterId, "ineligible", "当前角色或连接状态无法参加决斗", out response);
         PruneRequests();
+        bool hasInvitation = invited.TryGetValue(player.ReferenceHub, out string userId) && Current(player, userId);
         ChallengeRequest? request = requests.FirstOrDefault(r => ReferenceEquals(r.Target.Player, player)
             && (!requesterId.HasValue || r.Viewer.PlayerId == requesterId.Value));
-        if (request != null)
+        // A retained request cannot claim somebody else's lobby. Without an ID,
+        // prefer the invitation that can join the currently reserved arena.
+        if (request != null && (requesterId.HasValue || !hasInvitation))
         {
             if (Fighting)
                 return RejectAccept(player, requesterId, "request-during-match", "请在本场决斗结束后接受观众的挑战申请", out response);
@@ -182,7 +185,7 @@ internal sealed class DuelRuntime
             return RejectAccept(player, requesterId, "match-started", "本场决斗已经开始，无法再接受邀请；输入 .spectate 可观战", out response);
         if (challenger == null)
             return RejectAccept(player, requesterId, "no-lobby", "当前没有等待中的决斗邀请或挑战申请，请让对方重新发送", out response);
-        if (!invited.TryGetValue(player.ReferenceHub, out string userId) || !Current(player, userId))
+        if (!hasInvitation)
             return RejectAccept(player, requesterId, "not-invited", "没有发给你的决斗邀请或对应挑战申请，请让对方重新发送", out response);
         if (requesterId.HasValue && requesterId.Value != challenger.PlayerId)
             return RejectAccept(player, requesterId, "wrong-inviter", $"邀请者 ID 不匹配；输入 .accept {challenger.PlayerId} 或 .accept 接受", out response);

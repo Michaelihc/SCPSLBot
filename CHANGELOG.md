@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Accept an arena invitation with the inviter's ID as well as without an ID. Distinguish
-  invitation rejection reasons in player responses and server logs.
+  invitation rejection reasons in player responses and server logs. Pending viewer challenges
+  no longer block accepting an invitation to the current arena without an ID.
 - Keep duel fighters on the protected viewing deck after a match, alongside other viewers.
   Allow viewing between matches and invitations/rematches from the deck while keeping combat 1v1.
 - Add viewer-to-fighter challenge requests alongside the arena player's existing invitations.
