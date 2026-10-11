@@ -29,7 +29,7 @@ function AssertDuelMatch([int]$Opponent) {
     $target = DuelActor $Opponent
     if ($owner.role -ne 'NtfPrivate' -or $target.role -ne 'ChaosConscript' -or
         [Math]::Abs($owner.position.y-$duelOrigin.y) -gt 3 -or [Math]::Abs($target.position.y-$duelOrigin.y) -gt 3 -or
-        [Math]::Abs($target.position.z-$duelOrigin.z) -gt 10 -or @($target.items | Where-Object type -eq 'GunE11SR').Count -ne 1) {
+        [Math]::Abs($target.position.z-$duelOrigin.z) -gt 10 -or @($target.items | Where-Object { $_ -eq 'GunE11SR' }).Count -ne 1) {
         throw "Acceptance did not create the native duel: $($target | ConvertTo-Json -Depth 7 -Compress)"
     }
     if ((DuelStatus) -notmatch "state=fighting; challenger=$duelOwner; opponent=$Opponent; invited=0") { throw 'Accepted match did not claim and clear the invitation slot' }
