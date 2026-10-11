@@ -25,6 +25,7 @@ internal sealed partial class DuelRuntime
     private readonly List<InvitationOffer> invitations = new();
     private readonly List<ChallengeRequest> requests = new();
     private readonly List<QueuedMatch> queue = new();
+    private readonly List<Participant> challengeQueue = new();
     private readonly HashSet<Participant> pendingDeaths = new();
     private Participant? challenger;
     private Participant? opponent;
@@ -56,7 +57,9 @@ internal sealed partial class DuelRuntime
         + $"challenger={challenger?.PlayerId ?? 0}; opponent={opponent?.PlayerId ?? 0}; "
         + $"invited={invitations.Sum(offer => offer.Targets.Count)}; viewers={participants.Values.Count(p => p.Viewer)}; "
         + $"requests={requests.Count}; queued={queue.Count}; resident={residentWinner?.PlayerId ?? 0}; "
-        + $"queue={string.Join(",", queue.Select(pair => pair.Left.PlayerId + "+" + pair.Right.PlayerId))}; origin={Origin}";
+        + $"queue={string.Join(",", queue.Select(pair => pair.Left.PlayerId + "+" + pair.Right.PlayerId))}; "
+        + $"king={config.KeepWinnerInArena}; challengers={challengeQueue.Count}; "
+        + $"challenge_queue={string.Join(",", challengeQueue.Select(p => p.PlayerId))}; origin={Origin}";
 
     private static bool Current(Player player, string userId) => player != null && !player.IsDestroyed
         && player.ReferenceHub != null && player.IsReady && player.IsPlayer && !player.IsDummy && !player.IsHost
@@ -70,7 +73,7 @@ internal sealed partial class DuelRuntime
     internal bool CanFight(ReferenceHub left, ReferenceHub right) => Fighting && Now >= matchStart
         && ((ReferenceEquals(left, challenger!.Hub) && ReferenceEquals(right, opponent!.Hub))
             || (ReferenceEquals(right, challenger!.Hub) && ReferenceEquals(left, opponent!.Hub)));
-    private bool IsQueued(Participant participant) => queue.Any(pair => pair.Contains(participant));
+    private bool IsQueued(Participant participant) => queue.Any(pair => pair.Contains(participant)) || challengeQueue.Contains(participant);
     private bool Free(Participant participant) => Valid(participant) && participant.Player.IsAlive
         && !IsFighting(participant.Player) && !IsQueued(participant);
     private bool IsCandidate(Player player) => !participants.TryGetValue(player.ReferenceHub, out Participant participant) || Free(participant);
@@ -245,7 +248,7 @@ internal sealed partial class DuelRuntime
             pendingDeaths.Remove(participant);
             try
             {
-                if (config.KeepWinnerInArena && ReferenceEquals(participant, winner) && participant.Player.IsAlive && queue.Count == 0)
+                if (config.KeepWinnerInArena && ReferenceEquals(participant, winner) && participant.Player.IsAlive)
                 {
                     residentWinner = participant;
                     participant.Viewer = false;
@@ -260,7 +263,9 @@ internal sealed partial class DuelRuntime
             }
         }
         foreach (Participant participant in participants.Values.ToArray())
-            if (Valid(participant)) Tell(participant.Player, message + "\n已配对的玩家按顺序进场；未配对的玩家可继续邀请");
+            if (Valid(participant)) Tell(participant.Player, message + (config.KeepWinnerInArena
+                ? "\n胜者守擂；挑战者按顺序进场，.challenge 加入挑战队列"
+                : "\n已配对的玩家按顺序进场；未配对的玩家可继续邀请"));
         PruneMatchmaking();
         foreach (ChallengeRequest request in requests)
         {
@@ -272,6 +277,7 @@ internal sealed partial class DuelRuntime
     private void StartNextPair()
     {
         if (Fighting || transitioning || pendingDeaths.Count != 0 || !enabled || !arena.Ready || !(ModeActive?.Invoke() ?? true)) return;
+        if (config.KeepWinnerInArena) { StartNextKingMatch(); return; }
         while (queue.Count != 0)
         {
             QueuedMatch pair = queue[0];
@@ -281,18 +287,7 @@ internal sealed partial class DuelRuntime
             {
                 if (residentWinner != null && Valid(residentWinner) && !pair.Contains(residentWinner)) PrepareViewer(residentWinner);
                 residentWinner = null;
-                // Claim before native role callbacks and before another acceptance can enter.
-                challenger = pair.Left;
-                opponent = pair.Right;
-                challenger.Viewer = false;
-                opponent.Viewer = false;
-                matchStart = Now + 3f;
-                expires = matchStart + Mathf.Clamp(config.MatchSeconds, 15f, 600f);
-                Prepare(challenger, RoleTypeId.NtfPrivate, arena.Origin + new Vector3(0, 1, -8));
-                Prepare(opponent, RoleTypeId.ChaosConscript, arena.Origin + new Vector3(0, 1, 8));
-                Tell(challenger.Player, $"已轮到你们！对手：{Safe(opponent.Player.Nickname)}；3 秒后开始决斗");
-                Tell(opponent.Player, $"已轮到你们！对手：{Safe(challenger.Player.Nickname)}；3 秒后开始；.leave 认输");
-                Logger.Info($"[DuelArena] Match started: {challenger.PlayerId} vs {opponent.PlayerId}; queued={queue.Count}");
+                BeginMatch(pair.Left, pair.Right);
                 return;
             }
             catch (Exception ex)
@@ -305,12 +300,28 @@ internal sealed partial class DuelRuntime
             }
         }
     }
+    private void BeginMatch(Participant left, Participant right)
+    {
+        // Claim before native role callbacks and before another acceptance can enter.
+        challenger = left;
+        opponent = right;
+        challenger.Viewer = false;
+        opponent.Viewer = false;
+        matchStart = Now + 3f;
+        expires = matchStart + Mathf.Clamp(config.MatchSeconds, 15f, 600f);
+        Prepare(challenger, RoleTypeId.NtfPrivate, arena.Origin + new Vector3(0, 1, -8));
+        Prepare(opponent, RoleTypeId.ChaosConscript, arena.Origin + new Vector3(0, 1, 8));
+        Tell(challenger.Player, $"已轮到你们！对手：{Safe(opponent.Player.Nickname)}；3 秒后开始决斗");
+        Tell(opponent.Player, $"已轮到你们！对手：{Safe(challenger.Player.Nickname)}；3 秒后开始；.leave 认输");
+        Logger.Info($"[DuelArena] Match started: {challenger.PlayerId} vs {opponent.PlayerId}; queued={queue.Count}; challengers={challengeQueue.Count}");
+    }
     private void Reset(bool returnToSurface)
     {
         challenger = null;
         opponent = null;
         residentWinner = null;
         queue.Clear();
+        challengeQueue.Clear();
         invitations.Clear();
         requests.Clear();
         pendingDeaths.Clear();

@@ -37,14 +37,19 @@ or timeout ends the duel. By default, both fighters return to the protected view
 the loser respawns there. They can invite again to join a new pair.
 `.leave` exits to Surface with its normal loadout and forfeits an active duel.
 
-Set `duel.keep_winner_in_arena: true` to retain a surviving winner on the arena while
-no pair is waiting. The winner can accept a spectator challenge. When the next agreed pair
-is ready, the winner returns to viewing so that pair can enter intact. The default is `false`.
+Set `duel.keep_winner_in_arena: true` for king-of-the-hill. Viewers use `.challenge` to join
+an individual FIFO queue; the first two entrants open an empty arena. The winner stays and
+automatically fights the next challenger, while the loser returns to viewing. A defeated winner
+is replaced by the surviving challenger. Both fighters receive fresh health and loadouts each match.
+With no survivor (such as a timeout), the next two queued players open another match.
+Accepted invitations enroll the inviter and first acceptor individually in that order; a resident
+winner keeps their place. Leaving cancels only that player's queue entry. The default is `false`,
+which keeps agreed pairs intact and returns both players after each match.
 
 `.spectate`, `.view` and `.watch` toggle the protected viewing deck, including between matches.
 Multiple players can view together, whether the arena is occupied or idle.
 Observers cannot shoot or affect the match. Repeat any viewing alias to return to Surface.
-Viewers can also send `.challenge [arena player ID]` to a living player on the arena.
+In paired mode, viewers can also send `.challenge [arena player ID]` to a living player on the arena.
 With one player on the arena the ID is optional; during a fight choose either fighter's ID.
 The recipient uses `.accept [viewer ID]` to accept a request (without an ID, the oldest request).
 Requests made during a fight wait until it ends and then expire after `duel.invitation_seconds`.

@@ -33,7 +33,7 @@ public sealed class ChallengeCommand : ICommand
 {
     public string Command => "challenge";
     public string[] Aliases => new[] { "duelchallenge" };
-    public string Description => "Request a challenge from the viewing deck: .challenge [arena player ID].";
+    public string Description => "Request a duel, or join the king-of-the-hill queue: .challenge [arena player ID].";
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         response = "用法：.challenge [擂台玩家 ID]";

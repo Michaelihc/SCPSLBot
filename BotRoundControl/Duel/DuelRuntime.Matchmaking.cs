@@ -34,8 +34,11 @@ internal sealed partial class DuelRuntime
         invitations.Add(offer);
         sender.Selected.Clear();
         foreach (Player target in targets)
-            Tell(target, $"{Safe(sender.Player.Nickname)}（ID {sender.PlayerId}）邀请你进行 1v1 决斗\n输入 .accept、.yes 或 .accept {sender.PlayerId}；首位接受者配对排队（{Mathf.CeilToInt(InvitationLifetime)} 秒）");
-        response = $"已邀请 {targets.Length} 名玩家；等待首位接受者配对排队";
+            Tell(target, $"{Safe(sender.Player.Nickname)}（ID {sender.PlayerId}）邀请你" + (config.KeepWinnerInArena ? "参加守擂挑战" : "进行 1v1 决斗")
+                + $"\n输入 .accept、.yes 或 .accept {sender.PlayerId}；"
+                + (config.KeepWinnerInArena ? "首位接受者与邀请者依次加入个人挑战队列" : "首位接受者配对排队")
+                + $"（{Mathf.CeilToInt(InvitationLifetime)} 秒）");
+        response = $"已邀请 {targets.Length} 名玩家；等待首位接受者" + (config.KeepWinnerInArena ? "加入守擂挑战" : "配对排队");
         Tell(sender.Player, response);
         Logger.Info($"[DuelArena] Invitations sent: challenger={sender.PlayerId}; targets={string.Join(",", targets.Select(target => target.PlayerId))}; seconds={Mathf.CeilToInt(InvitationLifetime)}");
         RefreshHints();
@@ -45,9 +48,16 @@ internal sealed partial class DuelRuntime
     internal bool RequestChallenge(Player player, int? targetId, out string response)
     {
         response = "请先进入观众席，再向擂台上的玩家申请挑战";
-        if (!participants.TryGetValue(player.ReferenceHub, out Participant viewer) || !viewer.Viewer || !Free(viewer)) return false;
+        if (!Available(player, player.UserId) || !participants.TryGetValue(player.ReferenceHub, out Participant viewer) || !viewer.Viewer) return false;
+        if (!Free(viewer)) { response = "你已在比赛或队列中；输入 .leave 退出"; return false; }
         Participant[] fighters = new[] { challenger, opponent, residentWinner }.Where(p => p != null && Valid(p!) && p!.Player.IsAlive)
             .Cast<Participant>().Distinct().ToArray();
+        if (config.KeepWinnerInArena)
+        {
+            if (targetId.HasValue && !fighters.Any(p => p.PlayerId == targetId.Value))
+            { response = "目标不在擂台上存活；输入 .challenge 加入守擂挑战队列"; return false; }
+            return JoinKingQueue(viewer, out response);
+        }
         Participant? target = targetId.HasValue ? fighters.FirstOrDefault(p => p.PlayerId == targetId.Value)
             : fighters.Length == 1 ? fighters[0] : null;
         if (target == null) { response = "用法：.challenge <擂台玩家 ID>；目标必须在擂台上存活"; return false; }
@@ -88,6 +98,17 @@ internal sealed partial class DuelRuntime
         if (!Free(left) || !Free(right)) return false;
         CancelCommitments(left, "已接受其他邀请");
         CancelCommitments(right, "已接受其他邀请");
+        if (config.KeepWinnerInArena)
+        {
+            AddKingChallenger(left);
+            AddKingChallenger(right);
+            response = "已接受守擂邀请；你们分别按顺序挑战胜者";
+            Tell(left.Player, response);
+            Tell(right.Player, response);
+            StartNextPair();
+            RefreshHints();
+            return true;
+        }
         queue.Add(new QueuedMatch(left, right));
         int ahead = queue.Count - 1 + (Fighting ? 1 : 0);
         response = $"已配对；前面 {ahead} 组，轮到时自动进入擂台";
@@ -112,6 +133,7 @@ internal sealed partial class DuelRuntime
         foreach (InvitationOffer offer in invitations) offer.Targets.Remove(participant.Hub);
         requests.RemoveAll(request => ReferenceEquals(request.Viewer, participant) || ReferenceEquals(request.Target, participant));
         participant.Selected.Clear();
+        challengeQueue.Remove(participant);
         foreach (QueuedMatch pair in queue.Where(pair => pair.Contains(participant)).ToArray())
         { queue.Remove(pair); NotifyCancelledPair(pair, reason); }
     }
@@ -129,6 +151,7 @@ internal sealed partial class DuelRuntime
             foreach (var target in offer.Targets.ToArray())
                 if (!Current(target.Value.Player, target.Value.UserId) || !IsCandidate(target.Value.Player)) offer.Targets.Remove(target.Key);
         invitations.RemoveAll(offer => offer.Targets.Count == 0);
+        challengeQueue.RemoveAll(participant => !Valid(participant) || !participant.Player.IsAlive);
         requests.RemoveAll(request => Now >= request.Expires || !Free(request.Viewer) || !Valid(request.Target)
             || !request.Target.Player.IsAlive || IsQueued(request.Target));
         foreach (QueuedMatch pair in queue.Where(pair => !Valid(pair.Left) || !Valid(pair.Right)
