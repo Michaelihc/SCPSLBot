@@ -108,6 +108,7 @@ internal sealed partial class DuelRuntime
         text.IsStatic = true;
         text.Spawn();
         var interactable = InteractableToy.Get(ToyFactory.Create<AdminToys.InvisibleInteractableToy>(position, rotation, new Vector3(width, 0.3f, 0.1f)));
+        interactable.Shape = AdminToys.InvisibleInteractableToy.ColliderShape.Box;
         interactable.IsStatic = true;
         interactable.InteractionDuration = 0;
         interactable.Spawn();
