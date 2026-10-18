@@ -1,4 +1,5 @@
 using LabApi.Events.Arguments.PlayerEvents;
+using LabApi.Events.Arguments.ServerEvents;
 using LabApi.Events.Arguments.WarheadEvents;
 using LabApi.Events.Handlers;
 using Interactables.Interobjects;
@@ -9,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using LabElevatorDoor = LabApi.Features.Wrappers.ElevatorDoor;
-using LabPlayer = LabApi.Features.Wrappers.Player;
 using LabWarheadEvents = LabApi.Events.Handlers.WarheadEvents;
 using Logger = LabApi.Features.Console.Logger;
 
@@ -33,7 +33,6 @@ namespace SCPSLBot.Warmup
         private Func<bool> isStandardWarmup;
         private bool initialized;
         private bool surfaceElevatorLockLogged;
-        private int adminWarheadOverrideUntilTick;
 
         public void Init(BotPluginConfig pluginConfig, Func<bool> standardWarmupProvider)
         {
@@ -51,6 +50,7 @@ namespace SCPSLBot.Warmup
             PlayerEvents.InteractingWarheadLever += OnPlayerInteractingWarheadLever;
             LabWarheadEvents.Starting += OnWarheadStarting;
             LabWarheadEvents.Detonating += OnWarheadDetonating;
+            ServerEvents.DeadmanSequenceActivating += OnDeadmanSequenceActivating;
         }
 
         public void Terminate()
@@ -61,11 +61,11 @@ namespace SCPSLBot.Warmup
             }
 
             LabWarheadEvents.Detonating -= OnWarheadDetonating;
+            ServerEvents.DeadmanSequenceActivating -= OnDeadmanSequenceActivating;
             LabWarheadEvents.Starting -= OnWarheadStarting;
             PlayerEvents.InteractingWarheadLever -= OnPlayerInteractingWarheadLever;
             PlayerEvents.UnlockingWarheadButton -= OnPlayerUnlockingWarheadButton;
             PlayerEvents.Cuffing -= OnPlayerCuffing;
-            adminWarheadOverrideUntilTick = 0;
             RestoreSurfaceElevators();
             RestoreLczDecontaminationIfOwned();
             RestoreMoonControllers();
@@ -84,7 +84,6 @@ namespace SCPSLBot.Warmup
 
         public void OnWarmupDisabled()
         {
-            adminWarheadOverrideUntilTick = 0;
             RestoreSurfaceElevators();
             RestoreLczDecontaminationIfOwned();
             RestoreMoonControllers();
@@ -210,15 +209,7 @@ namespace SCPSLBot.Warmup
                 return;
             }
 
-            if (!ev.IsAutomatic && IsAdminWarheadStart(ev.Player))
-            {
-                adminWarheadOverrideUntilTick = unchecked(Environment.TickCount + 10 * 60 * 1000);
-                Logger.Info("[SCPSLBot] Admin warhead start allowed in warmup.");
-                return;
-            }
-
             ev.IsAllowed = false;
-            adminWarheadOverrideUntilTick = 0;
             DisableWarheadIfNeeded();
             Logger.Info("[SCPSLBot] Warhead start blocked in warmup.");
         }
@@ -230,15 +221,7 @@ namespace SCPSLBot.Warmup
                 return;
             }
 
-            if (IsAdminWarheadOverrideActive() || IsAdminWarheadStart(ev.Player))
-            {
-                adminWarheadOverrideUntilTick = 0;
-                Logger.Info("[SCPSLBot] Admin warhead detonation allowed in warmup.");
-                return;
-            }
-
             ev.IsAllowed = false;
-            adminWarheadOverrideUntilTick = 0;
             DisableWarheadIfNeeded();
             Logger.Info("[SCPSLBot] Warhead detonation blocked in warmup.");
         }
@@ -246,6 +229,15 @@ namespace SCPSLBot.Warmup
         private bool ShouldBlockWarhead()
         {
             return IsStandardWarmup() && config.DisableWarheadInWarmup;
+        }
+
+        private void OnDeadmanSequenceActivating(DeadmanSequenceActivatingEventArgs ev)
+        {
+            if (ShouldBlockWarhead())
+            {
+                ev.IsAllowed = false;
+                DisableWarheadIfNeeded();
+            }
         }
 
         private bool ShouldDisableLczDecontamination()
@@ -279,14 +271,20 @@ namespace SCPSLBot.Warmup
 
                 if (LabApi.Features.Wrappers.Warhead.IsDetonationInProgress)
                 {
+                    LabApi.Features.Wrappers.Warhead.IsLocked = false;
                     LabApi.Features.Wrappers.Warhead.Stop(null);
+                    if (LabApi.Features.Wrappers.Warhead.IsDetonationInProgress)
+                    {
+                        // Native cancellation refuses the final ten seconds. Reset the public
+                        // countdown state as well when entering warmup or rejecting an instant nuke.
+                        LabApi.Features.Wrappers.Warhead.BaseController?.InstantPrepare();
+                    }
                 }
 
                 LabApi.Features.Wrappers.Warhead.LeverStatus = false;
                 LabApi.Features.Wrappers.Warhead.IsAuthorized = false;
                 LabApi.Features.Wrappers.Warhead.IsLocked = false;
                 LabApi.Features.Wrappers.Warhead.ForceCountdownToggle = false;
-                LabApi.Features.Wrappers.Warhead.DeadManSwitchRemaining = 0f;
             }
             catch (Exception ex)
             {
@@ -337,18 +335,5 @@ namespace SCPSLBot.Warmup
             }
         }
 
-        private bool IsAdminWarheadOverrideActive()
-        {
-            return adminWarheadOverrideUntilTick != 0
-                   && unchecked(adminWarheadOverrideUntilTick - Environment.TickCount) > 0;
-        }
-
-        private static bool IsAdminWarheadStart(LabPlayer player)
-        {
-            return player == null
-                   || player.RemoteAdminAccess
-                   || (player.PlayerId == 1
-                       && string.Equals(player.Nickname, "Dedicated Server", StringComparison.OrdinalIgnoreCase));
-        }
     }
 }
