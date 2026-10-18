@@ -9,6 +9,11 @@ Management settings live in `LabAPI/configs/<port>/BotRoundControl/config.yml`.
 The `bots_only` setting in this file disables management when true; its default is false.
 AI/navigation settings remain in SCPSLBot's config. See [warmup](../docs/warmup.md).
 
+Standard warmup pauses the native Halloween moon controller. With
+`disable_warhead_in_warmup: true` (the default), warhead and DMS activation are blocked for
+players, administrators and automatic triggers. Entering warmup cancels an existing countdown,
+including its final ten seconds. Leaving warmup restores native moon, warhead and DMS behavior.
+
 During Standard warmup, the zone menu lists Surface, HCZ/EZ, LCZ and **Duel / 1v1**.
 Select a zone and press Apply. `.duel` / `.1v1` also enter the protected viewing deck.
 The bundled arena uses native toys from the supplied model and sits 180 meters above Surface;
