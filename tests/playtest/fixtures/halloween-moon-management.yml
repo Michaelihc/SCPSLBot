@@ -1,0 +1,9 @@
+language: cn
+bots_only: false
+warmup_mode: None
+warmup_bot_count: 0
+surface_pve_max_bot_count: 0
+heavy_entrance_pvpve_bot_count: 0
+light_containment_scp_bot_count: 0
+duel:
+  enabled: false

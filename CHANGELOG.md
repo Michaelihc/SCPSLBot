@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Pause the native Halloween moon during Standard warmup to prevent its ending sequence from
+  repeatedly exploding respawned players and bots; restore it when warmup ends.
 - Queue accepted duel pairs in arrival order while unpaired viewers continue inviting.
   Show individual selection, invitation and queue status on the HUD. Both fighters return to
   viewing by default; `duel.keep_winner_in_arena` enables king-of-the-hill with individual

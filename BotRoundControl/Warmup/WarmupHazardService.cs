@@ -4,6 +4,7 @@ using LabApi.Events.Handlers;
 using Interactables.Interobjects;
 using Interactables.Interobjects.DoorUtils;
 using LightContainmentZoneDecontamination;
+using MapGeneration.Holidays;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,6 +25,7 @@ namespace SCPSLBot.Warmup
         };
 
         private readonly HashSet<LabElevatorDoor> ownedSurfaceElevatorLocks = new();
+        private readonly HashSet<HubertMoon> ownedMoonControllers = new(Infrastructure.ManagedReferenceComparer<HubertMoon>.Instance);
         // The controller whose override this service set; a later round, admin command, warhead or
         // another plugin owns any other value.
         private DecontaminationController ownedDecontaminationOverride;
@@ -66,6 +68,7 @@ namespace SCPSLBot.Warmup
             adminWarheadOverrideUntilTick = 0;
             RestoreSurfaceElevators();
             RestoreLczDecontaminationIfOwned();
+            RestoreMoonControllers();
             initialized = false;
             isStandardWarmup = null;
             config = null;
@@ -76,6 +79,7 @@ namespace SCPSLBot.Warmup
             LockSurfaceElevators();
             DisableLczDecontaminationIfNeeded();
             DisableWarheadIfNeeded();
+            PauseMoonControllers();
         }
 
         public void OnWarmupDisabled()
@@ -83,6 +87,42 @@ namespace SCPSLBot.Warmup
             adminWarheadOverrideUntilTick = 0;
             RestoreSurfaceElevators();
             RestoreLczDecontaminationIfOwned();
+            RestoreMoonControllers();
+        }
+
+        private void PauseMoonControllers()
+        {
+            if (!IsStandardWarmup())
+            {
+                return;
+            }
+
+            ownedMoonControllers.RemoveWhere(moon => moon == null);
+            foreach (HubertMoon moon in UnityEngine.Object.FindObjectsByType<HubertMoon>(UnityEngine.FindObjectsSortMode.None))
+            {
+                if (!moon.enabled)
+                {
+                    continue;
+                }
+
+                // The Halloween ending explodes players independently of the warhead. Pausing the
+                // native controller also stops its countdown, so endless warmup cannot reach it.
+                moon.enabled = false;
+                ownedMoonControllers.Add(moon);
+            }
+        }
+
+        private void RestoreMoonControllers()
+        {
+            foreach (HubertMoon moon in ownedMoonControllers)
+            {
+                if (moon != null)
+                {
+                    moon.enabled = true;
+                }
+            }
+
+            ownedMoonControllers.Clear();
         }
 
         private void LockSurfaceElevators()
