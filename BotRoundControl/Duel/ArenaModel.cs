@@ -12,9 +12,11 @@ internal sealed class ArenaModel
 {
     private readonly List<AdminToy> toys = new();
     public Vector3 Origin { get; private set; }
+    public Vector3 ViewingPosition { get; private set; }
     public bool Ready => toys.Count != 0;
     public int PrimitiveCount => toys.Count(toy => toy is PrimitiveObjectToy);
     public int LightCount => toys.Count(toy => toy is LightSourceToy);
+    public int TextCount => toys.Count(toy => toy is TextToy);
     public bool Contains(Vector3 position)
     {
         Vector3 local = position - Origin;
@@ -43,6 +45,7 @@ internal sealed class ArenaModel
             waypoint.PriorityBias = 50;
             waypoint.VisualizeBounds = false;
             waypoint.Spawn();
+            bool hasViewingPlatform = false;
             foreach (JsonElement block in blocks.EnumerateArray())
             {
                 if (block.GetProperty("ParentId").GetInt32() != rootObjectId)
@@ -60,6 +63,13 @@ internal sealed class ArenaModel
                     toy.Color = Color.white;
                     toy.IsStatic = true;
                     toy.Spawn();
+                    if (toy.Type == PrimitiveType.Plane)
+                    {
+                        if (hasViewingPlatform) throw new InvalidOperationException("Arena asset has multiple viewing platforms.");
+                        // The supplied plane is the viewing floor; spawn the native capsule above it.
+                        ViewingPosition = origin + position + Vector3.up;
+                        hasViewingPlatform = true;
+                    }
                 }
                 else if (blockType == 2)
                 {
@@ -73,8 +83,20 @@ internal sealed class ArenaModel
                     light.IsStatic = true;
                     light.Spawn();
                 }
+                else if (blockType == 8)
+                {
+                    var text = TextToy.Get(ToyFactory.Create<AdminToys.TextToy>(origin + position,
+                        Quaternion.Euler(Coordinates(block.GetProperty("Rotation"))), Coordinates(block.GetProperty("Scale"))));
+                    toys.Add(text);
+                    JsonElement size = properties.GetProperty("DisplaySize");
+                    text.DisplaySize = new Vector2(size.GetProperty("x").GetSingle(), size.GetProperty("y").GetSingle());
+                    text.TextFormat = properties.GetProperty("Text").GetString() ?? string.Empty;
+                    text.IsStatic = true;
+                    text.Spawn();
+                }
                 else throw new InvalidOperationException("Unsupported arena block.");
             }
+            if (!hasViewingPlatform) throw new InvalidOperationException("Arena asset has no viewing platform.");
         }
         catch { Destroy(); throw; }
     }
@@ -83,6 +105,7 @@ internal sealed class ArenaModel
         foreach (AdminToy toy in toys)
             if (toy.Base != null) toy.Destroy();
         toys.Clear();
+        ViewingPosition = Vector3.zero;
     }
     private static Vector3 Coordinates(JsonElement value) => new(
         value.GetProperty("x").GetSingle(), value.GetProperty("y").GetSingle(), value.GetProperty("z").GetSingle());

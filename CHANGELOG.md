@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Replace the duel arena with the supplied updated model, including its wall text, additional
+  lighting and viewing platform. Align viewing entry and opponent controls with the authored floor.
+
 - Pause the native Halloween moon during Standard warmup to prevent its ending sequence from
   repeatedly exploding respawned players and bots; restore it when warmup ends.
 - Enforce warmup warhead suppression for administrator and server-triggered starts and detonations.

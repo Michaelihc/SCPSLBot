@@ -1,68 +1,10 @@
 {
-  "RootObjectId": 23390,
+  "RootObjectId": 23836,
   "Blocks": [
     {
-      "Name": "Cube (2)",
-      "ObjectId": -1432,
-      "ParentId": 23390,
-      "Position": {
-        "x": 0.0,
-        "y": 0.55,
-        "z": -14.5
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 20.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "BlockType": 1,
-      "Properties": {
-        "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
-        "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
-      "Name": "Cube (1)",
-      "ObjectId": -1236,
-      "ParentId": 23390,
-      "Position": {
-        "x": 0.0,
-        "y": 0.8,
-        "z": -10.0
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 20.0,
-        "y": 1.5,
-        "z": 0.1
-      },
-      "BlockType": 1,
-      "Properties": {
-        "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
-        "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
       "Name": "Cube",
-      "ObjectId": -1476,
-      "ParentId": 23390,
+      "ObjectId": -1940,
+      "ParentId": 23836,
       "Position": {
         "x": 0.0,
         "y": 0.0,
@@ -89,67 +31,9 @@
       }
     },
     {
-      "Name": "Cube (3)",
-      "ObjectId": -1402,
-      "ParentId": 23390,
-      "Position": {
-        "x": 0.0,
-        "y": 0.8,
-        "z": 10.0
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 20.0,
-        "y": 1.5,
-        "z": 0.1
-      },
-      "BlockType": 1,
-      "Properties": {
-        "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
-        "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
-      "Name": "Cube (4)",
-      "ObjectId": -1282,
-      "ParentId": 23390,
-      "Position": {
-        "x": 0.0,
-        "y": 0.55,
-        "z": 14.5
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 20.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "BlockType": 1,
-      "Properties": {
-        "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
-        "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
       "Name": "Cube (5)",
-      "ObjectId": -1442,
-      "ParentId": 23390,
+      "ObjectId": -1802,
+      "ParentId": 23836,
       "Position": {
         "x": 9.95,
         "y": 1.41,
@@ -177,8 +61,8 @@
     },
     {
       "Name": "Cube (6)",
-      "ObjectId": -1342,
-      "ParentId": 23390,
+      "ObjectId": -1558,
+      "ParentId": 23836,
       "Position": {
         "x": -9.95,
         "y": 1.48,
@@ -206,8 +90,8 @@
     },
     {
       "Name": "Point Light (4)",
-      "ObjectId": -1486,
-      "ParentId": 23390,
+      "ObjectId": -1990,
+      "ParentId": 23836,
       "Position": {
         "x": -7.815151,
         "y": 2.77485037,
@@ -258,8 +142,8 @@
     },
     {
       "Name": "Point Light (3)",
-      "ObjectId": -1468,
-      "ParentId": 23390,
+      "ObjectId": -1916,
+      "ParentId": 23836,
       "Position": {
         "x": -7.855152,
         "y": 2.77485037,
@@ -310,8 +194,8 @@
     },
     {
       "Name": "Point Light (2)",
-      "ObjectId": -1326,
-      "ParentId": 23390,
+      "ObjectId": -1540,
+      "ParentId": 23836,
       "Position": {
         "x": 6.91484833,
         "y": 2.77485037,
@@ -362,8 +246,8 @@
     },
     {
       "Name": "Point Light (1)",
-      "ObjectId": -1310,
-      "ParentId": 23390,
+      "ObjectId": -1532,
+      "ParentId": 23836,
       "Position": {
         "x": 7.17485046,
         "y": 2.77485037,
@@ -414,8 +298,8 @@
     },
     {
       "Name": "Point Light",
-      "ObjectId": -1452,
-      "ParentId": 23390,
+      "ObjectId": -1812,
+      "ParentId": 23836,
       "Position": {
         "x": 0.594848633,
         "y": 2.77485037,
@@ -466,8 +350,8 @@
     },
     {
       "Name": "Cube (7)",
-      "ObjectId": -6182,
-      "ParentId": 23390,
+      "ObjectId": -1660,
+      "ParentId": 23836,
       "Position": {
         "x": 0.0,
         "y": 1.45,
@@ -495,8 +379,8 @@
     },
     {
       "Name": "Cube (8)",
-      "ObjectId": -6554,
-      "ParentId": 23390,
+      "ObjectId": -1236,
+      "ParentId": 23836,
       "Position": {
         "x": 0.0,
         "y": 1.45,
@@ -515,6 +399,303 @@
       "BlockType": 1,
       "Properties": {
         "PrimitiveType": 3,
+        "Color": "FFFFFFFF",
+        "PrimitiveFlags": 3,
+        "Scp106Passable": false,
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light (5)",
+      "ObjectId": -1678,
+      "ParentId": 23836,
+      "Position": {
+        "x": -8.01,
+        "y": 2.77485037,
+        "z": 0.407928467
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light (7)",
+      "ObjectId": -1568,
+      "ParentId": 23836,
+      "Position": {
+        "x": 0.594848633,
+        "y": 2.77485037,
+        "z": 7.63
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light (6)",
+      "ObjectId": -1670,
+      "ParentId": 23836,
+      "Position": {
+        "x": 7.02,
+        "y": 2.77485037,
+        "z": 0.407928467
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Point Light (8)",
+      "ObjectId": -1332,
+      "ParentId": 23836,
+      "Position": {
+        "x": 0.594848633,
+        "y": 2.77485037,
+        "z": -7.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "LightType": 2,
+        "Color": "FFFFFFFF",
+        "Intensity": 1.0,
+        "Range": 10.0,
+        "Shape": 0,
+        "SpotAngle": 30.0,
+        "InnerSpotAngle": 21.80208,
+        "ShadowStrength": 1.0,
+        "ShadowType": 0,
+        "Flicker": false,
+        "FlickerZone": 0,
+        "Cycle": false,
+        "RandomInRange": false,
+        "TimeToOn": 1.0,
+        "TimeToOff": 2.0,
+        "ActionEvents": [
+          {
+            "Id": "TurnOn",
+            "DisplayName": "Turn On",
+            "Actions": []
+          },
+          {
+            "Id": "TurnOff",
+            "DisplayName": "Turn Off",
+            "Actions": []
+          }
+        ],
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Text",
+      "ObjectId": -1782,
+      "ParentId": 23836,
+      "Position": {
+        "x": -9.900002,
+        "y": 1.52485085,
+        "z": 0.67
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 270.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 8,
+      "Properties": {
+        "Text": "1V1",
+        "DisplaySize": {
+          "x": 200.0,
+          "y": 50.0
+        },
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Text (1)",
+      "ObjectId": -1506,
+      "ParentId": 23836,
+      "Position": {
+        "x": 9.849998,
+        "y": 1.52485085,
+        "z": 0.67
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 90.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 8,
+      "Properties": {
+        "Text": "狭路相逢\n勇者胜！",
+        "DisplaySize": {
+          "x": 200.0,
+          "y": 50.0
+        },
+        "Static": false,
+        "MovementSmoothing": 60
+      }
+    },
+    {
+      "Name": "Plane",
+      "ObjectId": -1696,
+      "ParentId": 23836,
+      "Position": {
+        "x": -0.1800003,
+        "y": 4.544851,
+        "z": 18.82
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 2.0,
+        "y": 0.5,
+        "z": 0.5
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 4,
         "Color": "FFFFFFFF",
         "PrimitiveFlags": 3,
         "Scp106Passable": false,

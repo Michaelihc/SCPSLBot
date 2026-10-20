@@ -19,7 +19,7 @@ function AssertHillMatch([int]$Left,[int]$Right) {
 }
 function AssertHillViewer([int]$Index) {
     $actor = HillActor $Index
-    if (@($actor.items).Count -ne 0 -or $actor.role -ne 'NtfPrivate' -or [Math]::Abs($actor.position.z-($hillOrigin.z+18)) -gt 3) {
+    if (@($actor.items).Count -ne 0 -or $actor.role -ne 'NtfPrivate' -or [Math]::Abs($actor.position.z-$hillViewing.z) -gt 3) {
         throw "Defeated king did not return unarmed to viewing: $($actor | ConvertTo-Json -Depth 7 -Compress)"
     }
 }
@@ -31,6 +31,8 @@ foreach ($index in 0..2) { HillCommand $index '.duel' }
 $status = HillStatus
 if ($status -notmatch 'origin=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing arena origin: $status" }
 $hillOrigin = @{x=[double]$Matches[1];y=[double]$Matches[2];z=[double]$Matches[3]}
+if ($status -notmatch 'viewing=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing viewing platform: $status" }
+$hillViewing = @{x=[double]$Matches[1];y=[double]$Matches[2];z=[double]$Matches[3]}
 # An empty arena opens with the first two consenting individual entrants.
 HillCommand 0 '.challenge'
 if ((HillStatus) -notmatch "state=idle;.*challenge_queue=$($hillIds[0]);") { throw 'First individual did not wait for an opening opponent' }

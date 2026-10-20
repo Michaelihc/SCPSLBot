@@ -11,7 +11,6 @@ namespace DuelArena;
 internal sealed partial class DuelRuntime
 {
     private readonly List<Row> rows = new();
-    private readonly List<PrimitiveObjectToy> extras = new();
     private string rosterKey = "";
     private int page;
 
@@ -71,26 +70,26 @@ internal sealed partial class DuelRuntime
         rosterKey = key;
         // Native StandardDistanceVerification limits client interaction to 2.42 m.
         // Keep every row within that range from the viewing-deck entry pose.
-        AddRow(new Vector3(0, 5f, 16.5f), "<b>观众席 · 选择对手</b>", "header", null);
+        AddRow(new Vector3(0, 1.5f, -1.5f), "<b>观众席 · 选择对手</b>", "header", null);
         int index = 0;
         foreach (Player candidate in candidates.Skip(page * 8).Take(8))
         {
             float x = index % 2 == 0 ? -1.15f : 1.15f;
-            float y = 4.65f - index / 2 * 0.33f;
-            AddRow(new Vector3(x, y, 16.5f), $"{candidate.PlayerId} · {Safe(candidate.Nickname)}", "player", candidate);
+            float y = 1.15f - index / 2 * 0.33f;
+            AddRow(new Vector3(x, y, -1.5f), $"{candidate.PlayerId} · {Safe(candidate.Nickname)}", "player", candidate);
             index++;
         }
-        AddRow(new Vector3(-1.15f, 3.2f, 16.5f), "选择所有玩家", "all", null);
-        AddRow(new Vector3(1.15f, 3.2f, 16.5f), "发送邀请", "invite", null);
+        AddRow(new Vector3(-1.15f, -0.3f, -1.5f), "选择所有玩家", "all", null);
+        AddRow(new Vector3(1.15f, -0.3f, -1.5f), "发送邀请", "invite", null);
         if (pages > 1)
         {
-            AddRow(new Vector3(-1.15f, 5.45f, 16.5f), $"上一页  {page + 1}/{pages}", "previous", null);
-            AddRow(new Vector3(1.15f, 5.45f, 16.5f), "下一页", "next", null);
+            AddRow(new Vector3(-1.15f, 1.95f, -1.5f), $"上一页  {page + 1}/{pages}", "previous", null);
+            AddRow(new Vector3(1.15f, 1.95f, -1.5f), "下一页", "next", null);
         }
     }
     private void AddRow(Vector3 local, string label, string action, Player? candidate)
     {
-        Vector3 position = arena.Origin + local;
+        Vector3 position = ViewingPosition + local;
         Quaternion rotation = Quaternion.Euler(0, 180, 0);
         float width = action == "header" ? 4.5f : 2.2f;
         float glyphWidth = label.Sum(c => c < 128 ? 0.55f : 1f);
@@ -124,21 +123,6 @@ internal sealed partial class DuelRuntime
         }
         rows.Clear();
         rosterKey = "";
-    }
-    private void DestroyExtras()
-    {
-        foreach (PrimitiveObjectToy toy in extras) if (toy.Base != null) toy.Destroy();
-        extras.Clear();
-    }
-    private void AddPrimitive(Vector3 position, Vector3 scale, Color color)
-    {
-        var toy = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(position, Quaternion.identity, scale));
-        toy.Type = PrimitiveType.Cube;
-        toy.Flags = AdminToys.PrimitiveFlags.Visible | AdminToys.PrimitiveFlags.Collidable;
-        toy.Color = color;
-        toy.IsStatic = true;
-        toy.Spawn();
-        extras.Add(toy);
     }
     private sealed class Row
     {
