@@ -2,6 +2,7 @@ using Interactables.Interobjects;
 using SCPSLBot.Navigation;
 using System;
 using UnityEngine;
+using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SCPSLBot.AI.FirstPersonControl.Movement
 {
@@ -21,6 +22,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
     /// is bounded; panel presses go through the native ServerInteract paths, so door locks and
     /// LabAPI elevator events apply. Other players using the elevator meanwhile are tolerated:
     /// the stages follow the chamber's actual destination instead of assuming their own presses.
+    /// The approach to the landing is plain path following by <see cref="BotLocomotion"/> (doors
+    /// included); this class only decides when the bot stands there long enough to call. Stage
+    /// timers pause while the traversal is not ticked (combat strafing, a hold), so a crossing
+    /// interrupted mid-ride is re-evaluated on resume instead of being reported blocked.
     /// </summary>
     internal sealed class ElevatorTraversal
     {
@@ -36,8 +41,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         }
 
         private const float LandingReachedMeters = 1f;
-        private const float CabinCenterMeters = 0.6f;
-        private const float CabinRecenterMeters = 0.5f;
+        // Accepted anywhere inside the cabin this far from its walls: two riders cannot both
+        // stand on the exact centre.
+        private const float CabinInsetMeters = 0.35f;
         private const float ExitReachedMeters = 2f;
         private const float ExitVerticalTolerance = 1.5f;
         private const float LandingPressIntervalSeconds = 2f;
@@ -50,6 +56,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private const float SendTimeoutSeconds = 12f;
         private const float RideTimeoutSeconds = 45f;
         private const float ExitTimeoutSeconds = 8f;
+        private const float PauseGapSeconds = 0.5f;
+        private const float FloorToleranceMeters = 2f;
 
         private readonly FpcBotPlayer botPlayer;
         private readonly BotLocomotion locomotion;
@@ -60,6 +68,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private ElevatorPanel landingPanel;
         private ElevatorPanel cabinPanel;
         private float stageStartedAt;
+        private float lastTickAt;
         private float nextPressAt;
         private int presses;
 
@@ -87,6 +96,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         public Vector3 CurrentTarget { get; private set; }
 
         public string DiagnosticState => IsActive ? $"elevator:{CurrentStage}" : null;
+
+        /// <summary>Why the last tick returned <see cref="ElevatorTraversalStatus.Blocked"/>.</summary>
+        public string BlockReason { get; private set; }
+
+        public ElevatorGroup Group => originDoor != null ? originDoor.Group : default;
 
         public bool IsSameLink(ElevatorLinkSegment link)
         {
@@ -133,7 +147,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             Goal = goal;
             LastGoalMatchAt = Time.time;
             CurrentTarget = link.Origin;
-            SetStage(Stage.Approach);
+            lastTickAt = Time.time;
+            BlockReason = null;
+            SetStage(Stage.Approach, "path reached the landing");
             return true;
         }
 
@@ -151,8 +167,18 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         {
             if (chamber == null || originDoor == null || destinationDoor == null)
             {
-                return ElevatorTraversalStatus.Blocked;
+                return Block("elevator destroyed");
             }
+
+            var now = Time.time;
+            if (now - lastTickAt > PauseGapSeconds)
+            {
+                // Not ticked for a while (combat strafing, a hold order): pause the stage timer.
+                stageStartedAt += now - lastTickAt;
+                nextPressAt = Mathf.Min(nextPressAt, now);
+            }
+
+            lastTickAt = now;
 
             switch (CurrentStage)
             {
@@ -173,26 +199,27 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             }
         }
 
+        // Movement is the caller's path following toward the landing; only transitions here.
         private ElevatorTraversalStatus TickApproach()
         {
-            if (IsOpenAt(originDoor))
+            CurrentTarget = Link.Origin;
+            if (IsOpenAt(originDoor) && HorizontalDistance(botPlayer.PlayerPosition, Link.Origin) <= LandingReachedMeters + 1f)
             {
-                SetStage(Stage.Enter);
+                SetStage(Stage.Enter, "doors open at the landing");
                 return TickEnter();
             }
 
             if (HorizontalDistance(botPlayer.PlayerPosition, Link.Origin) <= LandingReachedMeters)
             {
-                SetStage(Stage.Call);
+                SetStage(Stage.Call, "at the landing");
                 return TickCall();
             }
 
             if (StageElapsed > ApproachTimeoutSeconds)
             {
-                return ElevatorTraversalStatus.Blocked;
+                return Block("landing not reached");
             }
 
-            Steer(Link.Origin);
             return ElevatorTraversalStatus.Running;
         }
 
@@ -200,13 +227,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         {
             if (IsOpenAt(originDoor))
             {
-                SetStage(Stage.Enter);
+                SetStage(Stage.Enter, "doors open");
                 return TickEnter();
             }
 
             if (StageElapsed > CallTimeoutSeconds)
             {
-                return ElevatorTraversalStatus.Blocked;
+                return Block("chamber never arrived");
             }
 
             Stand(landingPanel != null ? PanelPosition(landingPanel) : originDoor.transform.position + Vector3.up);
@@ -220,7 +247,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             if (originDoor.ActiveLocks != 0)
             {
                 // The landing panel refuses while its door is locked (lockdown, warhead, admin).
-                return ElevatorTraversalStatus.Blocked;
+                return Block("landing door locked");
             }
 
             if (chamber.IsReadyForUserInput && Time.time >= nextPressAt)
@@ -228,12 +255,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 if (presses >= MaxUnansweredPresses)
                 {
                     // The far door is locked: the chamber refuses every call.
-                    return ElevatorTraversalStatus.Blocked;
+                    return Block("calls unanswered");
                 }
 
                 presses++;
                 nextPressAt = Time.time + LandingPressIntervalSeconds;
-                Press(originDoor, landingPanel);
+                PressLanding();
             }
 
             return ElevatorTraversalStatus.Running;
@@ -241,69 +268,71 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         private ElevatorTraversalStatus TickEnter()
         {
-            var inside = IsInsideCabin();
+            var inside = IsInsideCabin(0f);
             if (inside && chamber.DestinationDoor == destinationDoor)
             {
-                // Someone else sent it to our side while the bot was stepping in.
-                SetStage(Stage.Ride);
+                SetStage(Stage.Ride, "sent by someone else while boarding");
                 return TickRide();
             }
 
             if (chamber.DestinationDoor != originDoor || (!originDoor.TargetState && !inside))
             {
-                // It left (or is closing) before the bot got in.
-                SetStage(Stage.Call);
+                SetStage(Stage.Call, "left before boarding");
                 return ElevatorTraversalStatus.Running;
             }
 
-            var center = CabinCenter();
-            if (inside && HorizontalDistance(botPlayer.PlayerPosition, center) <= CabinCenterMeters)
+            if (IsInsideCabin(CabinInsetMeters))
             {
-                SetStage(Stage.Send);
+                SetStage(Stage.Send, "aboard");
                 return TickSend();
             }
 
             if (StageElapsed > EnterTimeoutSeconds)
             {
-                return ElevatorTraversalStatus.Blocked;
+                return Block("could not board");
             }
 
-            Steer(center);
+            Steer(CabinCenter());
             return ElevatorTraversalStatus.Running;
         }
 
         private ElevatorTraversalStatus TickSend()
         {
-            if (chamber.DestinationDoor == destinationDoor)
+            if (!IsInsideCabin(0f))
             {
-                SetStage(Stage.Ride);
-                return TickRide();
+                // Pushed out (or strafed out) before it left: call it again from the landing.
+                SetStage(Stage.Approach, "left the cabin before departure");
+                return ElevatorTraversalStatus.Running;
             }
 
-            if (!IsInsideCabin())
+            if (chamber.DestinationDoor == destinationDoor)
             {
-                // Pushed out before it left: call it again from the landing.
-                SetStage(Stage.Approach);
-                return ElevatorTraversalStatus.Running;
+                SetStage(Stage.Ride, "sent");
+                return TickRide();
             }
 
             if (StageElapsed > SendTimeoutSeconds)
             {
-                return ElevatorTraversalStatus.Blocked;
+                return Block("send refused");
             }
 
             KeepCentered(cabinPanel != null ? PanelPosition(cabinPanel) : destinationDoor.transform.position);
             if (chamber.IsReadyForUserInput && Time.time >= nextPressAt)
             {
                 var currentDoor = chamber.DestinationDoor;
-                if ((currentDoor != null && currentDoor.ActiveLocks != 0) || presses >= MaxUnansweredPresses)
+                if (currentDoor != null && currentDoor.ActiveLocks != 0)
                 {
-                    return ElevatorTraversalStatus.Blocked;
+                    return Block("cabin door locked");
+                }
+
+                if (presses >= MaxUnansweredPresses)
+                {
+                    return Block("send unanswered");
                 }
 
                 presses++;
                 nextPressAt = Time.time + CabinPressIntervalSeconds;
-                Press(chamber, cabinPanel ?? landingPanel);
+                PressCabin();
             }
 
             return ElevatorTraversalStatus.Running;
@@ -311,24 +340,40 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         private ElevatorTraversalStatus TickRide()
         {
+            if (!IsInsideCabin(0f))
+            {
+                // The cabin left without the bot (pushed or strafed out after the press), or the
+                // bot already stepped out at the far landing.
+                if (IsOnFloorOf(Link.Destination))
+                {
+                    SetStage(Stage.Exit, "outside on the destination floor");
+                    return TickExit();
+                }
+
+                if (IsOnFloorOf(Link.Origin))
+                {
+                    SetStage(Stage.Approach, "left behind");
+                    return ElevatorTraversalStatus.Running;
+                }
+            }
+
             if (chamber.DestinationDoor == destinationDoor)
             {
                 if (IsOpenAt(destinationDoor))
                 {
-                    SetStage(Stage.Exit);
+                    SetStage(Stage.Exit, "arrived");
                     return TickExit();
                 }
             }
             else if (chamber.DestinationDoor == originDoor && chamber.IsReady)
             {
-                // Someone sent it back before it left; send it again.
-                SetStage(Stage.Send);
+                SetStage(Stage.Send, "sent back before departure");
                 return ElevatorTraversalStatus.Running;
             }
 
             if (StageElapsed > RideTimeoutSeconds)
             {
-                return ElevatorTraversalStatus.Blocked;
+                return Block("ride timed out");
             }
 
             KeepCentered(Link.Destination + Vector3.up);
@@ -338,24 +383,30 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private ElevatorTraversalStatus TickExit()
         {
             var position = botPlayer.PlayerPosition;
-            var inside = IsInsideCabin();
+            var inside = IsInsideCabin(0f);
             var feetY = position.y - NavigationAgentProfile.RootHeight;
             var onDestinationFloor = Mathf.Abs(feetY - Link.Destination.y) <= ExitVerticalTolerance;
             if (!inside && onDestinationFloor && HorizontalDistance(position, Link.Destination) <= ExitReachedMeters)
             {
+                Log("completed", "reached the far landing");
                 return ElevatorTraversalStatus.Completed;
             }
 
             if (inside && chamber.DestinationDoor != destinationDoor)
             {
-                // Someone sent it away while the bot was stepping out; ride along and retry.
-                SetStage(Stage.Ride);
+                SetStage(Stage.Ride, "sent away while stepping out");
                 return ElevatorTraversalStatus.Running;
             }
 
             if (StageElapsed > ExitTimeoutSeconds)
             {
-                return onDestinationFloor && !inside ? ElevatorTraversalStatus.Completed : ElevatorTraversalStatus.Blocked;
+                if (onDestinationFloor && !inside)
+                {
+                    Log("completed", "exit timed out on the destination floor");
+                    return ElevatorTraversalStatus.Completed;
+                }
+
+                return Block("could not leave the cabin");
             }
 
             Steer(Link.Destination);
@@ -369,7 +420,21 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                    && door.TargetState;
         }
 
-        private bool IsInsideCabin() => chamber.WorldspaceBounds.Contains(botPlayer.PlayerPosition);
+        private bool IsInsideCabin(float inset)
+        {
+            var bounds = chamber.WorldspaceBounds;
+            var local = bounds.WorldToLocal(botPlayer.PlayerPosition);
+            var extents = bounds.Extends;
+            return Mathf.Abs(local.x) < extents.x - inset
+                   && Mathf.Abs(local.y) < extents.y
+                   && Mathf.Abs(local.z) < extents.z - inset;
+        }
+
+        private bool IsOnFloorOf(Vector3 landing)
+        {
+            var feetY = botPlayer.PlayerPosition.y - NavigationAgentProfile.RootHeight;
+            return Mathf.Abs(feetY - landing.y) <= FloorToleranceMeters;
+        }
 
         private Vector3 CabinCenter()
         {
@@ -380,10 +445,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         private void KeepCentered(Vector3 lookAt)
         {
-            var center = CabinCenter();
-            if (HorizontalDistance(botPlayer.PlayerPosition, center) > CabinRecenterMeters)
+            if (!IsInsideCabin(CabinInsetMeters))
             {
-                Steer(center);
+                Steer(CabinCenter());
                 return;
             }
 
@@ -406,25 +470,43 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         // Landing panels target their ElevatorDoor (ElevatorDoor.ServerInteract: chamber ready and
         // the landing door unlocked), the cabin panel targets the chamber itself; both end in
         // ElevatorChamber.ServerInteract, which sends the chamber to its next level unless the door
-        // at its current level is locked, and looks the panel up by collider id.
-        private void Press(object target, ElevatorPanel panel)
+        // at its current level is locked, and looks the panel up by collider id (First: throws
+        // when no panel has it). ElevatorDoor.Chamber is only assigned by a landing panel.
+        private void PressLanding()
         {
             var hub = botPlayer.BotHub.PlayerHub;
-            var colliderId = panel != null ? panel.ColliderId : (byte)0;
             try
             {
-                if (target is ElevatorDoor door)
+                if (landingPanel != null && originDoor.Chamber != null)
                 {
-                    door.ServerInteract(hub, colliderId);
+                    originDoor.ServerInteract(hub, landingPanel.ColliderId);
                 }
-                else if (target is ElevatorChamber cabin)
+                else if (cabinPanel != null && originDoor.ActiveLocks == 0 && chamber.IsReadyForUserInput)
                 {
-                    cabin.ServerInteract(hub, colliderId);
+                    chamber.ServerInteract(hub, cabinPanel.ColliderId);
                 }
             }
-            catch (InvalidOperationException)
+            catch (Exception exception) when (exception is InvalidOperationException or NullReferenceException)
             {
-                // No panel with that collider id exists for the chamber; the next press counts as unanswered.
+                // Panels not wired up; the press counts as unanswered.
+            }
+        }
+
+        private void PressCabin()
+        {
+            var panel = cabinPanel != null ? cabinPanel : landingPanel;
+            if (panel == null)
+            {
+                return;
+            }
+
+            try
+            {
+                chamber.ServerInteract(botPlayer.BotHub.PlayerHub, panel.ColliderId);
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or NullReferenceException)
+            {
+                // Panels not wired up; the press counts as unanswered.
             }
         }
 
@@ -478,12 +560,28 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             return nearest;
         }
 
-        private void SetStage(Stage stage)
+        private void SetStage(Stage stage, string reason)
         {
             CurrentStage = stage;
             stageStartedAt = Time.time;
             presses = 0;
             nextPressAt = 0f;
+            Log(stage.ToString(), reason);
+        }
+
+        private ElevatorTraversalStatus Block(string reason)
+        {
+            BlockReason = reason;
+            Log("blocked", reason);
+            return ElevatorTraversalStatus.Blocked;
+        }
+
+        // One line per transition; a ride has about seven, so no rate limit beyond that.
+        private void Log(string stage, string reason)
+        {
+            var name = botPlayer.BotHub?.PlayerHub?.nicknameSync?.MyNick ?? "?";
+            var position = botPlayer.PlayerPosition;
+            LabLogger.Info($"[BotNav] ELEVATOR bot={name} group={(originDoor != null ? originDoor.Group.ToString() : "?")} stage={stage} reason={reason} pos=({position.x:F1},{position.y:F1},{position.z:F1})");
         }
 
         private float StageElapsed => Time.time - stageStartedAt;

@@ -6,6 +6,7 @@ using SCPSLBot.Infrastructure;
 using SCPSLBot.Navigation;
 using System.Collections.Generic;
 using UnityEngine;
+using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SCPSLBot.AI.FirstPersonControl.Brain
 {
@@ -17,6 +18,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
     /// distance and a role policy for which zones are in scope; rooms that turned out unreachable
     /// are skipped for a while. Cross-zone trips work because locomotion crosses the elevators and
     /// checkpoints the planned path runs through.
+    /// <para>
+    /// It never leaves the bot idle: off the navmesh (odd spawns, ledges) it walks to the nearest
+    /// navmesh point first, and when no room passes the reachability check it still commits to
+    /// the nearest room and lets partial paths, the stuck ladder and the deadline sort it out.
+    /// </para>
     /// </summary>
     internal sealed class ExploreBehavior : IBotBehavior
     {
@@ -40,6 +46,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
         private const float VisitRecordIntervalSeconds = 1f;
         private const float OtherZoneDistancePenalty = 40f;
         private const float DistanceScaleMeters = 120f;
+        private const int FallbackAfterFailedPicks = 2;
+        private const float CrossingDeadlineGraceSeconds = 15f;
+        private const float RecoveryArrivalMeters = 0.8f;
+        private const float RecoveryTimeoutSeconds = 10f;
+        private const float RecoveryNavigatorRangeMeters = 5f;
+        private static readonly float[] RecoverySearchRadii = { 4f, 8f, 16f, 32f };
+        private const float LogIntervalSeconds = 2f;
 
         private readonly FpcBotPlayer botPlayer;
         private readonly System.Random random = new();
@@ -65,6 +78,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
 
         private RoleTypeId memoryRole = RoleTypeId.None;
         private int memoryGeneration = -1;
+
+        private int failedPicks;
+        private bool recovering;
+        private Vector3 recoveryPoint;
+        private float recoveryStartedAt;
+        private float nextLogAt;
 
         public ExploreBehavior(FpcBotPlayer botPlayer)
         {
@@ -121,8 +140,18 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             var now = Time.time;
             RecordVisit(now);
 
+            if (hasTarget && botPlayer.Locomotion.IsCrossingElevator)
+            {
+                // Waiting for and riding an elevator is bounded by locomotion; path checks from
+                // inside a moving cabin fail and must not condemn rooms or expire the trip.
+                botPlayer.MoveToPosition(destination);
+                deadline = Mathf.Max(deadline, now + CrossingDeadlineGraceSeconds);
+                return true;
+            }
+
             if (botPlayer.Locomotion.ConsumeAbandonRequest() && hasTarget)
             {
+                Log("abandon", "locomotion gave up the route");
                 MarkUnreachable(targetRoom, now);
                 ClearTarget();
             }
@@ -133,17 +162,35 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
                 return true;
             }
 
+            if (recovering)
+            {
+                TickRecovery(now);
+                return true;
+            }
+
             if (!hasTarget)
             {
-                if (now < nextPickAt || !TryPick(now))
+                if (now < nextPickAt)
                 {
-                    if (now >= nextPickAt)
-                    {
-                        nextPickAt = now + PickRetrySeconds;
-                    }
-
                     botPlayer.Locomotion.Stop();
                     return true;
+                }
+
+                if (!botPlayer.Navigator.IsOnMesh() && TryStartRecovery(now))
+                {
+                    TickRecovery(now);
+                    return true;
+                }
+
+                if (!TryPick(now))
+                {
+                    failedPicks++;
+                    if (failedPicks < FallbackAfterFailedPicks || !TryPickFallback(now))
+                    {
+                        nextPickAt = now + PickRetrySeconds;
+                        botPlayer.Locomotion.Stop();
+                        return true;
+                    }
                 }
             }
 
@@ -160,12 +207,119 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
 
             if (now > deadline)
             {
+                Log("timeout", deadlineMeasured ? "trip took too long" : "no path");
                 MarkUnreachable(targetRoom, now);
                 ClearTarget();
             }
 
             return true;
         }
+
+        private bool TryStartRecovery(float now)
+        {
+            var backend = Backend;
+            if (backend == null)
+            {
+                return false;
+            }
+
+            var position = botPlayer.PlayerPosition;
+            foreach (var radius in RecoverySearchRadii)
+            {
+                if (backend.TryGetNearestPoint(position, radius, out var nearest, out _))
+                {
+                    recovering = true;
+                    recoveryPoint = nearest;
+                    recoveryStartedAt = now;
+                    Log("recover", $"off the navmesh, walking to {Format(nearest)}");
+                    return true;
+                }
+            }
+
+            Log("recover", "off the navmesh and no navmesh within 32 m");
+            return false;
+        }
+
+        // The navigator samples starts up to a few meters away; beyond that walk straight at the
+        // nearest navmesh point (jumping off a ledge is fine, native FPC owns the fall).
+        private void TickRecovery(float now)
+        {
+            var position = botPlayer.PlayerPosition;
+            var feetY = position.y - NavigationAgentProfile.RootHeight;
+            var arrived = HorizontalDistance(position, recoveryPoint) <= RecoveryArrivalMeters && Mathf.Abs(feetY - recoveryPoint.y) <= ArrivalVerticalMeters;
+            if (arrived || botPlayer.Navigator.IsOnMesh() || now - recoveryStartedAt > RecoveryTimeoutSeconds)
+            {
+                recovering = false;
+                nextPickAt = now;
+                botPlayer.Locomotion.Stop();
+                return;
+            }
+
+            if (HorizontalDistance(position, recoveryPoint) <= RecoveryNavigatorRangeMeters)
+            {
+                botPlayer.MoveToPosition(recoveryPoint);
+            }
+            else
+            {
+                botPlayer.Locomotion.SteerDirect(recoveryPoint);
+            }
+        }
+
+        // Every ranked room failed the path check (an island start, a bot whose plans keep
+        // coming back partial): commit to the nearest room anyway so the bot keeps moving; the
+        // partial path, stuck ladder and deadline decide what happens next.
+        private bool TryPickFallback(float now)
+        {
+            var backend = Backend;
+            if (backend == null)
+            {
+                return false;
+            }
+
+            var position = botPlayer.PlayerPosition;
+            RoomIdentifier nearest = null;
+            var nearestDistance = float.PositiveInfinity;
+            foreach (var room in backend.GetNavigableRooms())
+            {
+                if (room == null || room == currentRoom)
+                {
+                    continue;
+                }
+
+                var distance = Vector3.Distance(position, room.transform.position);
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearest = room;
+                }
+            }
+
+            nearest ??= currentRoom;
+            if (nearest == null || !TryGetInteriorPoint(backend, nearest, out var point))
+            {
+                return false;
+            }
+
+            Log("fallback", $"no reachable room after {failedPicks} picks, heading to {nearest.Name}");
+            Commit(nearest, point, now);
+            return true;
+        }
+
+        private void Log(string kind, string reason)
+        {
+            var now = Time.time;
+            if (now < nextLogAt)
+            {
+                return;
+            }
+
+            nextLogAt = now + LogIntervalSeconds;
+            var name = botPlayer.BotHub?.PlayerHub?.nicknameSync?.MyNick ?? "?";
+            var room = targetRoom != null ? targetRoom.Name.ToString() : "none";
+            LabLogger.Info($"[BotNav] EXPLORE bot={name} event={kind} room={room} reason={reason} pos={Format(botPlayer.PlayerPosition)}");
+        }
+
+        private static string Format(Vector3 value) => $"({value.x:F1},{value.y:F1},{value.z:F1})";
 
         private bool HasArrived(float now)
         {
@@ -412,6 +566,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
 
         private void Commit(RoomIdentifier room, Vector3 point, float now)
         {
+            failedPicks = 0;
             hasTarget = true;
             targetRoom = room;
             destination = point;
@@ -445,6 +600,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             currentZone = FacilityZone.None;
             nextPickAt = 0f;
             lingerUntil = 0f;
+            failedPicks = 0;
+            recovering = false;
         }
 
         /// <summary>

@@ -65,6 +65,9 @@ namespace SCPSLBot.Navigation
         /// <summary>Number of nodes (cells or corners) in the current path; diagnostics only.</summary>
         int PathNodeCount { get; }
 
+        /// <summary>Changes whenever the current plan was rebuilt (any replan, same goal or not); a cache key for per-plan data.</summary>
+        int PlanVersion { get; }
+
         /// <summary>World points of the current path, starting at the bot's position when planned.</summary>
         List<Vector3> PointsPath { get; }
 

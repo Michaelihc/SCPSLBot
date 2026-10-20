@@ -19,8 +19,10 @@ namespace SCPSLBot.Navigation.Runtime
     internal sealed class NavMeshLinkRegistry
     {
         private const float LandingDistance = 1.6f;
-        private const float EndpointMatchDistance = 0.45f;
         private const float LinkWidth = 1.2f;
+        // A path crosses a link anywhere along its width, so the corner sits up to half the link
+        // width from the landing point (plus snapping noise).
+        private const float EndpointMatchDistance = LinkWidth * 0.5f + 0.4f;
 
         public readonly struct Link
         {
@@ -227,6 +229,31 @@ namespace SCPSLBot.Navigation.Runtime
             link = default;
             startsAtA = false;
             return false;
+        }
+
+        /// <summary>
+        /// The link whose two landings lie nearest <paramref name="from"/> and <paramref name="to"/>
+        /// (each within <paramref name="maxDistance"/>), whatever direction it is crossed in.
+        /// </summary>
+        public bool TryGetLinkBetween(Vector3 from, Vector3 to, float maxDistance, out Link link)
+        {
+            link = default;
+            var best = float.PositiveInfinity;
+            var found = false;
+            foreach (var candidate in links)
+            {
+                var forward = Mathf.Max(Vector3.Distance(candidate.LandingA, from), Vector3.Distance(candidate.LandingB, to));
+                var backward = Mathf.Max(Vector3.Distance(candidate.LandingB, from), Vector3.Distance(candidate.LandingA, to));
+                var distance = Mathf.Min(forward, backward);
+                if (distance <= maxDistance && distance < best)
+                {
+                    best = distance;
+                    link = candidate;
+                    found = true;
+                }
+            }
+
+            return found;
         }
 
         // The landing is the door side that is not the shaft: the candidate farther from the
