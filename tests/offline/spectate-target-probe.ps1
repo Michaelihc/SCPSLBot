@@ -17,7 +17,7 @@ $null = Invoke-LabServer '/wave forcepause Chaos true'
 # Spectator do not); the paused waves keep the dead client spectating.
 $null = Invoke-LabServer "/forcerole $($client.id) Scientist"
 Start-Sleep -Seconds 3
-"kill => $(Invoke-LabServer "/kill $($client.id)")" | Set-Content "$($Context.Evidence)\probe.log"
+"god => $(Invoke-LabServer "/god $($client.id) disable") kill => $(Invoke-LabServer "/kill $($client.id)")" | Set-Content "$($Context.Evidence)\probe.log"
 Start-Sleep -Seconds 4
 $null = Invoke-LabScreenshot -Name death-auto-4s
 Start-Sleep -Seconds 8
