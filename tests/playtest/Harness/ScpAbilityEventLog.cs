@@ -51,6 +51,18 @@ internal static class ScpAbilityEventLog
         };
         PlayerEvents.InteractedDoor += door;
         Unsubscribe.Add(() => PlayerEvents.InteractedDoor -= door);
+        // Every SCP hit with the attacker-victim distance between player origins, for attack reach.
+        LabEventHandler<LabApi.Events.Arguments.PlayerEvents.PlayerHurtEventArgs> hurt = ev =>
+        {
+            var attacker = ev.Attacker;
+            if (attacker?.Team == PlayerRoles.Team.SCPs && ev.Player != null)
+            {
+                Logger.Info($"[ScpAbilityEvent] event=scp.Hit player={attacker.Nickname} role={attacker.Role} target={ev.Player.Nickname}"
+                    + $" distance={UnityEngine.Vector3.Distance(attacker.Position, ev.Player.Position):F2} handler={ev.DamageHandler?.GetType().Name}");
+            }
+        };
+        PlayerEvents.Hurt += hurt;
+        Unsubscribe.Add(() => PlayerEvents.Hurt -= hurt);
         Logger.Info($"[ScpAbilityEvent] logging {Unsubscribe.Count} native SCP ability events");
     }
 
