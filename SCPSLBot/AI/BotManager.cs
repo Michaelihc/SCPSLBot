@@ -29,6 +29,9 @@ namespace SCPSLBot.AI
     internal class BotManager
     {
         private const float ArrivalDistance = 0.75f;
+        // Goals may be floor or standing-root coordinates (about a meter apart); another storey or
+        // the far side of an elevator is several meters away.
+        private const float ArrivalVerticalTolerance = 1.75f;
         private const float ProgressEpsilon = 0.1f;
         private const float StallSeconds = 5f;
         private const float TeleportThreshold = 1.5f;
@@ -647,7 +650,7 @@ namespace SCPSLBot.AI
 
             TrackRoomAndDoor(hub, state, position);
 
-            if (remaining <= ArrivalDistance)
+            if (remaining <= ArrivalDistance && Mathf.Abs(position.y - state.Goal.y) <= ArrivalVerticalTolerance)
             {
                 CompleteOrder(hub, state);
                 return;

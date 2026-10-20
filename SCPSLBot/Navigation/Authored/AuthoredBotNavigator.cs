@@ -588,6 +588,9 @@ namespace SCPSLBot.Navigation.Authored
             return true;
         }
 
+        /// <summary>The cell mesh only knows an edgeless segment; penalize the crossing the bot is attempting.</summary>
+        public bool ReportBlockedLink(ElevatorLinkSegment link) => ReportBlockedCrossing();
+
         private static string Describe(TransformCell cell)
         {
             var form = cell.Transform != null ? NavigationMesh.GetForm(cell.Transform.gameObject) : "null";

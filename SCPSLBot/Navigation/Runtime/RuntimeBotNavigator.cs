@@ -20,6 +20,9 @@ namespace SCPSLBot.Navigation.Runtime
     {
         private const float CornerArrivalDistance = 0.35f;
         private const float CornerVerticalTolerance = 1.5f;
+        // Horizontal corner passing exists for stair landings the string pull puts straight above
+        // or below the bot; a storey is well under this, any elevator travel is well over it.
+        private const float CornerPassVerticalTolerance = 4f;
         private const float StartSampleRadius = 2f;
         private const float StartRecoveryRadius = 6f;
         private const float GoalSampleRadius = 2f;
@@ -93,12 +96,14 @@ namespace SCPSLBot.Navigation.Runtime
         public int PathNodeCount => current.Corners.Count;
         public List<Vector3> PointsPath => current.Points;
 
+        // Points[i] mirrors Corners[i] (Points[0] is the bot position at plan time), so the leg
+        // the bot is walking starts at CornerIndex - 1; legs already behind it are skipped.
         public IEnumerable<(Vector3 point, Vector3 nextPoint)> PathSegments
         {
             get
             {
                 var points = current.Points;
-                for (var index = 0; index + 1 < points.Count; index++)
+                for (var index = Mathf.Max(0, current.CornerIndex - 1); index + 1 < points.Count; index++)
                 {
                     yield return (points[index], points[index + 1]);
                 }
@@ -221,6 +226,26 @@ namespace SCPSLBot.Navigation.Runtime
             {
                 nextBlockedCrossingLogAt = Time.time + 5f;
                 LabLogger.Warn($"[BotNav] CROSSING_PENALIZED bot={BotName} spot={Format(spot)} corner={Format(target)} pos={Format(position)} obstacles={service.Obstacles.Count}");
+            }
+
+            ForceReplan();
+            return true;
+        }
+
+        public bool ReportBlockedLink(ElevatorLinkSegment link)
+        {
+            if (!service.IsBuilt)
+            {
+                return false;
+            }
+
+            // The landing in front of the elevator door is a dead-end alcove: carving it detaches
+            // the link start from the surface, so plans from this side stop using the elevator.
+            service.BlockCrossing(link.Origin);
+            if (Time.time >= nextBlockedCrossingLogAt)
+            {
+                nextBlockedCrossingLogAt = Time.time + 5f;
+                LabLogger.Warn($"[BotNav] LINK_PENALIZED bot={BotName} origin={Format(link.Origin)} destination={Format(link.Destination)} pos={Format(botPlayer.PlayerPosition)} obstacles={service.Obstacles.Count}");
             }
 
             ForceReplan();
@@ -393,8 +418,14 @@ namespace SCPSLBot.Navigation.Runtime
                 plan.Points.Add(goalPosition);
             }
 
-            // The first corner is the sampled start itself; skip it unless it is far (recovery).
-            plan.CornerIndex = plan.Corners.Count > 1 && HorizontalDistance(plan.Corners[0], position) <= CornerArrivalDistance ? 1 : 0;
+            // The first corner is the sampled start itself; skip it unless it is far (recovery). A
+            // replan while waiting at an elevator landing starts on the link itself: skipping that
+            // corner would drop the crossing and steer straight at the far landing.
+            plan.CornerIndex = plan.Corners.Count > 1
+                               && HorizontalDistance(plan.Corners[0], position) <= CornerArrivalDistance
+                               && !plan.LinkCornerIndices.Contains(0)
+                ? 1
+                : 0;
             plan.Policy.NotePlanned(Time.time, service.SurfaceGeneration, failed: false);
             if (newGoal)
             {
@@ -496,7 +527,8 @@ namespace SCPSLBot.Navigation.Runtime
                 }
 
                 var corner = corners[plan.CornerIndex];
-                if (HorizontalDistance(position, corner) <= CornerArrivalDistance)
+                var cornerOnReachableFloor = Mathf.Abs(position.y - corner.y) <= CornerPassVerticalTolerance;
+                if (cornerOnReachableFloor && HorizontalDistance(position, corner) <= CornerArrivalDistance)
                 {
                     // Reached, or a stair landing / ledge placed straight above or below the bot by
                     // the string pull: either way the next corner is the one to steer at.
@@ -508,7 +540,8 @@ namespace SCPSLBot.Navigation.Runtime
                 // Native collision can stop the capsule a hair short of a corner it already passed
                 // laterally; when the bot is nearer the following corner than the corner itself is,
                 // move on instead of grinding.
-                if (plan.CornerIndex + 1 < corners.Count
+                if (cornerOnReachableFloor
+                    && plan.CornerIndex + 1 < corners.Count
                     && !plan.LinkCornerIndices.Contains(plan.CornerIndex + 1)
                     && HorizontalDistance(position, corner) <= 1f
                     && HorizontalDistance(position, corners[plan.CornerIndex + 1]) + 0.25f < HorizontalDistance(corner, corners[plan.CornerIndex + 1]))
@@ -558,12 +591,15 @@ namespace SCPSLBot.Navigation.Runtime
                 return 0;
             }
 
-            var permissions = DoorPermissionFlags.None;
+            // Native DoorPermissionsPolicy.CheckPermissions asks a role provider (every standard
+            // SCP: ScpOverride) exclusively; only role-less humans use the held item. Locomotion
+            // equips the matching keycard at the door, so every carried card counts for planning.
             if (hub.roleManager?.CurrentRole is IDoorPermissionProvider roleProvider)
             {
-                permissions |= roleProvider.GetPermissions(null);
+                return (ushort)roleProvider.GetPermissions(null);
             }
 
+            var permissions = DoorPermissionFlags.None;
             var items = hub.inventory?.UserInventory?.Items;
             if (items != null)
             {
