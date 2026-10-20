@@ -28,14 +28,15 @@ if ($bots.Count -lt 5) { throw "Expected 5 SCPSLBot dummies, found $($bots.Count
 $scp = $bots[0]
 $humans = @($bots[1..4])
 
-if ((Reply '/forcestart') -notmatch 'Forced round start') { throw 'Round did not start' }
+# Idempotent so a recovery continuation can rerun the script on a started round.
+if ((Reply '/roundtime') -notmatch 'Round time:' -and (Reply '/forcestart') -notmatch 'Forced round start') { throw 'Round did not start' }
 $deadline = (Get-Date).AddSeconds(20)
 while ((Reply '/roundtime') -notmatch 'Round time:' -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
 $null = Reply '/decontamination disable'
 $null = Reply '/wave forcepause NTF true'
 $null = Reply '/wave forcepause Chaos true'
 $debug = Reply '/bot_debug'
-$scpNick = if ($debug -match "(?m)^$($scp.id) (SCPSL Round Bot \d+) role=") { $Matches[1] } else { throw "No bot_debug line for $($scp.id)" }
+$scpNick = if ($debug -match "(?<![\d.])$($scp.id) (SCPSL Round Bot \d+) role=") { $Matches[1] } else { throw "No bot_debug line for $($scp.id)" }
 Note "scp bot id=$($scp.id) nick=$scpNick humans=$(($humans | ForEach-Object { $_.id }) -join ',')"
 
 # Door anchors differ per seed; resolve each preference against the native list.
