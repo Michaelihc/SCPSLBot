@@ -68,6 +68,17 @@ internal sealed class ArenaModel
                         if (hasViewingPlatform) throw new InvalidOperationException("Arena asset has multiple viewing platforms.");
                         // The supplied plane is the viewing floor; spawn the native capsule above it.
                         ViewingPosition = origin + position + Vector3.up;
+                        // Give the visual plane a solid floor for native character-controller collisions.
+                        Vector3 scale = Coordinates(block.GetProperty("Scale"));
+                        Quaternion rotation = Quaternion.Euler(Coordinates(block.GetProperty("Rotation")));
+                        var floor = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(
+                            origin + position - rotation * new Vector3(0, 0.1f, 0), rotation,
+                            new Vector3(Math.Abs(scale.x) * 10f, 0.2f, Math.Abs(scale.z) * 10f)));
+                        toys.Add(floor);
+                        floor.Type = PrimitiveType.Cube;
+                        floor.Flags = AdminToys.PrimitiveFlags.Collidable;
+                        floor.IsStatic = true;
+                        floor.Spawn();
                         hasViewingPlatform = true;
                     }
                 }
