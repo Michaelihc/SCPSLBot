@@ -25,6 +25,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
         private const float SampleHorizontalMeters = 1.25f;
         private const float SampleVerticalMeters = 1.5f;
         private const float ArriveMeters = 0.6f;
+        // Pushed, carried or teleported off the spot: the doorway is no longer covered.
+        private const float DisplacedMeters = 2f;
         private const float ApproachBaseSeconds = 6f;
         private const float ApproachSecondsPerMeter = 0.6f;
         private const float FocusAimAngle = 10f;
@@ -51,8 +53,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
         public string Detail => door == null
             ? null
             : waiting
-                ? $"wait {Mathf.Max(0f, waitUntil - Time.time):F0}s aim={AimAngle():F0} focus={bot.Combat.Scp939.FocusState:F2}"
-                : "approach";
+                ? $"wait {Mathf.Max(0f, waitUntil - Time.time):F0}s door={DoorLabel()} aim={AimAngle():F0} focus={bot.Combat.Scp939.FocusState:F2}"
+                : $"approach door={DoorLabel()}";
 
         private static INavigationBackend Backend => NavigationSystem.Instance.Backend;
 
@@ -152,7 +154,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
                 waitUntil = now + Random.Range(MinWaitSeconds, MaxWaitSeconds);
             }
 
-            if (now >= waitUntil)
+            if (now >= waitUntil || HorizontalDistance(bot.PlayerPosition, spot) > DisplacedMeters)
             {
                 return GiveUp();
             }
@@ -220,6 +222,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
             spot = bestSpot;
             lookPoint = best.transform.position + Vector3.up * DoorLookHeight;
             return true;
+        }
+
+        private string DoorLabel()
+        {
+            var position = door.transform.position;
+            var name = door.TryGetComponent<DoorNametagExtension>(out var nametag) ? nametag.GetName : "unnamed";
+            return $"{name}@({position.x:F1},{position.z:F1})";
         }
 
         private float AimAngle() => Vector3.Angle(bot.CameraForward, lookPoint - bot.CameraPosition);
