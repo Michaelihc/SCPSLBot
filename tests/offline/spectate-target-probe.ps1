@@ -13,16 +13,14 @@ $null = Invoke-LabServer "/forcerole $($bot.id) ClassD"
 $null = Invoke-LabServer '/wave forcepause NTF true'
 $null = Invoke-LabServer '/wave forcepause Chaos true'
 
-$null = Invoke-LabServer "/forcerole $($client.id) Spectator"
-# The role splash covers the first seconds; select only after it has faded.
-Start-Sleep -Seconds 10
-$null = Invoke-LabScreenshot -Name spectator-auto
-$null = Invoke-LabInput @{id='spectator-tap';frames=45;inputFrames=2;keys=@(323)}
-$null = Invoke-LabScreenshot -Name spectator-tap
-
-$null = Invoke-LabServer "/forcerole $($client.id) Overwatch"
-Start-Sleep -Seconds 10
-$null = Invoke-LabInput @{id='overwatch-tap';frames=45;inputFrames=2;keys=@(323)}
-$null = Invoke-LabScreenshot -Name overwatch-tap
-$null = Invoke-LabInput @{id='overwatch-space';frames=45;inputFrames=2;keys=@(32)}
-$null = Invoke-LabScreenshot -Name overwatch-space
+# A native death runs the spectator's automatic target selection (Overwatch and forcerole
+# Spectator do not); the paused waves keep the dead client spectating.
+$null = Invoke-LabServer "/forcerole $($client.id) Scientist"
+Start-Sleep -Seconds 3
+"kill => $(Invoke-LabServer "/kill $($client.id)")" | Set-Content "$($Context.Evidence)\probe.log"
+Start-Sleep -Seconds 4
+$null = Invoke-LabScreenshot -Name death-auto-4s
+Start-Sleep -Seconds 8
+$null = Invoke-LabScreenshot -Name death-auto-12s
+$null = Invoke-LabInput @{id='death-tap';frames=45;inputFrames=2;keys=@(323)}
+$null = Invoke-LabScreenshot -Name death-tap
