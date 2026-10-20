@@ -41,6 +41,16 @@ internal static class ScpAbilityEventLog
         Add<LabApi.Events.Arguments.Scp173Events.Scp173TeleportedEventArgs>(h => Scp173Events.Teleported += h, h => Scp173Events.Teleported -= h, "173.Blink");
         Add<LabApi.Events.Arguments.Scp173Events.Scp173CreatedTantrumEventArgs>(h => Scp173Events.CreatedTantrum += h, h => Scp173Events.CreatedTantrum -= h, "173.Tantrum");
         Add<LabApi.Events.Arguments.Scp173Events.Scp173BreakneckSpeedChangedEventArgs>(h => Scp173Events.BreakneckSpeedChanged += h, h => Scp173Events.BreakneckSpeedChanged -= h, "173.Breakneck");
+        // An SCP opening a door it could have phased through (SCP-106) shows up here.
+        LabEventHandler<LabApi.Events.Arguments.PlayerEvents.PlayerInteractedDoorEventArgs> door = ev =>
+        {
+            if (ev.Player?.Team == PlayerRoles.Team.SCPs)
+            {
+                Log("door.Interacted", ev, $" door={ev.Door?.Base?.name ?? "none"} canOpen={ev.CanOpen}");
+            }
+        };
+        PlayerEvents.InteractedDoor += door;
+        Unsubscribe.Add(() => PlayerEvents.InteractedDoor -= door);
         Logger.Info($"[ScpAbilityEvent] logging {Unsubscribe.Count} native SCP ability events");
     }
 
@@ -61,15 +71,16 @@ internal static class ScpAbilityEventLog
         Unsubscribe.Add(() => unsubscribe(handler));
     }
 
-    private static void Log(string name, object ev)
+    private static void Log(string name, object ev, string extra = "")
     {
         try
         {
             var player = (ev as IPlayerEvent)?.Player;
             var target = (ev as ITargetEvent)?.Target;
             var position = player?.Position ?? default;
+            var distance = target != null && player != null ? $" distance={UnityEngine.Vector3.Distance(position, target.Position):F2}" : string.Empty;
             Logger.Info($"[ScpAbilityEvent] event={name} player={player?.Nickname ?? "none"} role={player?.Role.ToString() ?? "none"}"
-                + $" target={target?.Nickname ?? "none"} pos=({position.x:F1},{position.y:F1},{position.z:F1})");
+                + $" target={target?.Nickname ?? "none"}{distance} pos=({position.x:F1},{position.y:F1},{position.z:F1}){extra}");
         }
         catch (Exception exception)
         {
