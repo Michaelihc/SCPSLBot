@@ -1,3 +1,4 @@
+using Interactables.Interobjects.DoorUtils;
 using PlayerRoles;
 using UnityEngine;
 
@@ -17,6 +18,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         private readonly Scp173CombatStrategy scp173Strategy;
 
         private float damageStrafeUntil;
+
+        public bool IsUnderFire => Time.time < damageStrafeUntil;
 
         public ScpCombatStrategy(FpcBotCombat combat, CombatTargetSelector targetSelector)
         {
@@ -43,6 +46,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         {
             scp096Strategy.EndRageIfExpired(role);
             scp173Strategy.ReleaseHeldBlinkIfNeeded(role);
+            standardStrategy.ResetHeldAbilities(role);
+        }
+
+        /// <summary>Called when the bot has no combat target any more.</summary>
+        public void OnCombatEnded()
+        {
+            standardStrategy.ReleaseHeldAbilities();
+        }
+
+        /// <summary>Lets an enraged SCP-096 pry a closed gate on its chase path instead of opening it.</summary>
+        public bool TryPryGate(DoorVariant door, Vector3 hitPoint)
+        {
+            return scp096Strategy.TryPryGate(door, hitPoint);
         }
 
         public bool TrySelectPriorityTarget(RoleTypeId role, out CombatTarget target)
@@ -76,7 +92,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return;
             }
 
-            standardStrategy.TryUseChaseAbility(role);
+            if (standardStrategy.TryUseChaseAbility(role, target, this))
+            {
+                return;
+            }
+
             if (standardStrategy.TryUseStrictAttack(role, target, this))
             {
                 return;
