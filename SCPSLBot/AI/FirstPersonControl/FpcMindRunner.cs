@@ -7,17 +7,43 @@ using UnityEngine.Profiling;
 
 namespace SCPSLBot.AI.FirstPersonControl
 {
+    /// <summary>
+    /// Plans and executes the GOAP objective. Replans when a belief on the current plan changes,
+    /// when the running action completes or fails, every few seconds while idle, and periodically
+    /// while running (switching only for a clearly cheaper plan, so near-equal costs do not flap).
+    /// Failed actions are remembered: targeted actions skip the failed target themselves, other
+    /// actions are cooled down here and skipped by the planner.
+    /// </summary>
     internal class FpcMindRunner : FpcMind, IDisposable
     {
         // Belief updates only trigger planning for beliefs on the current plan. With no plan at
         // all that set is empty, so an idle mind must retry on its own (new sightings, a keycard
         // picked up, a zone entered) instead of waiting for the next role change.
         private const float IdleReplanSeconds = 3f;
+        // Costs are distances from where the bot stood at the last replan; refresh them while
+        // walking and pick up blacklist expiries and beliefs that are not on the current plan.
+        private const float RunningReplanSeconds = 5f;
+        // A periodic replan replaces a still-enabled running action only when the new plan costs
+        // less than this share of the running step alone (a lower bound of its whole plan).
+        private const float SwitchCostRatio = 0.6f;
+        private const float ActionCooldownBaseSeconds = 20f;
+        private const float ActionCooldownMaxSeconds = 120f;
+        private const float MinResumeBudgetSeconds = 5f;
 
         private float nextIdleReplanAt;
+        private float nextRunningReplanAt;
+        private float runningDeadline;
+        private float pausedBudget = -1f;
+        // True while the owning behavior ticks the running action; budgets only run down then.
+        private bool executing;
 
         public IAction RunningAction { get; private set; }
         public float RunningActionCost { get; private set; }
+
+        /// <summary>How the last action ended, for diagnostics.</summary>
+        public string LastOutcome { get; private set; }
+
+        private readonly Dictionary<IAction, (float Until, int Failures)> actionCooldowns = new();
 
         public readonly HashSet<IBelief> RelevantBeliefs = new();
         private readonly Dictionary<IBelief, Action> beliefUpdateHandlers = new();
@@ -92,8 +118,10 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             RunningAction = null;
             RelevantBeliefs.Clear();
+            actionCooldowns.Clear();
         }
 
+        /// <summary>Forces a full replan on the next <see cref="UpdatePlan"/>.</summary>
         public void EvaluateGoalsToActions()
         {
             if (!isDisposed)
@@ -102,13 +130,29 @@ namespace SCPSLBot.AI.FirstPersonControl
             }
         }
 
+        /// <summary>A new life (role change): the running action and remembered failures no longer apply.</summary>
+        public void ResetForNewLife()
+        {
+            if (isDisposed)
+            {
+                return;
+            }
+
+            StopRunning("role changed");
+            actionCooldowns.Clear();
+            isBeliefsUpdated = true;
+        }
+
         public void Tick()
         {
             UpdatePlan();
             TickRunningAction();
         }
 
-        /// <summary>Re-plans when a relevant belief changed (or periodically while idle); never ticks the action.</summary>
+        /// <summary>
+        /// Re-plans when a relevant belief changed, the running action ended, or a periodic retry
+        /// is due; never ticks the action. Cheap when nothing is due.
+        /// </summary>
         public void UpdatePlan()
         {
             if (isDisposed)
@@ -116,25 +160,28 @@ namespace SCPSLBot.AI.FirstPersonControl
                 return;
             }
 
-            if (RunningAction == null && Time.time >= nextIdleReplanAt)
-            {
-                isBeliefsUpdated = true;
-            }
-
+            var now = Time.time;
+            var periodic = false;
             if (!isBeliefsUpdated)
             {
-                return;
+                if (RunningAction == null ? now < nextIdleReplanAt : now < nextRunningReplanAt)
+                {
+                    return;
+                }
+
+                periodic = RunningAction != null;
             }
 
             Profiler.BeginSample($"{nameof(FpcMindRunner)}.{nameof(UpdatePlan)}");
             try
             {
                 isBeliefsUpdated = false;
-                nextIdleReplanAt = Time.time + IdleReplanSeconds;
+                nextIdleReplanAt = now + IdleReplanSeconds;
+                nextRunningReplanAt = now + RunningReplanSeconds;
 
                 IEnumerable<IAction> enabledActions = GetEnabledActionsTowardsGoals();
 
-                SelectActionAndRun(enabledActions);
+                SelectActionAndRun(enabledActions, periodic);
             }
             finally
             {
@@ -144,7 +191,7 @@ namespace SCPSLBot.AI.FirstPersonControl
 
         public void TickRunningAction()
         {
-            if (isDisposed)
+            if (isDisposed || RunningAction == null)
             {
                 return;
             }
@@ -152,12 +199,97 @@ namespace SCPSLBot.AI.FirstPersonControl
             Profiler.BeginSample($"{nameof(FpcMindRunner)}.{nameof(TickRunningAction)}");
             try
             {
-                RunningAction?.Tick();
+                if (Time.time > runningDeadline)
+                {
+                    FailRunningAction("timed out");
+                    return;
+                }
+
+                ActionStatus status;
+                try
+                {
+                    status = RunningAction.Tick();
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                    status = ActionStatus.Failed;
+                }
+
+                switch (status)
+                {
+                    case ActionStatus.Completed:
+                        StopRunning($"{RunningAction}: completed");
+                        isBeliefsUpdated = true;
+                        break;
+                    case ActionStatus.Failed:
+                        FailRunningAction("failed");
+                        break;
+                }
             }
             finally
             {
                 Profiler.EndSample();
             }
+        }
+
+        /// <summary>The running action cannot reach its effect (for example locomotion gave up on the route).</summary>
+        public void FailRunningAction(string reason)
+        {
+            var action = RunningAction;
+            if (action == null)
+            {
+                return;
+            }
+
+            bool handled;
+            try
+            {
+                handled = action.OnFailed();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+                handled = false;
+            }
+
+            if (!handled)
+            {
+                var failures = actionCooldowns.TryGetValue(action, out var previous) ? previous.Failures + 1 : 1;
+                var seconds = Mathf.Min(ActionCooldownMaxSeconds, ActionCooldownBaseSeconds * (1 << Mathf.Min(failures - 1, 3)));
+                actionCooldowns[action] = (Time.time + seconds, failures);
+            }
+
+            if (BotLog.Verbose) Debug.Log($"[Mind] {action} {reason}");
+            StopRunning($"{action}: {reason}");
+            isBeliefsUpdated = true;
+        }
+
+        /// <summary>The objective stops being the active behavior: freeze the running action's time budget.</summary>
+        public void PauseRunningAction()
+        {
+            if (!executing)
+            {
+                return;
+            }
+
+            executing = false;
+            if (RunningAction != null)
+            {
+                pausedBudget = Mathf.Max(0f, runningDeadline - Time.time);
+            }
+        }
+
+        /// <summary>The objective is active again: the running action continues with the budget it had left.</summary>
+        public void ResumeRunningAction()
+        {
+            executing = true;
+            if (RunningAction != null && pausedBudget >= 0f)
+            {
+                runningDeadline = Time.time + Mathf.Max(pausedBudget, MinResumeBudgetSeconds);
+            }
+
+            pausedBudget = -1f;
         }
 
         private void OnBeliefUpdate(IBelief updatedBelief)
@@ -170,6 +302,67 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             isBeliefsUpdated = true;
             if (BotLog.Verbose) Debug.Log($"[R] Belief updated: {updatedBelief}");
+        }
+
+        private bool IsCoolingDown(IAction action)
+        {
+            return actionCooldowns.Count > 0
+                   && actionCooldowns.TryGetValue(action, out var cooldown)
+                   && Time.time < cooldown.Until;
+        }
+
+        private bool IsEnabled(IAction action)
+        {
+            foreach (var belief in BeliefsEnablingActions[action])
+            {
+                if (!belief.IsEnabledAction(action))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void StartRunning(IAction action, float cost)
+        {
+            RunningAction = action;
+            RunningActionCost = cost;
+            action.Reset();
+            var budget = Mathf.Max(1f, action.TimeoutSeconds);
+            if (executing)
+            {
+                runningDeadline = Time.time + budget;
+                pausedBudget = -1f;
+            }
+            else
+            {
+                // Selected while another behavior runs: the clock starts when the objective does.
+                runningDeadline = float.MaxValue;
+                pausedBudget = budget;
+            }
+        }
+
+        private void StopRunning(string outcome)
+        {
+            var action = RunningAction;
+            RunningAction = null;
+            RunningActionCost = 0f;
+            pausedBudget = -1f;
+            if (action == null)
+            {
+                return;
+            }
+
+            LastOutcome = outcome;
+            try
+            {
+                action.Stop();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
         }
 
         #region Action Finding
@@ -243,8 +436,6 @@ namespace SCPSLBot.AI.FirstPersonControl
 
         private IEnumerable<IAction> FindEnabledActions(IGoal goal)
         {
-            //Debug.Log($"  Goal {goal.GetType().Name}...");
-
             VisitedActionsTotalCosts.Clear();
             remainingActionsToExplore.Clear();
 
@@ -254,11 +445,8 @@ namespace SCPSLBot.AI.FirstPersonControl
 
                 if (b.EvaluateEnabling(goal))
                 {
-                    //Debug.Log($"    Belief {b} already satisfies goal.");
                     continue;
                 }
-
-                //Debug.Log($"    Belief {b} needs to satisfy goal.");
 
                 ProcessActionsImpacting(b, goal);
             }
@@ -276,12 +464,17 @@ namespace SCPSLBot.AI.FirstPersonControl
                     }
                 }
 
+                if (actionImpacting == null)
+                {
+                    // Only unaffordable (infinite cost) actions remain.
+                    yield break;
+                }
+
                 remainingActionsToExplore.Remove(actionImpacting);
 
-                //Debug.Log($"      Exploring action {actionImpacting}.");
-                foreach (var enabledAction in GetEnabledActionsEnabling(actionImpacting))
+                if (IsActionEnabled(actionImpacting))
                 {
-                    yield return enabledAction;
+                    yield return actionImpacting;
                 }
             }
         }
@@ -290,77 +483,68 @@ namespace SCPSLBot.AI.FirstPersonControl
         {
             foreach (var actionImpacting in ActionsImpactingBeliefs[belief])
             {
+                if (IsCoolingDown(actionImpacting))
+                {
+                    continue;
+                }
+
                 VisitedGoalsImpactedBy[actionImpacting] = goalToEnable;
 
                 if (!belief.CanImpactedByAction(actionImpacting, goalToEnable))
                 {
-                    //Debug.Log($"      Action {actionImpacting} cannot impact belief.");
                     continue;
                 }
 
                 var actionImpactingCost = actionImpacting.Cost;
-                remainingActionsToExplore.Add(actionImpacting, actionImpactingCost);
+                remainingActionsToExplore[actionImpacting] = actionImpactingCost;
                 VisitedActionsTotalCosts[actionImpacting] = actionImpactingCost;
-
-                //Debug.Log($"      Action {actionImpacting} can impact belief with cost {actionImpactingCost}.");
             }
         }
 
-        private IEnumerable<IAction> GetEnabledActionsEnabling(IAction actionToEnable)
+        /// <summary>
+        /// True when every precondition holds. Otherwise only the first unsatisfied precondition
+        /// is expanded (its impacting actions queued): preconditions are ordered by the actions so
+        /// that the one to work on first comes first.
+        /// </summary>
+        private bool IsActionEnabled(IAction actionToEnable)
         {
-            //var prefix = "      ";
-
-            var beliefsEnabling = BeliefsEnablingActions[actionToEnable];
-
-            var actionEnabled = true;
-            foreach (var b in beliefsEnabling)
+            foreach (var b in BeliefsEnablingActions[actionToEnable])
             {
                 VisitedActionsEnabledBy[b] = actionToEnable;
 
                 if (b.IsEnabledAction(actionToEnable))
                 {
-                    //Debug.Log($"{prefix}  Belief {b} already satisfies action.");
                     continue;
                 }
 
-                //Debug.Log($"{prefix}  Belief {b} needs to satisfy action.");
-                actionEnabled = false;
-
                 ProcessActionsImpacting(b, actionToEnable);
-
-                break;
+                return false;
             }
 
-            if (actionEnabled)
-            {
-                //Debug.Log($"{prefix}Action {actionToEnable} conditions fulfilled.");
-
-                yield return actionToEnable;
-            }
+            return true;
         }
 
         private void ProcessActionsImpacting(IBelief belief, IAction actionToEnable)
         {
-            //var prefix = "        ";
-
             var actionToEnableCostToGoal = VisitedActionsTotalCosts[actionToEnable];
 
             foreach (var actionImpacting in ActionsImpactingBeliefs[belief])
             {
+                if (IsCoolingDown(actionImpacting))
+                {
+                    continue;
+                }
+
                 if (!belief.CanImpactedByAction(actionImpacting, actionToEnable))
                 {
-                    //Debug.Log($"{prefix}  Action {actionImpacting} cannot impact belief.");
                     continue;
                 }
 
                 var actionImpactingCostToGoal = actionToEnableCostToGoal + actionImpacting.Cost;
-                if (VisitedActionsTotalCosts.ContainsKey(actionImpacting) && VisitedActionsTotalCosts[actionImpacting] < actionImpactingCostToGoal)
+                if (VisitedActionsTotalCosts.TryGetValue(actionImpacting, out var knownCost) && knownCost <= actionImpactingCostToGoal)
                 {
-                    //Debug.Log($"{prefix}  Action {actionImpacting} can impact belief but cost takes more ({VisitedActionsTotalCosts[actionImpacting]} < {actionImpactingCostToGoal}).");
                     continue;
                 }
-
-                //Debug.Log($"{prefix}  Action {actionImpacting} can impact belief with least total cost {actionImpactingCostToGoal}.");
 
                 remainingActionsToExplore[actionImpacting] = actionImpactingCostToGoal;
                 VisitedActionsTotalCosts[actionImpacting] = actionImpactingCostToGoal;
@@ -371,25 +555,55 @@ namespace SCPSLBot.AI.FirstPersonControl
 
         #endregion
 
-        private void SelectActionAndRun(IEnumerable<IAction> enabledActions)
+        private void SelectActionAndRun(IEnumerable<IAction> enabledActions, bool periodic)
         {
             Profiler.BeginSample($"{nameof(FpcMindRunner)}.{nameof(SelectActionAndRun)}");
-
-            var selectedAction = enabledActions.FirstOrDefault();
-
-            var prevAction = RunningAction;
-
-            RunningAction = selectedAction ?? null;
-            RunningActionCost = selectedAction?.Cost ?? 0f;
-
-            if (BotLog.Verbose) Debug.Log($"New Action for bot: {RunningAction} (Cost: {RunningActionCost})");
-
-            if (RunningAction != prevAction)
+            try
             {
-                RunningAction?.Reset();
-            }
+                var selectedAction = enabledActions.FirstOrDefault();
+                var selectedCost = 0f;
+                if (selectedAction != null)
+                {
+                    selectedCost = VisitedActionsTotalCosts.TryGetValue(selectedAction, out var total) ? total : selectedAction.Cost;
+                }
 
-            Profiler.EndSample();
+                var running = RunningAction;
+                if (selectedAction == running)
+                {
+                    if (running != null)
+                    {
+                        RunningActionCost = selectedCost;
+                    }
+
+                    return;
+                }
+
+                // A periodic refresh keeps a running action that still works unless the new plan
+                // is clearly cheaper; belief changes and completions replan freely.
+                if (periodic
+                    && running != null
+                    && IsEnabled(running)
+                    && (selectedAction == null || selectedCost >= running.Cost * SwitchCostRatio))
+                {
+                    return;
+                }
+
+                if (BotLog.Verbose) Debug.Log($"New Action for bot: {selectedAction} (Cost: {selectedCost})");
+
+                if (running != null)
+                {
+                    StopRunning($"{running}: replaced");
+                }
+
+                if (selectedAction != null)
+                {
+                    StartRunning(selectedAction, selectedCost);
+                }
+            }
+            finally
+            {
+                Profiler.EndSample();
+            }
         }
     }
 }

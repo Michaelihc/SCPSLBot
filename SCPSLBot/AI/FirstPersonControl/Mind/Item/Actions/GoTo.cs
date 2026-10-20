@@ -1,7 +1,6 @@
 ﻿using SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
 using System;
-using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
 {
@@ -10,7 +9,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
         where TCriteria : IItemBeliefCriteria, IEquatable<TCriteria>
     {
         public readonly TCriteria Criteria;
-        protected GoTo(TCriteria criteria, int idx, FpcBotPlayer botPlayer) : base(idx, botPlayer)
+        protected GoTo(TCriteria criteria, FpcBotPlayer botPlayer) : base(botPlayer)
         {
             this.Criteria = criteria;
         }

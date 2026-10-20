@@ -1,21 +1,36 @@
-﻿using MapGeneration;
+using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Mind.Room.Beliefs;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
 using System;
-using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Room
 {
+    /// <summary>
+    /// Crosses one zone border (nearest checkpoint or gate). Preconditions, in the order the
+    /// planner works on them: be in <see cref="FromZone"/>, be able to pass the border (keycard
+    /// or a gate held open), know an entry point, no unbreakable window on the way.
+    /// </summary>
     internal class GoToZoneEnterLocation : GoTo<ZoneEnterLocation>
     {
+        private const float ArrivalMeters = 1.25f;
+
         public FacilityZone Zone { get; }
         public FacilityZone FromZone { get; }
-        public GoToZoneEnterLocation(FacilityZone zone, FacilityZone fromZone, FpcBotPlayer botPlayer) : base(0, botPlayer)
+
+        private ZoneWithin zoneWithin;
+
+        public GoToZoneEnterLocation(FacilityZone zone, FacilityZone fromZone, FpcBotPlayer botPlayer) : base(botPlayer)
         {
             Zone = zone;
             FromZone = fromZone;
+        }
 
-            this.botPlayer = botPlayer;
+        public override void SetEnabledByBeliefs(FpcMind fpcMind)
+        {
+            zoneWithin = fpcMind.ActionEnabledBy<ZoneWithin, FacilityZone?>(this, b => FromZone, b => b.Zone);
+            fpcMind.ActionEnabledBy<ZoneAccess>(this, b => b.From == FromZone && b.To == Zone, b => b.CanPass);
+
+            base.SetEnabledByBeliefs(fpcMind);
         }
 
         protected override ZoneEnterLocation SetEnabledByLocation(FpcMind fpcMind, Func<ZoneEnterLocation, bool> currentGetter)
@@ -30,22 +45,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Room
 
         public override float Weight { get; } = 1f;
 
-        private readonly FpcBotPlayer botPlayer;
-
-        public override void Tick()
+        protected override ActionStatus TickTowardsTarget()
         {
-            var enterPosition = location.Positions[Idx];
-            var cameraPosition = botPlayer.BotHub.PlayerHub.PlayerCameraReference.position;
-
-            if (Vector3.Distance(enterPosition, cameraPosition) > 1.25f)
+            if (zoneWithin.Zone == Zone)
             {
-                botPlayer.MoveToPosition(enterPosition);
-                return;
+                return ActionStatus.Completed;
             }
-        }
 
-        public override void Reset()
-        { }
+            return MoveToTarget(ArrivalMeters) ? ActionStatus.Completed : ActionStatus.Running;
+        }
 
         public override string ToString()
         {

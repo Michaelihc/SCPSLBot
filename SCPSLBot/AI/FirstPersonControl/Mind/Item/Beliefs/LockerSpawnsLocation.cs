@@ -2,63 +2,66 @@
 using MapGeneration.Distributors;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
-using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
 {
+    /// <summary>
+    /// Structure spawnpoints of <see cref="StructureType"/> in the current and neighbouring rooms
+    /// the bot has not looked at yet (a locker may stand there). Rebuilt only when the room or the
+    /// topology changes; a spot counts as checked once it is seen from up close.
+    /// </summary>
     internal class LockerSpawnsLocation : Location
     {
         public StructureType StructureType { get; }
 
         private readonly RoomSightSense roomSense;
-        private readonly SightSense sightSense;
+        private readonly ItemsWithinSightSense spotSense;
+        private readonly Predicate<Vector3> isAbsent;
 
-        public LockerSpawnsLocation(StructureType type, RoomSightSense roomSense)
+        public LockerSpawnsLocation(StructureType type, RoomSightSense roomSense, ItemsWithinSightSense spotSense)
         {
             this.StructureType = type;
 
             this.roomSense = roomSense;
-            this.sightSense = roomSense;
+            this.spotSense = spotSense;
+            isAbsent = absentPositions.Remove;
 
             this.roomSense.OnAfterSensedForeignRooms += OnAfterSensedForeignRooms;
-            this.sightSense.OnAfterSightSensing += OnAfterSightSensing;
+            this.spotSense.OnAfterSensedItemsWithinSight += OnAfterSensedSpots;
         }
 
         private readonly HashSet<Vector3> visitedLockerSpawnPositions = new();
-
-        private readonly System.Diagnostics.Stopwatch stopwatch = new();
         private readonly HashSet<Vector3> absentPositions = new();
+        private readonly List<Vector3> spawnPositions = new();
+        private readonly Dictionary<RoomIdentifier, Vector3[]> roomLockerSpawnPositions = new();
+        private readonly List<StructureSpawnpoint> structureSpawnpoints = new();
+        private int generation = int.MinValue;
 
-        private void OnAfterSightSensing()
+        private void OnAfterSensedSpots()
         {
+            if (Positions.Count == 0)
+            {
+                return;
+            }
+
             foreach (var spawnPosition in Positions)
             {
-                if (this.sightSense.IsPositionWithinFov(spawnPosition)
-                    && (!sightSense.IsPositionObstructed(spawnPosition, out var obstruction)
-                        || Vector3.Distance(obstruction.point, spawnPosition) < 1f)
-                    && !this.stopwatch.IsRunning)
+                if (spotSense.IsSpotVisible(spawnPosition))
                 {
-                    this.stopwatch.Restart();
-                }
-
-                if (this.stopwatch.IsRunning && this.stopwatch.ElapsedMilliseconds > 500)
-                {
-                    this.stopwatch.Stop();
-
-                    this.visitedLockerSpawnPositions.Add(spawnPosition);
+                    visitedLockerSpawnPositions.Add(spawnPosition);
                     absentPositions.Add(spawnPosition);
                 }
             }
 
-            RemoveAllPositions(absentPositions.Remove);
+            if (absentPositions.Count > 0)
+            {
+                RemoveAllPositions(isAbsent);
+                absentPositions.Clear();
+            }
         }
-
-        private readonly List<Vector3> spawnPositions = new();
-        private IEnumerable<Vector3> unvisitedSpawnPositions;
 
         private void OnAfterSensedForeignRooms()
         {
@@ -69,42 +72,55 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
                 return;
             }
 
-            var foreignRooms = this.roomSense.ForeignRooms;
+            var current = Navigation.NavigationSystem.Instance.MapGeneration;
+            if (current != generation)
+            {
+                generation = current;
+                visitedLockerSpawnPositions.Clear();
+                roomLockerSpawnPositions.Clear();
+            }
 
             spawnPositions.Clear();
-            foreach (var foreignRoom in foreignRooms)
+            foreach (var foreignRoom in this.roomSense.ForeignRooms)
             {
-                spawnPositions.AddRange(this.GetLockerSpawnPositions(foreignRoom));
+                AddUnvisited(this.GetLockerSpawnPositions(foreignRoom));
             }
-            spawnPositions.AddRange(this.GetLockerSpawnPositions(roomWithin));
+            AddUnvisited(this.GetLockerSpawnPositions(roomWithin));
 
-            unvisitedSpawnPositions ??= spawnPositions
-                .Where(spawnPosition => !this.visitedLockerSpawnPositions.Contains(spawnPosition));
-
-            this.SetPositions(unvisitedSpawnPositions);
+            this.SetPositions(spawnPositions);
         }
 
-        private readonly Dictionary<RoomIdentifier, Vector3[]> roomLockerSpawnPositions = new();
-
-        private readonly List<StructureSpawnpoint> structureSpawnpoints = new();
-        private IEnumerable<Vector3> spawnPositionsQuery;
+        private void AddUnvisited(Vector3[] positions)
+        {
+            foreach (var position in positions)
+            {
+                if (!visitedLockerSpawnPositions.Contains(position) && !spawnPositions.Contains(position))
+                {
+                    spawnPositions.Add(position);
+                }
+            }
+        }
 
         private Vector3[] GetLockerSpawnPositions(RoomIdentifier room)
         {
-            if (!this.roomLockerSpawnPositions.TryGetValue(room, out var spawnPositions))
+            if (!this.roomLockerSpawnPositions.TryGetValue(room, out var positions))
             {
                 room.GetComponentsInChildren(structureSpawnpoints);
 
-                spawnPositionsQuery ??= structureSpawnpoints
-                    .Where(spawnPoint => Array.Exists(spawnPoint.CompatibleStructures, compatableStructureType => compatableStructureType == this.StructureType))
-                    .Select(spawnPoint => spawnPoint.transform.position);
+                var matching = new List<Vector3>();
+                foreach (var spawnPoint in structureSpawnpoints)
+                {
+                    if (Array.IndexOf(spawnPoint.CompatibleStructures, this.StructureType) >= 0)
+                    {
+                        matching.Add(spawnPoint.transform.position);
+                    }
+                }
 
-                spawnPositions = spawnPositionsQuery.ToArray();
-
-                this.roomLockerSpawnPositions.Add(room, spawnPositions);
+                positions = matching.ToArray();
+                this.roomLockerSpawnPositions.Add(room, positions);
             }
 
-            return spawnPositions;
+            return positions;
         }
 
         public override string ToString()

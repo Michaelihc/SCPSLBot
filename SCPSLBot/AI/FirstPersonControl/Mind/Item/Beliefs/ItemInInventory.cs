@@ -1,9 +1,9 @@
 ﻿using InventorySystem.Items;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
-using System;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
 {
+    /// <summary>A carried item matching the criteria (the first one found), or null.</summary>
     internal class ItemInInventory<C> : Belief<bool> where C : IItemBeliefCriteria
     {
         public C Criteria { get; }
@@ -17,31 +17,34 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
         }
 
         private readonly ItemsInInventorySense _itemsInInventorySense;
-        private int numItems = 0;
+        private ItemBase firstMatch;
+        private bool currentStillCarried;
 
         private void ProcessSensedItem(ItemBase item)
         {
-            if (Criteria.EvaluateItem(item))
+            if (!Criteria.EvaluateItem(item))
             {
-                if (!Item)
-                {
-                    Update(item);
-                }
-                numItems++;
+                return;
+            }
+
+            firstMatch ??= item;
+            if (ReferenceEquals(item, Item))
+            {
+                currentStillCarried = true;
             }
         }
 
         private void ProcessAbsentItem()
         {
-            if (numItems <= 0)
+            // Keep the item already believed in while it is carried; otherwise switch to another
+            // matching item (or none) so actions never act on an item that left the inventory.
+            if (!currentStillCarried && !ReferenceEquals(firstMatch, Item))
             {
-                if (Item)
-                {
-                    Update(null);
-                }
+                Update(firstMatch);
             }
 
-            numItems = 0;
+            firstMatch = null;
+            currentStillCarried = false;
         }
 
         public ItemBase Item { get; private set; }

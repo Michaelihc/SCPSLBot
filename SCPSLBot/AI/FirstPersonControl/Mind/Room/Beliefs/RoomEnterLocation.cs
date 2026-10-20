@@ -1,80 +1,92 @@
 ﻿using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
-using System;
+using SCPSLBot.Infrastructure;
+using SCPSLBot.Navigation;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Room.Beliefs
 {
+    /// <summary>
+    /// Entry points of the neighbouring rooms in the bot's zone, least recently visited first
+    /// (never visited rooms in random order ahead of visited ones). Rebuilt when the bot enters
+    /// another room.
+    /// </summary>
     internal class RoomEnterLocation : Location
     {
         private readonly RoomSightSense roomSightSense;
+        private readonly Dictionary<RoomIdentifier, float> roomsLastVisitTime = new(ManagedReferenceComparer<RoomIdentifier>.Instance);
+        private readonly List<(Vector3 Position, float Order)> candidates = new();
+        private readonly List<Vector3> orderedPositions = new();
+        private RoomIdentifier prevRoomWithin;
+        private int generation = int.MinValue;
 
         public RoomEnterLocation(RoomSightSense roomSightSense)
         {
             this.roomSightSense = roomSightSense;
             this.roomSightSense.OnAfterSensedForeignRooms += OnAfterSensedForeignRooms;
-
-            //seed = (int)DateTime.Now.Ticks;
-            //Log.Debug($"seed for room selection: {seed}");
         }
-
-        private readonly Dictionary<RoomIdentifier, float> roomsLastVisitTime = new();
-        private RoomIdentifier prevRoomWithin;
-
-        //private readonly int seed;
-
-        private readonly static HashSet<RoomName> zoneTransitionRoomNames = new()
-        {
-            RoomName.LczCheckpointA,
-            RoomName.LczCheckpointB,
-            RoomName.HczCheckpointA,
-            RoomName.HczCheckpointB,
-            RoomName.EzGateA,
-            RoomName.EzGateB,
-            RoomName.Outside,
-        };
 
         private void OnAfterSensedForeignRooms()
         {
             var roomWithin = this.roomSightSense.RoomWithin;
+            if (roomWithin == null)
+            {
+                return;
+            }
 
-            // Room change check
-            if (roomWithin != prevRoomWithin && prevRoomWithin != null)
+            var current = Navigation.NavigationSystem.Instance.MapGeneration;
+            if (current != generation)
+            {
+                generation = current;
+                roomsLastVisitTime.Clear();
+                prevRoomWithin = null;
+            }
+
+            if (prevRoomWithin != null && roomWithin != prevRoomWithin)
             {
                 roomsLastVisitTime[prevRoomWithin] = Time.time;
             }
 
-            // Reached different room check
-            if (roomWithin != prevRoomWithin)
+            prevRoomWithin = roomWithin;
+
+            candidates.Clear();
+            foreach (var entry in this.roomSightSense.ForeignRoomEntries)
             {
-                //var prevRandomState = Random.state;
-                //Random.InitState(seed);
+                if (entry.Room == null || entry.Room.Zone != roomWithin.Zone)
+                {
+                    continue;
+                }
 
-                var enteringRooms = this.roomSightSense.ForeignRoomEntries
-                    .Where(entry => entry.Room != null && entry.Room.Zone == roomWithin.Zone)
-                    .Where(entry => entry.Room.Name == RoomName.Unnamed || entry.Room.Name != roomWithin.Name)
-                    .OrderBy(entry => roomsLastVisitTime.TryGetValue(entry.Room, out var time) ? time : -Random.Range(0f, 4f));
+                if (entry.Room.Name != RoomName.Unnamed && entry.Room.Name == roomWithin.Name)
+                {
+                    continue;
+                }
 
-                SetPositions(enteringRooms.Select(entry => entry.Position));
+                var order = roomsLastVisitTime.TryGetValue(entry.Room, out var time) ? time : -Random.Range(0f, 4f);
+                var index = candidates.Count;
+                while (index > 0 && candidates[index - 1].Order > order)
+                {
+                    index--;
+                }
 
-                //Random.state = prevRandomState;
+                candidates.Insert(index, (entry.Position, order));
             }
 
-            prevRoomWithin = roomWithin;
+            orderedPositions.Clear();
+            foreach (var candidate in candidates)
+            {
+                orderedPositions.Add(candidate.Position);
+            }
+
+            SetPositions(orderedPositions);
         }
 
         public override string ToString()
         {
             return $"{nameof(RoomEnterLocation)}s: {Positions.Count}";
-        }
-
-        internal float GetLastVisitTime(Vector3 vector3)
-        {
-            throw new NotImplementedException();
         }
     }
 }
