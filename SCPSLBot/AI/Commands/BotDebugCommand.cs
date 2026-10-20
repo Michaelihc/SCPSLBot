@@ -37,7 +37,7 @@ internal sealed class BotDebugCommand : ICommand
                 .Append(" room=").Append(room)
                 .Append($" pos=({position.x:F1},{position.y:F1},{position.z:F1})")
                 .Append(" behavior=").Append(bot.Brain?.Active?.Name ?? "none")
-                .Append(bot.Brain?.Active is FirstPersonControl.Brain.ObjectiveBehavior objective && objective.Detail != null ? ":" + objective.Detail : string.Empty)
+                .Append(bot.Brain?.Active is FirstPersonControl.Brain.IDescribedBehavior { Detail: { } detail } ? ":" + detail : string.Empty)
                 .Append(" combat=").Append(combat)
                 .Append(" loco=").Append(bot.Locomotion?.DiagnosticState ?? "-")
                 .Append(" nav=").Append(path)

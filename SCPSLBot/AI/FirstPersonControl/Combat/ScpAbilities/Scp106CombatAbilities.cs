@@ -132,7 +132,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
 
         /// <summary>
         /// Native 106 attack: corrodes on the first hit and pockets a corroding target on the next.
-        /// Native validation covers range, line of sight, aim and cooldown.
+        /// Sent only when the pose passes the same range, line and facing checks as
+        /// <c>Scp106Attack.VerifyShot</c> (read from the prefab), so a 106 strikes at its full reach
+        /// and never burns the native miss cooldown on a swing that cannot land.
         /// </summary>
         public bool TryAttack(ReferenceHub targetHub)
         {
@@ -145,13 +147,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
                 return false;
             }
 
-            var hub = abilities.Hub;
-            return ScpAbilityCommands.SendTargetedStrike(
-                attack,
-                targetHub,
-                targetRole.FpcModule.Position,
-                hub.PlayerCameraReference.rotation,
-                role.FpcModule.Position);
+            var camera = abilities.Hub.PlayerCameraReference;
+            var ownerPosition = role.FpcModule.Position;
+            var targetPosition = targetRole.FpcModule.Position;
+            if (!ScpAttackReach.Scp106WouldHit(attack, ownerPosition, camera.forward, targetPosition))
+            {
+                return false;
+            }
+
+            return ScpAbilityCommands.SendTargetedStrike(attack, targetHub, targetPosition, camera.rotation, ownerPosition);
         }
     }
 }

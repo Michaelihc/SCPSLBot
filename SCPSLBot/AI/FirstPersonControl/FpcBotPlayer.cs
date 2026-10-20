@@ -441,12 +441,7 @@ namespace SCPSLBot.AI.FirstPersonControl
                 return "idle";
             }
 
-            var detail = active switch
-            {
-                ObjectiveBehavior objective => objective.Detail,
-                ExploreBehavior explore => explore.Detail,
-                _ => null,
-            };
+            var detail = (active as IDescribedBehavior)?.Detail;
             return detail != null ? $"{active.Name}: {detail}" : active.Name;
         }
 

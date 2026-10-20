@@ -1,4 +1,9 @@
 using PlayerRoles;
+using PlayerRoles.PlayableScps.Scp049.Zombies;
+using PlayerRoles.PlayableScps.Scp096;
+using PlayerRoles.PlayableScps.Scp3114;
+using PlayerRoles.PlayableScps.Scp939;
+using PlayerRoles.Subroutines;
 using SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities;
 using System;
 using UnityEngine;
@@ -10,10 +15,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
     /// </summary>
     internal sealed class StandardScpCombatStrategy
     {
-        private const float AttackRange = 3.2f;
-        private const float Scp0492AttackRange = 2.4f;
-        private const float Scp106AttackRange = 4f;
-        private const float StrictAttackAimAngle = 14f;
+        // Used only when a role's native attack geometry cannot be read.
+        private const float FallbackAttackRange = 3.2f;
+        private const float FallbackAttackAimAngle = 35f;
+        private const float Scp106RetrySeconds = 0.2f;
 
         private static readonly string[] Scp939AttackActions =
         {
@@ -43,6 +48,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         private readonly Scp939CombatAbilities scp939;
         private readonly Scp3114CombatAbilities scp3114;
 
+        internal Scp939CombatAbilities Scp939 => scp939;
+
         public StandardScpCombatStrategy(FpcBotCombat combat, Scp096CombatStrategy scp096Strategy)
         {
             this.combat = combat;
@@ -53,14 +60,51 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             scp3114 = new Scp3114CombatAbilities(combat);
         }
 
+        /// <summary>Camera-to-target distance at which the role's native attack connects.</summary>
         public float GetAttackRange(RoleTypeId role)
         {
-            return role switch
+            return TryGetSphereAttack(role, out var attack) && ScpAttackReach.TryGetSphereReach(attack, out var reach)
+                ? reach
+                : FallbackAttackRange;
+        }
+
+        /// <summary>
+        /// Whether a swing from the current camera pose would connect: the native attack sphere
+        /// ahead of the camera contains the aim point. Long-reach roles swing as soon as the target
+        /// is inside their real reach instead of closing to a fixed short range.
+        /// </summary>
+        public bool CanHit(RoleTypeId role, CombatTarget target, Vector3 aimPoint)
+        {
+            var botPlayer = combat.BotPlayer;
+            if (TryGetSphereAttack(role, out var attack) && ScpAttackReach.TryGetSphereReach(attack, out _))
             {
-                RoleTypeId.Scp0492 => Scp0492AttackRange,
-                RoleTypeId.Scp106 => Scp106AttackRange,
-                _ => AttackRange,
-            };
+                return ScpAttackReach.SphereContains(attack, botPlayer.CameraPosition, botPlayer.CameraForward, aimPoint);
+            }
+
+            return target.Distance <= FallbackAttackRange && combat.IsAimedAt(aimPoint, FallbackAttackAimAngle);
+        }
+
+        private bool TryGetSphereAttack(RoleTypeId role, out SubroutineBase attack)
+        {
+            var abilities = combat.Abilities;
+            attack = null;
+            switch (role)
+            {
+                case RoleTypeId.Scp939 when abilities.TryGet<Scp939ClawAbility>(out var claw):
+                    attack = claw;
+                    break;
+                case RoleTypeId.Scp3114 when abilities.TryGet<Scp3114Slap>(out var slap):
+                    attack = slap;
+                    break;
+                case RoleTypeId.Scp0492 when abilities.TryGet<ZombieAttackAbility>(out var zombie):
+                    attack = zombie;
+                    break;
+                case RoleTypeId.Scp096 when abilities.TryGet<Scp096AttackAbility>(out var slaps):
+                    attack = slaps;
+                    break;
+            }
+
+            return attack != null;
         }
 
         /// <summary>
@@ -99,31 +143,27 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             scp939.ReleaseHeld();
         }
 
+        /// <summary>
+        /// Roles whose attack is a direct command with its own validation (SCP-049, SCP-106).
+        /// Returns true when the role was handled here and the shared swing step must be skipped.
+        /// </summary>
         public bool TryUseStrictAttack(RoleTypeId role, CombatTarget target, ScpCombatStrategy coordinator)
         {
-            if (role is not (RoleTypeId.Scp049 or RoleTypeId.Scp0492 or RoleTypeId.Scp106))
+            switch (role)
             {
-                return false;
-            }
+                case RoleTypeId.Scp049:
+                    return scp049.TryAttack(target);
+                case RoleTypeId.Scp106:
+                    if (Time.time >= coordinator.NextAttackTime && scp106.TryAttack(target.Hub))
+                    {
+                        // The native hit/miss cooldown paces real swings; this only spaces retries.
+                        coordinator.NextAttackTime = Time.time + Scp106RetrySeconds;
+                    }
 
-            if (role == RoleTypeId.Scp049)
-            {
-                return scp049.TryAttack(target);
+                    return true;
+                default:
+                    return false;
             }
-
-            if (target.Distance > GetAttackRange(role) || Time.time < coordinator.NextAttackTime)
-            {
-                return true;
-            }
-
-            if (!combat.IsAimedAt(ScpCombatStrategy.GetAimPoint(target), StrictAttackAimAngle))
-            {
-                return true;
-            }
-
-            coordinator.NextAttackTime = Time.time + coordinator.AttackInterval;
-            TryUseAttack(role, target.Hub);
-            return true;
         }
 
         public bool TryUseAttack(RoleTypeId role, ReferenceHub target = null)
@@ -131,11 +171,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             if (role == RoleTypeId.Scp096 && scp096Strategy.TryUseNativeAttack(target))
             {
                 return true;
-            }
-
-            if (role == RoleTypeId.Scp106)
-            {
-                return target != null && scp106.TryAttack(target);
             }
 
             var actions = role switch

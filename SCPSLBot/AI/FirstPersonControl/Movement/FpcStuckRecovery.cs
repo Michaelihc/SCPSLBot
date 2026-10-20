@@ -130,7 +130,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             }
 
             var candidate = DoorTraversal.ResolveInteractable(doorHit.collider.GetComponentInParent<DoorVariant>());
-            if (candidate == null || candidate is ElevatorDoor || DoorAccess.IsPassable(candidate))
+            if (candidate == null
+                || candidate is ElevatorDoor
+                || DoorAccess.IsPassable(candidate)
+                || DoorAccess.IsPhasedThrough(botPlayer.BotHub.PlayerHub, candidate))
             {
                 return false;
             }

@@ -4,6 +4,7 @@ using Interactables.Interobjects.DoorUtils;
 using NetworkManagerUtils.Dummies;
 using PlayerRoles;
 using SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities;
+using SCPSLBot.AI.FirstPersonControl.Movement;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,6 +43,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
 
         internal FpcBotPlayer BotPlayer => botPlayer;
         internal ScpAbilitySet Abilities { get; }
+        internal Scp939CombatAbilities Scp939 => scpStrategy.Scp939;
         internal ReferenceHub CurrentTarget => targetSelector.CurrentTarget;
         internal int StrafeDirection => strafeDirection;
         internal float NextShotTime
@@ -205,9 +207,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
 
         // Never interact with a door that is already opening (TargetState): locomotion may have
         // just opened it, and a second interaction once the animation cooldown ends closes it.
-        private static bool CanOpenCombatDoor(DoorVariant door)
+        // SCP-106 keeps walking at a door it phases through instead of stopping to open it.
+        private bool CanOpenCombatDoor(DoorVariant door)
         {
             return door
+                   && !DoorAccess.IsPhasedThrough(botPlayer.BotHub.PlayerHub, door)
                    && !door.TargetState
                    && !door.IsConsideredOpen()
                    && door is not DummyDoor

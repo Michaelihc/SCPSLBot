@@ -34,6 +34,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         public static bool IsPassable(DoorVariant door)
             => door != null && (door.IsConsideredOpen() || door.GetExactState() >= FullyOpenExactState);
 
+        /// <summary>
+        /// SCP-106 walks through every door reporting <see cref="IScp106PassableDoor.IsScp106Passable"/>:
+        /// <c>Scp106MovementModule</c> disables its colliders for each move. Nothing to open or wait for.
+        /// </summary>
+        public static bool IsPhasedThrough(ReferenceHub hub, DoorVariant door)
+            => door is IScp106PassableDoor { IsScp106Passable: true }
+               && hub != null
+               && hub.roleManager.CurrentRole.RoleTypeId == RoleTypeId.Scp106;
+
         public static bool IsPlayerDoor(DoorVariant door)
             => door != null && door is not ElevatorDoor && door is not DummyDoor && door is not BasicNonInteractableDoor;
 

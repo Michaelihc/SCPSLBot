@@ -29,6 +29,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
         bool Tick();
     }
 
+    /// <summary>A behavior with a short live status for <c>bot_debug</c> and the spectator overlay.</summary>
+    internal interface IDescribedBehavior
+    {
+        /// <summary>Null when there is nothing to add to the behavior name.</summary>
+        string Detail { get; }
+    }
+
     /// <summary>Utility bands. A behavior returns a value inside its band, scaled by urgency.</summary>
     internal static class BehaviorPriority
     {
@@ -38,7 +45,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
         public const float Objective = 0.4f;
         /// <summary>Opportunistic: grab a useful item nearby.</summary>
         public const float Opportunity = 0.5f;
-        /// <summary>Role ability out of combat: SCP-049 revive, SCP-049-2 consume, SCP-3114 disguise.</summary>
+        /// <summary>Role ability out of combat: SCP-049 revive, SCP-049-2 consume, SCP-3114 disguise, SCP-939 ambush.</summary>
         public const float RoleAbility = 0.6f;
         /// <summary>Self-preservation: heal when hurt and safe.</summary>
         public const float Survival = 0.7f;

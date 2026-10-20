@@ -24,7 +24,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
     /// the nearest room and lets partial paths, the stuck ladder and the deadline sort it out.
     /// </para>
     /// </summary>
-    internal sealed class ExploreBehavior : IBotBehavior
+    internal sealed class ExploreBehavior : IBotBehavior, IDescribedBehavior
     {
         private const float ArrivalHorizontalMeters = 1.5f;
         private const float ArrivalVerticalMeters = 1.5f;

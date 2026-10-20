@@ -10,7 +10,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
     /// A route locomotion gives up on fails the running action; the mind remembers the failed
     /// target and plans around it.
     /// </summary>
-    internal sealed class ObjectiveBehavior : IBotBehavior
+    internal sealed class ObjectiveBehavior : IBotBehavior, IDescribedBehavior
     {
         private readonly FpcBotPlayer botPlayer;
         private PlayerRoleBase lifeRole;

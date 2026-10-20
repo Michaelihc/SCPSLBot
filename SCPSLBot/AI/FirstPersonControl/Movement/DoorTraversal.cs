@@ -255,10 +255,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             }
 
             var hub = botPlayer.BotHub.PlayerHub;
-            if (hub.roleManager.CurrentRole.RoleTypeId == RoleTypeId.Scp106
-                && door is IScp106PassableDoor { IsScp106Passable: true })
+            if (DoorAccess.IsPhasedThrough(hub, door))
             {
-                // SCP-106 walks through it (Scp106MovementModule); nothing to open.
                 DiagnosticState = null;
                 return DoorTraversalResult.Proceed;
             }

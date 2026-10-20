@@ -11,7 +11,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
             return brain
                 .Add(new Scp049ReviveBehavior(bot))
                 .Add(new Scp0492ConsumeBehavior(bot))
-                .Add(new Scp3114DisguiseBehavior(bot));
+                .Add(new Scp3114DisguiseBehavior(bot))
+                .Add(new Scp939AmbushBehavior(bot));
         }
     }
 }

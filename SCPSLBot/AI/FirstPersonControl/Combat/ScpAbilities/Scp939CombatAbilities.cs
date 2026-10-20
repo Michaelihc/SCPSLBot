@@ -5,21 +5,24 @@ using UnityEngine;
 namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
 {
     /// <summary>
-    /// SCP-939 focus, lunge and amnestic cloud. The focus key and the cloud toggle are submitted as
-    /// direct commands (the native key subroutines only send on a key change, so a held value
-    /// persists); the lunge itself goes through the dummy Shoot action because it needs the motor's
-    /// lunge request, and the motor reports the hit through the native hit command.
+    /// SCP-939 focus, lunge and amnestic cloud. Focus stops the body, so a chasing 939 never focuses:
+    /// focus and lunge are an ambush tool. <see cref="Brain.Scp.Scp939AmbushBehavior"/> holds focus
+    /// while lying in wait behind a door, and combat lunges when a human comes into reach. The focus
+    /// key and the cloud toggle are submitted as direct commands (the native key subroutines only
+    /// send on a key change, so a held value persists); the lunge itself goes through the dummy
+    /// Shoot action because it needs the motor's lunge request, and the motor reports the hit
+    /// through the native hit command.
     /// </summary>
     internal sealed class Scp939CombatAbilities
     {
-        private const float FocusMinDistance = 4f;
-        private const float FocusMaxDistance = 8.5f;
-        private const float FocusAimAngle = 7f;
+        private const float LungeMinDistance = 1f;
+        private const float LungeMaxDistance = 9f;
         private const float LungeAimAngle = 15f;
-        private const float FocusMaxHoldSeconds = 3f;
-        private const float FocusAbortDistance = 12f;
+        // After contact, how long the ambusher keeps still waiting for the target to come into reach.
+        private const float AmbushContactSeconds = 3.5f;
+        private const float AmbushHoldDistance = 14f;
         private const float FocusLostSightSeconds = 0.5f;
-        private const float FocusRetrySeconds = 3f;
+        private const float FocusRetrySeconds = 1.5f;
         private const float LungeRequestRetrySeconds = 0.3f;
 
         private const float CloudMaxTargetDistance = 10f;
@@ -32,7 +35,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
 
         private bool focusHeld;
         private bool cloudHeld;
-        private float focusStartedTime;
+        private float contactStartedTime;
         private float lastSightTime;
         private float nextFocusTime;
         private float nextLungeRequestTime;
@@ -104,6 +107,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
 
             if (focusHeld)
             {
+                if (contactStartedTime < 0f)
+                {
+                    // First sighting from the ambush: the contact window starts now.
+                    contactStartedTime = now;
+                    lastSightTime = now;
+                }
+
                 return TickFocus(target, focusKey, focus, lunge, aimPoint, now);
             }
 
@@ -130,18 +140,52 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
                 return false;
             }
 
-            if (!cloudHeld && CanStartFocus(target, claw, cloud, lunge, now)
-                && combat.IsAimedAt(aimPoint, FocusAimAngle))
+            return false;
+        }
+
+        /// <summary>
+        /// Holds focus while lying in wait. Native focus needs a grounded 939, a ready claw, no
+        /// cloud and a fully decayed previous focus; returns true while the key is held.
+        /// </summary>
+        public bool HoldAmbushFocus()
+        {
+            if (focusHeld)
             {
-                focusHeld = true;
-                focusStartedTime = now;
-                lastSightTime = now;
-                ScpAbilityCommands.SendBool(focusKey, true);
-                botPlayer.Move.DesiredLocalDirection = Vector3.zero;
                 return true;
             }
 
-            return false;
+            var abilities = combat.Abilities;
+            if (Time.time < nextFocusTime
+                || !abilities.TryGet<Scp939FocusKeySync>(out var focusKey)
+                || !abilities.TryGet<Scp939FocusAbility>(out var focus)
+                || !abilities.TryGet<Scp939LungeAbility>(out var lunge)
+                || !abilities.TryGet<Scp939ClawAbility>(out var claw)
+                || !abilities.TryGet<Scp939AmnesticCloudAbility>(out var cloud)
+                || cloudHeld
+                || cloud.TargetState
+                || !claw.Cooldown.IsReady
+                || focus.State > 0f
+                || lunge.State != Scp939LungeState.None
+                || !combat.BotPlayer.FpcRole.FpcModule.IsGrounded)
+            {
+                return false;
+            }
+
+            focusHeld = true;
+            contactStartedTime = -1f;
+            ScpAbilityCommands.SendBool(focusKey, true);
+            return true;
+        }
+
+        /// <summary>Ends an ambush that saw nobody.</summary>
+        public void ReleaseAmbushFocus()
+        {
+            if (focusHeld && combat.Abilities.TryGet<Scp939FocusKeySync>(out var focusKey))
+            {
+                ReleaseFocus(focusKey, Time.time, FocusRetrySeconds);
+            }
+
+            focusHeld = false;
         }
 
         private bool TickFocus(
@@ -167,10 +211,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
                 return true;
             }
 
-            if (now - focusStartedTime > FocusMaxHoldSeconds
-                || target.Distance > FocusAbortDistance
+            if (now - contactStartedTime > AmbushContactSeconds
+                || target.Distance > AmbushHoldDistance
                 || now - lastSightTime > FocusLostSightSeconds)
             {
+                // Out of the lunge's arc or reach: give the ambush up and chase with the claw.
                 ReleaseFocus(focusKey, now, FocusRetrySeconds);
                 return true;
             }
@@ -181,6 +226,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
 
             if (focus.State >= 1f
                 && now >= nextLungeRequestTime
+                && target.HasLineOfSight
+                && target.Distance >= LungeMinDistance
+                && target.Distance <= LungeMaxDistance
                 && lunge.IsReady
                 && combat.IsAimedAt(aimPoint, LungeAimAngle))
             {
@@ -196,23 +244,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
             focusHeld = false;
             nextFocusTime = now + retrySeconds;
             ScpAbilityCommands.SendBool(focusKey, false);
-        }
-
-        private bool CanStartFocus(
-            CombatTarget target,
-            Scp939ClawAbility claw,
-            Scp939AmnesticCloudAbility cloud,
-            Scp939LungeAbility lunge,
-            float now)
-        {
-            return now >= nextFocusTime
-                   && target.HasLineOfSight
-                   && target.Distance >= FocusMinDistance
-                   && target.Distance <= FocusMaxDistance
-                   && claw.Cooldown.IsReady
-                   && !cloud.TargetState
-                   && lunge.State == Scp939LungeState.None
-                   && combat.BotPlayer.FpcRole.FpcModule.IsGrounded;
         }
 
         private bool ShouldDeployCloud(

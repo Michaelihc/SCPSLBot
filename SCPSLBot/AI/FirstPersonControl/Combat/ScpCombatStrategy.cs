@@ -29,6 +29,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             standardStrategy = new StandardScpCombatStrategy(combat, scp096Strategy);
         }
 
+        internal ScpAbilities.Scp939CombatAbilities Scp939 => standardStrategy.Scp939;
+
         internal float NextAttackTime
         {
             get => combat.NextShotTime;
@@ -102,8 +104,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return;
             }
 
-            var attackRange = standardStrategy.GetAttackRange(role);
-            var closeScp096Target = role == RoleTypeId.Scp096 && target.Distance <= attackRange;
+            var closeScp096Target = role == RoleTypeId.Scp096 && target.Distance <= standardStrategy.GetAttackRange(role);
             if (!target.HasLineOfSight && !closeScp096Target)
             {
                 return;
@@ -114,10 +115,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return;
             }
 
-            var maxAttackAimAngle = closeScp096Target ? 180f : 35f;
-            if (target.Distance > attackRange
-                || Time.time < NextAttackTime
-                || !combat.IsAimedAt(aimPoint, maxAttackAimAngle))
+            if (Time.time < NextAttackTime
+                || (!closeScp096Target && !standardStrategy.CanHit(role, target, aimPoint)))
             {
                 return;
             }
