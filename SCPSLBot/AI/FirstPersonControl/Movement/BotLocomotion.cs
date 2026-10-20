@@ -155,9 +155,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         /// <summary>Runs once per bot update after the controlling layer moved (or did not move) the bot.</summary>
         public void EndFrame()
         {
+            doors.EndFrame();
             if (!movedSinceEndFrame)
             {
-                doors.Idle();
                 StuckRecovery.Reset();
                 if (elevator.IsActive && !elevator.IsCommitted && Time.time - elevator.LastGoalMatchAt > GoalMismatchGraceSeconds)
                 {

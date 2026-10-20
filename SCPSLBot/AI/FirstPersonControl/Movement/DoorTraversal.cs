@@ -111,14 +111,38 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         public bool HoldsKeycard => keycardDoor != null;
 
-        /// <summary>True while the last tick stopped the bot in front of a door that is being opened.</summary>
+        /// <summary>True while the last bot update stopped in front of a door that is being opened.</summary>
         public bool IsHolding { get; private set; }
+
+        private bool doorSeenThisFrame;
+        private bool holdingThisFrame;
 
         public DoorTraversalResult Tick(IBotNavigator navigator)
         {
             var result = Evaluate(navigator);
-            IsHolding = result == DoorTraversalResult.Hold;
+            if (result == DoorTraversalResult.Hold)
+            {
+                holdingThisFrame = true;
+            }
+
             return result;
+        }
+
+        /// <summary>
+        /// Once per bot update. Callers may move several times per frame toward different goals
+        /// (combat steers at its target and at a door on the way); only when none of those calls
+        /// had a door in range is the door forgotten and the previous item put back.
+        /// </summary>
+        public void EndFrame()
+        {
+            IsHolding = holdingThisFrame;
+            holdingThisFrame = false;
+            if (!doorSeenThisFrame)
+            {
+                Idle();
+            }
+
+            doorSeenThisFrame = false;
         }
 
         private DoorTraversalResult Evaluate(IBotNavigator navigator)
@@ -157,17 +181,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
             if (!found)
             {
-                Idle();
                 return DoorTraversalResult.Proceed;
             }
 
+            doorSeenThisFrame = true;
             return HandleDoor(nearest.Door, nearest.Point, nearestDistance);
         }
 
-        /// <summary>No door to handle this frame: forget the active door and put the previous item back.</summary>
+        /// <summary>No door to handle: forget the active door and put the previous item back.</summary>
         public void Idle()
         {
             IsHolding = false;
+            holdingThisFrame = false;
+            doorSeenThisFrame = false;
             activeDoor = null;
             DiagnosticState = null;
             RestoreItem();

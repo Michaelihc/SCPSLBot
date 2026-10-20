@@ -242,6 +242,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private ElevatorTraversalStatus TickEnter()
         {
             var inside = IsInsideCabin();
+            if (inside && chamber.DestinationDoor == destinationDoor)
+            {
+                // Someone else sent it to our side while the bot was stepping in.
+                SetStage(Stage.Ride);
+                return TickRide();
+            }
+
             if (chamber.DestinationDoor != originDoor || (!originDoor.TargetState && !inside))
             {
                 // It left (or is closing) before the bot got in.
