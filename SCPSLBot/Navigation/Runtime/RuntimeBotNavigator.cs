@@ -31,6 +31,9 @@ namespace SCPSLBot.Navigation.Runtime
         private const float LinkArrivalDistance = 2.5f;
         private const float CornerInsetMeters = 0.12f;
         private const int MaxCorners = 256;
+        private const int MaxElevatorDetours = 3;
+        // Only detour over an elevator whose far landing is much nearer the goal than the bot is.
+        private const float ElevatorDetourGain = 0.5f;
         private const int PlanSlots = 2;
 
         private static readonly Vector3[] cornerBuffer = new Vector3[MaxCorners];
@@ -372,27 +375,24 @@ namespace SCPSLBot.Navigation.Runtime
                 return;
             }
 
-            var count = path.GetCornersNonAlloc(cornerBuffer);
-            if (count >= MaxCorners)
+            var status = path.status;
+            if (status == NavMeshPathStatus.PathPartial && TryPlanViaElevator(start, goal, areaMask, plan.Corners))
             {
-                plan.Corners.AddRange(path.corners);
+                status = NavMeshPathStatus.PathComplete;
             }
             else
             {
-                for (var index = 0; index < count; index++)
-                {
-                    plan.Corners.Add(cornerBuffer[index]);
-                }
+                AppendCorners(plan.Corners);
             }
 
             if (plan.Corners.Count == 0)
             {
-                FailPlan(plan, "no-corners", position, goalPosition, permissions, path.status);
+                FailPlan(plan, "no-corners", position, goalPosition, permissions, status);
                 return;
             }
 
-            plan.HasPath = path.status == NavMeshPathStatus.PathComplete;
-            plan.HasPartialPath = path.status == NavMeshPathStatus.PathPartial;
+            plan.HasPath = status == NavMeshPathStatus.PathComplete;
+            plan.HasPartialPath = status == NavMeshPathStatus.PathPartial;
             if (plan.HasPartialPath && plan.Corners.Count == 1 && HorizontalDistance(plan.Corners[0], position) < CornerArrivalDistance)
             {
                 // Nothing reachable beyond the bot's own feet.
@@ -435,6 +435,81 @@ namespace SCPSLBot.Navigation.Runtime
             {
                 ProgressStamp++;
             }
+        }
+
+        private void AppendCorners(List<Vector3> corners)
+        {
+            var count = path.GetCornersNonAlloc(cornerBuffer);
+            if (count >= MaxCorners)
+            {
+                corners.AddRange(path.corners);
+                return;
+            }
+
+            for (var index = 0; index < count; index++)
+            {
+                corners.Add(cornerBuffer[index]);
+            }
+        }
+
+        /// <summary>
+        /// A route over a gate elevator (a ~400 m link to Surface) can run out of the path
+        /// search's node budget, which comes back partial and ends wherever is nearest the goal
+        /// (the LCZ 173 gallery for the Surface escape zone). Plan to the elevator whose far
+        /// landing is nearest the goal instead, when the goal is reachable from that landing; the
+        /// replan after the ride covers the rest. Only runs for partial plans.
+        /// </summary>
+        private bool TryPlanViaElevator(Vector3 start, Vector3 goal, int areaMask, List<Vector3> corners)
+        {
+            var links = service.Links.Links;
+            var startDistance = Vector3.Distance(start, goal);
+            var tried = 0;
+            var lastFarDistance = -1f;
+            while (tried < MaxElevatorDetours)
+            {
+                // Next link by far-landing distance to the goal (selection over a dozen links).
+                var bestIndex = -1;
+                var bestFromA = false;
+                var bestDistance = float.PositiveInfinity;
+                for (var index = 0; index < links.Count; index++)
+                {
+                    var link = links[index];
+                    var fromA = Vector3.Distance(link.LandingB, goal) <= Vector3.Distance(link.LandingA, goal);
+                    var distance = Vector3.Distance(fromA ? link.LandingB : link.LandingA, goal);
+                    if (distance > lastFarDistance && distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        bestIndex = index;
+                        bestFromA = fromA;
+                    }
+                }
+
+                if (bestIndex < 0 || bestDistance > startDistance * ElevatorDetourGain)
+                {
+                    return false;
+                }
+
+                tried++;
+                lastFarDistance = bestDistance;
+                var chosen = links[bestIndex];
+                var near = bestFromA ? chosen.LandingA : chosen.LandingB;
+                var far = bestFromA ? chosen.LandingB : chosen.LandingA;
+                if (!NavMesh.CalculatePath(far, goal, areaMask, path) || path.status != NavMeshPathStatus.PathComplete)
+                {
+                    continue;
+                }
+
+                if (!NavMesh.CalculatePath(start, near, areaMask, path) || path.status != NavMeshPathStatus.PathComplete)
+                {
+                    continue;
+                }
+
+                AppendCorners(corners);
+                corners.Add(far);
+                return true;
+            }
+
+            return false;
         }
 
         private void FailPlan(Plan plan, string reason, Vector3 position, Vector3 goalPosition, ushort permissions, NavMeshPathStatus status)
