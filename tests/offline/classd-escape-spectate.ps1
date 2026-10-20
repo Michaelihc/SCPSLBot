@@ -32,7 +32,7 @@ $deadline = (Get-Date).AddSeconds(20)
 while ((Reply '/roundtime') -notmatch 'Round time:' -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
 Start-Sleep -Seconds 2
 $null = Reply "/forcerole $($bot.id) ClassD"
-$null = Reply "/overwatch $($client.id) enable"
+$null = Reply "/forcerole $($client.id) Overwatch"
 $null = Reply '/decontamination disable'
 $null = Reply '/wave forcepause NTF true'
 $null = Reply '/wave forcepause Chaos true'
