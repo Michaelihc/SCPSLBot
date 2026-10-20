@@ -18,6 +18,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Spacial
         private const float BaseTimeoutSeconds = 20f;
         private const float TimeoutMetersPerSecond = 1.5f;
         private const float OtherZoneAllowanceSeconds = 60f;
+        // Camera to floor is about 1.7 m; a floor above or below is farther than this.
+        private const float ArrivalVerticalMeters = 2.2f;
         // Estimated trip length while no target is known yet. Must stay finite: the planner only
         // expands the preconditions of actions it can price, and "find a target first" is
         // exactly such a precondition.
@@ -174,10 +176,16 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Spacial
             }
         }
 
-        /// <summary>Walks toward the target; true once within <paramref name="arrivalMeters"/> of the camera.</summary>
+        /// <summary>
+        /// Walks toward the target; true once within <paramref name="arrivalMeters"/> horizontally
+        /// on the same floor. Measured flat because spawnpoints sit on the floor, eye height below
+        /// the camera: a pedestal or workstation around one keeps the camera out of a 3D radius.
+        /// </summary>
         protected bool MoveToTarget(float arrivalMeters)
         {
-            if (Vector3.Distance(target, botPlayer.CameraPosition) <= arrivalMeters)
+            var offset = target - botPlayer.CameraPosition;
+            if (Mathf.Abs(offset.y) <= ArrivalVerticalMeters
+                && offset.x * offset.x + offset.z * offset.z <= arrivalMeters * arrivalMeters)
             {
                 return true;
             }
