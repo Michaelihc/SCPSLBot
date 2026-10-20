@@ -34,6 +34,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         private readonly List<(Vector3 Position, float Score)> ranked = new(RankedCandidates + 1);
 
         private bool hasDestination;
+        private bool repickRequested;
         private Vector3 destination;
         private float nextPickAt;
         private float deadline;
@@ -74,6 +75,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         {
             bot.Locomotion.DiscardAbandonRequest();
             hasDestination = false;
+            repickRequested = false;
             nextPickAt = 0f;
         }
 
@@ -94,13 +96,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             var now = Time.time;
             var position = bot.PlayerPosition;
             var threat = threats.ThreatPosition;
-            var abandoned = bot.Locomotion.ConsumeAbandonRequest();
+            repickRequested |= bot.Locomotion.ConsumeAbandonRequest();
             var arrived = hasDestination && HorizontalDistance(position, destination) <= ArrivalMeters;
             var overtaken = hasDestination
                             && HorizontalDistance(destination, threat) + ThreatGainMeters < HorizontalDistance(position, threat);
 
-            if (!hasDestination || abandoned || now > deadline || ((arrived || overtaken) && now >= nextPickAt))
+            // Every pick (path queries included) waits for the repick timer, even without a destination.
+            if (now >= nextPickAt && (!hasDestination || repickRequested || now > deadline || arrived || overtaken))
             {
+                repickRequested = false;
                 nextPickAt = now + RepickSeconds;
                 hasDestination = TryPick(position, threat, out destination);
                 deadline = now + TripTimeoutSeconds;

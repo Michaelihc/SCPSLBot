@@ -13,6 +13,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Room
     internal class GoToZoneEnterLocation : GoTo<ZoneEnterLocation>
     {
         private const float ArrivalMeters = 1.25f;
+        // Standing at the entry point this long without the zone belief changing means the
+        // crossing did not happen (or the bot is off the mesh there).
+        private const float ArrivedWithoutZoneSeconds = 3f;
+
+        private float arrivedAt = -1f;
 
         public FacilityZone Zone { get; }
         public FacilityZone FromZone { get; }
@@ -52,7 +57,25 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Room
                 return ActionStatus.Completed;
             }
 
-            return MoveToTarget(ArrivalMeters) ? ActionStatus.Completed : ActionStatus.Running;
+            if (!MoveToTarget(ArrivalMeters))
+            {
+                arrivedAt = -1f;
+                return ActionStatus.Running;
+            }
+
+            botPlayer.Locomotion.Stop();
+            if (arrivedAt < 0f)
+            {
+                arrivedAt = UnityEngine.Time.time;
+            }
+
+            return UnityEngine.Time.time - arrivedAt > ArrivedWithoutZoneSeconds ? ActionStatus.Failed : ActionStatus.Running;
+        }
+
+        public override void Reset()
+        {
+            arrivedAt = -1f;
+            base.Reset();
         }
 
         public override string ToString()

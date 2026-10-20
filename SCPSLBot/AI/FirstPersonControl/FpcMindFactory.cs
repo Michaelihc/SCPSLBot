@@ -132,7 +132,9 @@ namespace SCPSLBot.AI.FirstPersonControl
             mind.AddBelief(new ItemSpawnsLocation<KeycardWithPermissions>(exitGatesCard, exitGatesSpawnItemTypes, roomSense, itemsSense));
 
             mind.AddAction(new GoToItemSpawnLocation<KeycardWithPermissions>(exitGatesCard, botPlayer));
-            mind.AddAction(new GoToSearchRoom<KeycardWithPermissions>(exitGatesCard, FacilityZone.HeavyContainment, botPlayer));
+            // Searched in whichever zone the bot is in: the need shows up in Entrance (at the gate),
+            // and a zone-bound search would send it back and forth across the checkpoint.
+            mind.AddAction(new GoToSearchRoom<KeycardWithPermissions>(exitGatesCard, botPlayer));
             #endregion
 
             // Picking up the right card is what opens a border.

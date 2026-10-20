@@ -28,7 +28,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
 
         protected override float ScoreTarget(Vector3 position, int index)
         {
-            if (location.TryGetPickup(position, out var pickup) && pickupMemory.IsBlocked(pickup))
+            // Destroyed (taken) pickups and recently failed ones are not targets.
+            if (!location.TryGetPickup(position, out var pickup) || pickupMemory.IsBlocked(pickup))
             {
                 return float.PositiveInfinity;
             }

@@ -265,7 +265,10 @@ namespace SCPSLBot.AI.FirstPersonControl
             isBeliefsUpdated = true;
         }
 
-        /// <summary>The objective stops being the active behavior: freeze the running action's time budget.</summary>
+        /// <summary>
+        /// The objective stops being the active behavior: the running action lets go of what it
+        /// was doing (a pickup search, a locker, a held keycard) and its time budget freezes.
+        /// </summary>
         public void PauseRunningAction()
         {
             if (!executing)
@@ -274,19 +277,42 @@ namespace SCPSLBot.AI.FirstPersonControl
             }
 
             executing = false;
-            if (RunningAction != null)
+            if (RunningAction == null)
             {
-                pausedBudget = Mathf.Max(0f, runningDeadline - Time.time);
+                return;
+            }
+
+            pausedBudget = Mathf.Max(0f, runningDeadline - Time.time);
+            try
+            {
+                RunningAction.Stop();
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
             }
         }
 
-        /// <summary>The objective is active again: the running action continues with the budget it had left.</summary>
+        /// <summary>The objective is active again: the running action starts over with the budget it had left.</summary>
         public void ResumeRunningAction()
         {
+            var wasExecuting = executing;
             executing = true;
-            if (RunningAction != null && pausedBudget >= 0f)
+            if (RunningAction != null && !wasExecuting)
             {
-                runningDeadline = Time.time + Mathf.Max(pausedBudget, MinResumeBudgetSeconds);
+                try
+                {
+                    RunningAction.Reset();
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception);
+                }
+
+                if (pausedBudget >= 0f)
+                {
+                    runningDeadline = Time.time + Mathf.Max(pausedBudget, MinResumeBudgetSeconds);
+                }
             }
 
             pausedBudget = -1f;

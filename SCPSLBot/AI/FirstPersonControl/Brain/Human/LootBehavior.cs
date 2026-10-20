@@ -56,6 +56,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         private float targetScore;
         private bool workingChamber;
         private bool swapFirearm;
+        private ushort droppedFirearmSerial;
         private float nextScanAt;
         private float deadline;
         private int chamberGeneration = int.MinValue;
@@ -107,8 +108,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         public void OnEnter()
         {
             bot.Locomotion.DiscardAbandonRequest();
-            var target = targetPickup != null ? targetPickup.Position : ChamberPosition();
-            deadline = Time.time + BaseTimeoutSeconds + Vector3.Distance(bot.PlayerPosition, target) / TimeoutMetersPerSecond;
         }
 
         public void OnExit()
@@ -147,7 +146,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                 return false;
             }
 
-            if (swapFirearm && (targetPickup.Position - bot.PlayerPosition).sqrMagnitude <= SwapDropMeters * SwapDropMeters)
+            if (swapFirearm
+                && targetPickup.CanSearch
+                && (targetPickup.Position - bot.PlayerPosition).sqrMagnitude <= SwapDropMeters * SwapDropMeters)
             {
                 DropCarriedFirearm();
             }
@@ -156,6 +157,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             switch (session.Tick())
             {
                 case PickupProgress.PickedUp:
+                    if (droppedFirearmSerial != 0)
+                    {
+                        // Never swap back to the firearm just replaced.
+                        pickupMemory.Block(droppedFirearmSerial, DroppedFirearmSeconds);
+                    }
+
                     ClearTarget();
                     context.InvalidateInventory();
                     nextScanAt = 0f;
@@ -214,10 +221,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                 return;
             }
 
-            var serial = carried.ItemSerial;
+            droppedFirearmSerial = carried.ItemSerial;
             carried.ServerDropItem(true);
-            // Never swap back to the firearm just dropped.
-            pickupMemory.Block(serial, DroppedFirearmSeconds);
             context.InvalidateInventory();
         }
 
@@ -267,6 +272,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                 targetPickup = pickup;
                 targetSerial = pickup.Info.Serial;
                 targetScore = score;
+                StartDeadline(pickup.Position);
                 swapFirearm = LootValuation.CategoryOf(pickup.Info.ItemId) == ItemCategory.Firearm && inventory.Firearm != null;
                 return;
             }
@@ -340,6 +346,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                 targetLocker = bestLocker;
                 targetChamber = bestChamber;
                 targetScore = bestScore;
+                StartDeadline(ChamberPosition());
             }
         }
 
@@ -413,6 +420,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             return (front - bot.PlayerPosition).sqrMagnitude <= (back - bot.PlayerPosition).sqrMagnitude ? front : back;
         }
 
+        /// <summary>The trip budget runs from the moment a target is chosen, whoever interrupts it.</summary>
+        private void StartDeadline(Vector3 target)
+        {
+            deadline = Time.time + BaseTimeoutSeconds + Vector3.Distance(bot.PlayerPosition, target) / TimeoutMetersPerSecond;
+        }
+
         private Vector3 ChamberPosition()
         {
             return targetLocker != null && targetChamber >= 0 && targetChamber < targetLocker.Chambers.Length
@@ -445,6 +458,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             targetChamber = -1;
             targetScore = 0f;
             swapFirearm = false;
+            droppedFirearmSerial = 0;
             workingChamber = false;
         }
     }

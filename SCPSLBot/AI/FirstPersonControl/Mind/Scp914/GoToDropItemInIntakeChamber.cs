@@ -9,6 +9,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
     internal class GoToDropItemInIntakeChamber<C> : GoTo<Scp914Location> where C : IItemBeliefCriteria, IEquatable<C>
     {
         private const float DropArrivalMeters = 0.4f;
+        // Long enough for the machine to run; the upgraded pickup gets a new serial.
+        private const float DroppedInputSeconds = 120f;
 
         public C Criteria { get; }
         public GoToDropItemInIntakeChamber(C criteria, FpcBotPlayer botPlayer) : base(botPlayer)
@@ -60,6 +62,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
             }
 
             botPlayer.Locomotion.Stop();
+            // Neither this mind nor the loot behavior may take the input back out of the chamber.
+            BotPickupMemory.For(botPlayer).Block(itemToDrop.ItemSerial, DroppedInputSeconds);
             itemToDrop.ServerDropItem(true);
             itemInIntakeChamber.Update(playerPosition - itemDropPosition);
             return ActionStatus.Completed;

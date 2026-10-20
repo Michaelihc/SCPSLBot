@@ -94,16 +94,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
 
         public void OnExit()
         {
-            if (item != null && started && item.IsUsing)
-            {
-                // Within the cancellable window this stops the use; past it the use completes.
-                UsableItemsController.ServerEmulateMessage(itemSerial, StatusMessage.StatusType.Cancel);
-            }
-
-            swap.Restore();
-            item = null;
-            itemSerial = 0;
-            started = false;
+            Finish();
         }
 
         public bool Tick()
@@ -175,6 +166,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
 
         private bool Finish()
         {
+            if (item != null && started && item.IsUsing)
+            {
+                // A used item cannot be holstered: cancel first. Within the native cancellable
+                // window this stops the use; past it the use completes and the item is consumed.
+                UsableItemsController.ServerEmulateMessage(itemSerial, StatusMessage.StatusType.Cancel);
+            }
+
             swap.Restore();
             item = null;
             itemSerial = 0;

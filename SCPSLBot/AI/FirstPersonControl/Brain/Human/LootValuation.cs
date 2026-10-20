@@ -162,6 +162,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
 
         private static float KeycardValue(ItemType type, HumanInventory inventory, RoleTypeId role)
         {
+            // Single-use passes (SurfaceAccessPass) report no permissions without a door to check
+            // against, so they value as junk here; zone access still counts them at the gates.
             if (!KeycardPermissions.TryGetValue(type, out var permissions))
             {
                 permissions = InventoryItemLoader.TryGetItem<KeycardItem>(type, out var keycard) ? keycard.GetPermissions(null) : DoorPermissionFlags.None;
