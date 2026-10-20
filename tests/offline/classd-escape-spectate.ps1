@@ -1,6 +1,6 @@
 param($Context)
 $ErrorActionPreference = 'Stop'
-# Normal round with one SCPSLBot Class-D: the real client spectates it in Overwatch and one uncut
+# Normal round with one SCPSLBot Class-D: the real client spectates it after a native death and one uncut
 # take records the autonomous escape (keycards, SCP-914, checkpoints, elevators, Surface exit).
 $escapeDeadlineSeconds = 1500
 $log = Join-Path $Context.Evidence 'classd-escape.log'
@@ -32,19 +32,21 @@ $deadline = (Get-Date).AddSeconds(20)
 while ((Reply '/roundtime') -notmatch 'Round time:' -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 1 }
 Start-Sleep -Seconds 2
 $null = Reply "/forcerole $($bot.id) ClassD"
-$null = Reply "/forcerole $($client.id) Overwatch"
 $null = Reply '/decontamination disable'
 $null = Reply '/wave forcepause NTF true'
 $null = Reply '/wave forcepause Chaos true'
+# Overwatch and a forced Spectator role start without a target; a native death runs the
+# spectator's automatic target selection, and the paused waves keep the client spectating.
+$null = Reply "/forcerole $($client.id) Scientist"
 Start-Sleep -Seconds 3
+$null = Reply "/god $($client.id) disable"
+$null = Reply "/kill $($client.id)"
+Start-Sleep -Seconds 12
 $bot = Bot
 $client = @(Observe -ClientsOnly)[0]
 if ($bot.role -ne 'ClassD') { throw "Bot is $($bot.role), not ClassD" }
-if ($client.role -ne 'Overwatch') { throw "Client is $($client.role), not Overwatch" }
+if ($client.role -ne 'Spectator') { throw "Client is $($client.role), not Spectator" }
 Note "spectating client camera=$($client.camera | ConvertTo-Json -Compress) bot=$($bot.position | ConvertTo-Json -Compress)"
-# Overwatch starts with no target; native Shoot selects the next spectatable player (the only one).
-$null = Invoke-LabInput @{id='spectate-select-bot';frames=45;inputFrames=2;keys=@(323)}
-Start-Sleep -Seconds 1
 $null = Invoke-LabScreenshot -Name spectate-start
 
 $escaped = $false
