@@ -42,6 +42,9 @@ $client = @(Observe -ClientsOnly)[0]
 if ($bot.role -ne 'ClassD') { throw "Bot is $($bot.role), not ClassD" }
 if ($client.role -ne 'Overwatch') { throw "Client is $($client.role), not Overwatch" }
 Note "spectating client camera=$($client.camera | ConvertTo-Json -Compress) bot=$($bot.position | ConvertTo-Json -Compress)"
+# Overwatch starts with no target; native Shoot selects the next spectatable player (the only one).
+$null = Invoke-LabInput @{id='spectate-select-bot';frames=45;inputFrames=2;keys=@(323)}
+Start-Sleep -Seconds 1
 $null = Invoke-LabScreenshot -Name spectate-start
 
 $escaped = $false
