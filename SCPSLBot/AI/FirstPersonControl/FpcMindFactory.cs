@@ -37,6 +37,31 @@ namespace SCPSLBot.AI.FirstPersonControl
             (FacilityZone.Surface, FacilityZone.Entrance, DoorPermissionFlags.ExitGates),
         };
 
+        /// <summary>Zones in the order an escape crosses them.</summary>
+        private static readonly FacilityZone[] EscapeChain =
+        {
+            FacilityZone.LightContainment, FacilityZone.HeavyContainment, FacilityZone.Entrance, FacilityZone.Surface,
+        };
+
+        /// <summary>The borders an escape still crosses after entering <paramref name="to"/>; none for crossings away from Surface.</summary>
+        private static (FacilityZone From, FacilityZone To)[] OnwardBorders(FacilityZone from, FacilityZone to)
+        {
+            var fromIndex = System.Array.IndexOf(EscapeChain, from);
+            var toIndex = System.Array.IndexOf(EscapeChain, to);
+            if (fromIndex < 0 || toIndex != fromIndex + 1)
+            {
+                return System.Array.Empty<(FacilityZone, FacilityZone)>();
+            }
+
+            var onward = new List<(FacilityZone From, FacilityZone To)>();
+            for (var index = toIndex; index + 1 < EscapeChain.Length; index++)
+            {
+                onward.Add((EscapeChain[index], EscapeChain[index + 1]));
+            }
+
+            return onward.ToArray();
+        }
+
         public static void BuildMind(FpcMind mind, FpcBotPlayer botPlayer, FpcBotPerception perception)
         {
             var roomSense = perception.GetSense<RoomSightSense>();
@@ -63,7 +88,7 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             foreach (var (from, to, _) in Borders)
             {
-                var crossing = new GoToZoneEnterLocation(to, from, botPlayer);
+                var crossing = new GoToZoneEnterLocation(to, from, OnwardBorders(from, to), botPlayer);
                 mind.AddAction(crossing);
                 if (to == FacilityZone.Surface)
                 {
