@@ -12,6 +12,11 @@
 - Use native SCP abilities: SCP-049 Doctor's Call, native attack reach and corpse revival; SCP-049-2
   corpse consumption; SCP-096 charge and gate prying; SCP-106 stalk and Hunter's Atlas; SCP-939
   focus, lunge and amnestic cloud; SCP-3114 disguise, reveal and strangle.
+- Swing SCP attacks at the native reach read from the role prefabs instead of fixed ranges, so
+  SCP-106, SCP-939, SCP-3114, SCP-049-2 and SCP-096 strike as soon as a hit can land.
+- Let SCP-106 walk through doors in a chase instead of stopping to open them.
+- Make SCP-939 lunge only from door ambushes: on entering a room it sometimes waits, focused, behind
+  a closed door and lunges at whoever opens it. In a chase it claws instead of focusing.
 - Human bots pick up useful items with the native search time, heal with medical items when safe,
   flee when unarmed, and equip keycards for keycard lockers. Only Standard warmup issues a COM-15 to
   unarmed humans.

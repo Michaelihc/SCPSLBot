@@ -35,9 +35,9 @@ See [Credits](#credits).
 </tr>
 <tr>
 <td><img src="docs/media/scp106.webp" alt="SCP-106 bot closing in on its prey"><br>
-<b>SCP-106</b>: stalks underground to close distance, uses Hunter's Atlas to reach distant prey, and drags corroded victims into the pocket dimension.</td>
+<b>SCP-106</b>: walks through doors, stalks underground to close distance, uses Hunter's Atlas to reach distant prey, and drags corroded victims into the pocket dimension.</td>
 <td><img src="docs/media/scp939.webp" alt="SCP-939 bot mauling scientists"><br>
-<b>SCP-939</b>: focuses and lunges from mid range, lays amnestic clouds against groups and claws up close.</td>
+<b>SCP-939</b>: lies in wait behind doors and lunges at whoever comes through, claws its way through a chase and lays amnestic clouds against groups.</td>
 </tr>
 <tr>
 <td><img src="docs/media/scp3114.webp" alt="SCP-3114 bot attacking scientists"><br>
@@ -171,8 +171,7 @@ active. `HsmAdapter` and `ServerKeybinds` are open source at
 ## Known limits
 
 - SCP-079 has no bot AI.
-- Generic SCP bots use their primary attack only: no SCP-049 revive, SCP-939 lunge, amnestic cloud
-  or mimicry, SCP-106 stalk or portals, or SCP-3114 disguise or strangle.
+- SCP-939 does not use mimicry.
 - Bots do not use medkits, grenades or armor, and do not cuff.
 - During Standard warmup, bots on Surface hold position until they find a target.
 - Do not install the legacy `WarmupPlayerPanel` or `ScpslPluginStarter.dll` alongside this suite.

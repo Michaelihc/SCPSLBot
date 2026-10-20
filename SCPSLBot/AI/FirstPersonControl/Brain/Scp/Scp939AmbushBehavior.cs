@@ -48,7 +48,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
 
         public string Name => "Scp939Ambush";
 
-        public string Detail => door == null ? null : waiting ? $"wait {door.name} {Mathf.Max(0f, waitUntil - Time.time):F0}s" : $"approach {door.name}";
+        public string Detail => door == null
+            ? null
+            : waiting
+                ? $"wait {Mathf.Max(0f, waitUntil - Time.time):F0}s aim={AimAngle():F0} focus={bot.Combat.Scp939.FocusState:F2}"
+                : "approach";
 
         private static INavigationBackend Backend => NavigationSystem.Instance.Backend;
 
@@ -197,6 +201,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
             lookPoint = best.transform.position + Vector3.up * DoorLookHeight;
             return true;
         }
+
+        private float AimAngle() => Vector3.Angle(bot.CameraForward, lookPoint - bot.CameraPosition);
 
         private static float HorizontalDistance(Vector3 a, Vector3 b)
             => Vector3.Distance(Vector3.ProjectOnPlane(a, Vector3.up), Vector3.ProjectOnPlane(b, Vector3.up));

@@ -59,18 +59,23 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
             cloudHeld = false;
         }
 
-        /// <summary>Releases held inputs when combat ends, so a stuck cloud or focus cannot block the claw.</summary>
+        /// <summary>
+        /// Releases held inputs when combat has no target, so a stuck cloud or focus cannot block the
+        /// claw. Runs on every idle combat tick, so an ambush still lying in wait (no contact yet)
+        /// keeps its focus; the ambush behavior releases that one itself.
+        /// </summary>
         public void ReleaseHeld()
         {
-            if (!focusHeld && !cloudHeld)
+            var releaseFocus = focusHeld && contactStartedTime >= 0f;
+            if (!releaseFocus && !cloudHeld)
             {
                 return;
             }
 
             var abilities = combat.Abilities;
-            if (focusHeld && abilities.TryGet<Scp939FocusKeySync>(out var focusKey))
+            if (releaseFocus && abilities.TryGet<Scp939FocusKeySync>(out var focusKey))
             {
-                ScpAbilityCommands.SendBool(focusKey, false);
+                ReleaseFocus(focusKey, Time.time, FocusRetrySeconds);
             }
 
             if (cloudHeld && abilities.TryGet<Scp939AmnesticCloudAbility>(out var cloud))
@@ -78,9 +83,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
                 ScpAbilityCommands.SendBool(cloud, false);
             }
 
-            focusHeld = false;
             cloudHeld = false;
         }
+
+        /// <summary>Native focus progress (0..1) for diagnostics; -1 when the bot is not SCP-939.</summary>
+        public float FocusState => combat.Abilities.TryGet<Scp939FocusAbility>(out var focus) ? focus.State : -1f;
 
         /// <summary>Returns true while focusing or recovering, so the caller skips claw attacks.</summary>
         public bool Tick(CombatTarget target, ScpCombatStrategy coordinator)

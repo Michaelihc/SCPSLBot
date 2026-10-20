@@ -66,11 +66,16 @@ function Spectate {
     return $true
 }
 
+# doortp to LCZ_ARMORY lands inside the keycard armory, so no anchor uses it.
 $segments = @(
-    @{ role='Scp049'; scpDoor=@('914'); doors=@(@('914'), @('LCZ_ARMORY'), @('LCZ_CAFE'), @('GR18')); roles=@('ClassD','Scientist','FacilityGuard','ClassD'); seconds=150 },
-    @{ role='Scp096'; scpDoor=@('LCZ_ARMORY'); doors=@(@('LCZ_ARMORY'), @('LCZ_CAFE'), @('GR18'), @('914')); roles=@('ClassD','ClassD','Scientist','FacilityGuard'); seconds=120 },
-    @{ role='Scp106'; scpDoor=@('914'); doors=@(@('914'), @('LCZ_WC'), @('GR18'), @('LCZ_ARMORY')); roles=@('ClassD','Scientist','ClassD','FacilityGuard'); seconds=150 },
-    @{ role='Scp939'; scpDoor=@('GR18'); doors=@(@('GR18'), @('GR18'), @('GR18'), @('LCZ_CAFE')); roles=@('ClassD','Scientist','ClassD','FacilityGuard'); seconds=120 },
+    @{ role='Scp049'; scpDoor=@('914'); doors=@(@('914'), @('LCZ_WC'), @('LCZ_CAFE'), @('GR18')); roles=@('ClassD','Scientist','FacilityGuard','ClassD'); seconds=150 },
+    @{ role='Scp096'; scpDoor=@('LCZ_CAFE'); doors=@(@('LCZ_CAFE'), @('LCZ_WC'), @('GR18'), @('914')); roles=@('ClassD','ClassD','Scientist','FacilityGuard'); seconds=120 },
+    # Unnamed doors keep closing, so the chase runs into closed doors that SCP-106 walks through.
+    @{ role='Scp106'; scpDoor=@('914'); doors=@(@('914'), @('LCZ_WC'), @('GR18'), @('LCZ_CAFE')); roles=@('ClassD','Scientist','ClassD','Scientist'); seconds=120; closeDoors=$true },
+    # A Surface target needs no line of sight: SCP-106 chases a Class-D locked in the nuke building.
+    @{ role='Scp106'; scpDoor=@('SURFACE_GATE'); doors=@(@('SURFACE_NUKE')); roles=@('ClassD'); seconds=60; lockDoor='SURFACE_NUKE'; spectators=$true },
+    # SCP-939 lunges only from door ambushes, which it starts on some room entries.
+    @{ role='Scp939'; scpDoor=@('GR18'); doors=@(@('GR18'), @('914'), @('LCZ_CAFE'), @('LCZ_WC')); roles=@('ClassD','Scientist','ClassD','Scientist'); seconds=240 },
     @{ role='Scp3114'; corpse=$true; scpDoor=@('LCZ_CAFE'); doors=@(@('LCZ_CAFE'), @('LCZ_ARMORY'), @('914'), @('GR18')); roles=@('ClassD','Scientist','ClassD','FacilityGuard'); seconds=150 },
     @{ role='Scp0492'; corpse=$true; hurt=$true; scpDoor=@('914'); doors=@(@('914'), @('LCZ_WC'), @('GR18'), @('LCZ_ARMORY')); roles=@('ClassD','ClassD','Scientist','ClassD'); seconds=60 },
     @{ role='Scp173'; scpDoor=@('LCZ_WC'); doors=@(@('LCZ_WC'), @('LCZ_CAFE'), @('914'), @('GR18')); roles=@('ClassD','Scientist','ClassD','FacilityGuard'); seconds=90 }
@@ -90,7 +95,12 @@ try {
     foreach ($segment in $segments) {
         $scpDoor = Door $segment.scpDoor
         for ($i = 0; $i -lt $humans.Count; $i++) {
-            Place $humans[$i] $segment.roles[$i] (Door $segment.doors[$i])
+            if ($i -lt $segment.roles.Count) { Place $humans[$i] $segment.roles[$i] (Door $segment.doors[$i]) }
+            elseif ($segment.spectators) { $null = Reply "/forcerole $($humans[$i].id) Spectator" }
+        }
+        if ($segment.lockDoor) {
+            $null = Reply "/close $($segment.lockDoor)"
+            $null = Reply "/lock $($segment.lockDoor)"
         }
         if ($segment.corpse) {
             # The first human dies at the SCP's anchor so a fresh corpse is waiting there.
@@ -106,8 +116,10 @@ try {
         $nextDebug = Get-Date
         while ((Get-Date) -lt $end) {
             if ((Get-Date) -ge $nextDebug) { $nextDebug = (Get-Date).AddSeconds(15); $null = Reply '/bot_debug' }
-            Start-Sleep -Seconds 1
+            if ($segment.closeDoors) { $null = Invoke-LabServer '/close !*' }
+            Start-Sleep -Seconds $(if ($segment.closeDoors) { 3 } else { 1 })
         }
+        if ($segment.lockDoor) { $null = Reply "/unlock $($segment.lockDoor)" }
     }
 }
 finally {

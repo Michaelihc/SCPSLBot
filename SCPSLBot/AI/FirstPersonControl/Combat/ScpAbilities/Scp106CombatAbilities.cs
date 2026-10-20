@@ -1,5 +1,6 @@
 using MapGeneration;
 using PlayerRoles.FirstPersonControl;
+using PlayerRoles.PlayableScps;
 using PlayerRoles.PlayableScps.Scp106;
 using PlayerStatsSystem;
 using UnityEngine;
@@ -31,6 +32,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
         private const float AtlasVigorReserve = 0.25f;
         private const float AtlasBaseCost = 0.15f;
         private const float AtlasCostPerMeter = 0.015f;
+
+        // Native lag compensation (Scp106Attack, FpcBacktracker): the claimed target position may lie
+        // anywhere on the target's last 0.35 s of movement, the owner's within its last 0.1 s plus a
+        // 0.15 s forecast along its velocity. A real client claims where it sees the target, a little
+        // in the past; the bot claims the nearest point of a typical client's window instead of the
+        // exact current positions, which made it hit only when on top of a fleeing target.
+        private const float TargetTraceSeconds = 0.2f;
+        private const float OwnerBacktrackSeconds = 0.1f;
+        private const float OwnerForecastSeconds = 0.15f;
 
         private readonly FpcBotCombat combat;
 
@@ -148,14 +158,30 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
             }
 
             var camera = abilities.Hub.PlayerCameraReference;
-            var ownerPosition = role.FpcModule.Position;
-            var targetPosition = targetRole.FpcModule.Position;
+            var ownerModule = role.FpcModule;
+            var targetPosition = targetRole.FpcModule.Tracer
+                .GenerateBounds(TargetTraceSeconds, true)
+                .ClosestPoint(ownerModule.Position);
+            var ownerPosition = ClaimOwnerPosition(ownerModule, camera.position, targetPosition);
             if (!ScpAttackReach.Scp106WouldHit(attack, ownerPosition, camera.forward, targetPosition))
             {
                 return false;
             }
 
             return ScpAbilityCommands.SendTargetedStrike(attack, targetHub, targetPosition, camera.rotation, ownerPosition);
+        }
+
+        /// <summary>The owner position nearest the target that the native owner backtracker accepts.</summary>
+        private static Vector3 ClaimOwnerPosition(FirstPersonMovementModule ownerModule, Vector3 cameraPosition, Vector3 targetPosition)
+        {
+            var bounds = ownerModule.Tracer.GenerateBounds(OwnerBacktrackSeconds, true);
+            bounds.Encapsulate(ownerModule.Position);
+            if (!Physics.Linecast(cameraPosition, targetPosition, VisionInformation.VisionLayerMask))
+            {
+                bounds.Encapsulate(ownerModule.Position + ownerModule.Motor.Velocity * OwnerForecastSeconds);
+            }
+
+            return bounds.ClosestPoint(targetPosition);
         }
     }
 }
