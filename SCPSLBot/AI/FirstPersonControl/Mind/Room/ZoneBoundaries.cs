@@ -44,7 +44,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Room
                     continue;
                 }
 
-                if (gate.ActiveLocks != 0 && gate.IsConsideredOpen())
+                if (gate.ActiveLocks != 0 && DoorAccess.IsPassable(gate))
                 {
                     continue;
                 }

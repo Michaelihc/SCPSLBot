@@ -46,6 +46,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private const int MaxInteractAttempts = 4;
         private const float WaitForSelfOpeningSeconds = 6f;
         private const float MaxClosedSeconds = 10f;
+        // HCZ bulk gates take several seconds to open but their exact state advances every frame.
+        private const float MaxOpeningStallSeconds = 3f;
+        private const float OpeningProgressEpsilon = 0.01f;
         private const float KeycardLeaseSeconds = 6f;
 
         private readonly struct Crossing
@@ -92,6 +95,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private int attempts;
         private float nextInteractAt;
         private float closedSince;
+        private float openingProgress = -1f;
+        private float openingProgressAt;
 
         private DoorVariant keycardDoor;
         private ushort keycardSerial;
@@ -244,6 +249,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 attempts = 0;
                 nextInteractAt = 0f;
                 closedSince = now;
+                openingProgress = -1f;
+                openingProgressAt = now;
             }
 
             var hub = botPlayer.BotHub.PlayerHub;
@@ -258,15 +265,33 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             if (door.TargetState)
             {
                 closedSince = now;
-                if (door.IsConsideredOpen())
+                if (DoorAccess.IsPassable(door))
                 {
                     DiagnosticState = null;
                     return DoorTraversalResult.Proceed;
                 }
 
+                // Opening doors keep moving; one that stops short of open (a refused animation,
+                // a jammed leaf) is reported instead of holding the bot until its goal times out.
+                var exactState = door.GetExactState();
+                if (exactState > openingProgress + OpeningProgressEpsilon)
+                {
+                    openingProgress = exactState;
+                    openingProgressAt = now;
+                }
+
+                if (distance < HoldDistance && now - openingProgressAt > MaxOpeningStallSeconds)
+                {
+                    DiagnosticState = "door:stalled";
+                    return DoorTraversalResult.Blocked;
+                }
+
                 DiagnosticState = "door:opening";
                 return distance < HoldDistance ? DoorTraversalResult.Hold : DoorTraversalResult.Proceed;
             }
+
+            openingProgress = -1f;
+            openingProgressAt = now;
 
             if (distance <= InteractRange && now - closedSince > MaxClosedSeconds)
             {

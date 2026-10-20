@@ -130,7 +130,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             }
 
             var candidate = doorHit.collider.GetComponentInParent<DoorVariant>();
-            if (candidate == null || candidate is ElevatorDoor || candidate.IsConsideredOpen())
+            if (candidate == null || candidate is ElevatorDoor || DoorAccess.IsPassable(candidate))
             {
                 return false;
             }

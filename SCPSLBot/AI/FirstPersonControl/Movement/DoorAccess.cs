@@ -26,6 +26,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
     /// </summary>
     internal static class DoorAccess
     {
+        // Fully open by the door's own state metric. IsConsideredOpen alone is not enough: the
+        // HCZ bulk gate prefab's considered-open threshold is never exceeded even at exact state 1.
+        private const float FullyOpenExactState = 0.95f;
+
+        /// <summary>True when the door no longer blocks the doorway (open, or destroyed).</summary>
+        public static bool IsPassable(DoorVariant door)
+            => door != null && (door.IsConsideredOpen() || door.GetExactState() >= FullyOpenExactState);
+
         public static bool IsPlayerDoor(DoorVariant door)
             => door != null && door is not ElevatorDoor && door is not DummyDoor && door is not BasicNonInteractableDoor;
 
