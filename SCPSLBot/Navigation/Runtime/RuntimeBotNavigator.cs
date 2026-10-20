@@ -32,6 +32,8 @@ namespace SCPSLBot.Navigation.Runtime
         private const float CornerInsetMeters = 0.12f;
         private const int MaxCorners = 256;
         private const int MaxElevatorDetours = 3;
+        // A partial plan that never leaves this radius started on furniture, not on the floor.
+        private const float IslandMeters = 2.5f;
         // Only detour over an elevator whose far landing is much nearer the goal than the bot is.
         private const float ElevatorDetourGain = 0.5f;
         private const int PlanSlots = 2;
@@ -52,6 +54,8 @@ namespace SCPSLBot.Navigation.Runtime
             public bool HasPath;
             public bool HasPartialPath;
             public bool GoalOffMesh;
+            /// <summary>The bot stands on a navmesh island (furniture it jumped onto): nothing but its own spot is reachable.</summary>
+            public bool Stranded;
             public bool HasGoal;
             public Vector3 Goal;
             public float LastUsedAt = float.NegativeInfinity;
@@ -67,6 +71,7 @@ namespace SCPSLBot.Navigation.Runtime
                 HasPath = false;
                 HasPartialPath = false;
                 GoalOffMesh = false;
+                Stranded = false;
             }
         }
 
@@ -148,6 +153,14 @@ namespace SCPSLBot.Navigation.Runtime
                 {
                     Replan(current, goalPosition);
                 }
+            }
+
+            if (current.Stranded)
+            {
+                // On a table or bunk the stuck ladder's jump landed on: step off toward the goal.
+                // Blocked that way, the ladder nudges, jumps and finally abandons the goal.
+                CurrentWaypoint = goalPosition;
+                return goalPosition;
             }
 
             if (!current.HasPath && !current.HasPartialPath)
@@ -393,11 +406,12 @@ namespace SCPSLBot.Navigation.Runtime
 
             plan.HasPath = status == NavMeshPathStatus.PathComplete;
             plan.HasPartialPath = status == NavMeshPathStatus.PathPartial;
-            if (plan.HasPartialPath && plan.Corners.Count == 1 && HorizontalDistance(plan.Corners[0], position) < CornerArrivalDistance)
+            if (plan.HasPartialPath && IsIsland(plan.Corners, position) && HorizontalDistance(position, goal) > IslandMeters)
             {
-                // Nothing reachable beyond the bot's own feet.
+                // Nothing reachable beyond a few meters around the bot's own feet.
                 plan.HasPartialPath = false;
-                FailPlan(plan, "partial-at-feet", position, goalPosition, permissions, path.status);
+                plan.Stranded = true;
+                FailPlan(plan, "stranded", position, goalPosition, permissions, status);
                 return;
             }
 
@@ -435,6 +449,19 @@ namespace SCPSLBot.Navigation.Runtime
             {
                 ProgressStamp++;
             }
+        }
+
+        private static bool IsIsland(List<Vector3> corners, Vector3 position)
+        {
+            foreach (var corner in corners)
+            {
+                if (HorizontalDistance(corner, position) > IslandMeters)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void AppendCorners(List<Vector3> corners)
