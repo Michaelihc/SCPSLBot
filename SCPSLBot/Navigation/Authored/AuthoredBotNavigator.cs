@@ -588,8 +588,8 @@ namespace SCPSLBot.Navigation.Authored
             return true;
         }
 
-        /// <summary>The cell mesh only knows an edgeless segment; penalize the crossing the bot is attempting.</summary>
-        public bool ReportBlockedLink(ElevatorLinkSegment link) => ReportBlockedCrossing();
+        /// <summary>Cell links carry the penalty; penalize the crossing the bot is attempting.</summary>
+        public bool ReportBlockedAt(Vector3 position) => ReportBlockedCrossing();
 
         private static string Describe(TransformCell cell)
         {

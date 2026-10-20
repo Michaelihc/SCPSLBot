@@ -1,6 +1,4 @@
-﻿using SCPSLBot.AI.FirstPersonControl.Mind.Door;
-using SCPSLBot.AI.FirstPersonControl.Mind.Elevation;
-using SCPSLBot.AI.FirstPersonControl.Mind.Misc;
+﻿using SCPSLBot.AI.FirstPersonControl.Mind.Misc;
 using System;
 using UnityEngine;
 
@@ -32,9 +30,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Spacial
         {
             this.location = SetEnabledByLocation(fpcMind, b => b.Positions.Count > Idx);
 
-            fpcMind.ActionEnabledBy<DoorObstacle, DoorEntry?>(this, b => b.GetEntry(targetPositionGetter()), c => !c.HasValue);
+            // Doors and elevators on the way are execution detail of BotLocomotion; only a window
+            // nothing can open disables the trip.
             fpcMind.ActionEnabledBy<GlassObstacle>(this, b => !b.Is(targetPositionGetter()));
-            fpcMind.ActionEnabledBy<ElevationObstacle, ElevationObstacleMode>(this, ElevationObstacleMode.NoElevator, b => b.Has(targetPositionGetter()));
         }
 
         private readonly FpcBotPlayer botPlayer;

@@ -1,7 +1,6 @@
 ﻿using Interactables.Interobjects.DoorUtils;
 using SCPSLBot.AI.FirstPersonControl.Mind;
 using SCPSLBot.AI.FirstPersonControl.Mind.Goals;
-using SCPSLBot.AI.FirstPersonControl.Mind.Door;
 using SCPSLBot.AI.FirstPersonControl.Mind.Item;
 using SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions;
 using SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs;
@@ -13,7 +12,6 @@ using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
 using MapGeneration.Distributors;
 using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Mind.Room;
-using SCPSLBot.AI.FirstPersonControl.Mind.Elevation;
 using SCPSLBot.AI.FirstPersonControl.Mind.Escape;
 
 namespace SCPSLBot.AI.FirstPersonControl
@@ -28,13 +26,8 @@ namespace SCPSLBot.AI.FirstPersonControl
 
         public static void BuildMind(FpcMind mind, FpcBotPlayer botPlayer, FpcBotPerception perception)
         {
-            mind.AddBelief(new DoorObstacle(perception.GetSense<DoorsWithinSightSense>(), botPlayer.Navigator));
+            // Doors and elevators are crossed by BotLocomotion; the mind only chooses destinations.
             mind.AddBelief(new GlassObstacle(perception.GetSense<GlassSightSense>(), botPlayer.Navigator));
-
-
-            mind.AddBelief(new ElevationObstacle(perception.GetSense<DoorsWithinSightSense>(), botPlayer.Navigator));
-            mind.AddAction(new CallAndWaitForElevator(botPlayer));
-            mind.AddAction(new TravelOnElevator(botPlayer));
 
 
             mind.AddBelief(new RoomEnterLocation(perception.GetSense<RoomSightSense>()));
@@ -66,7 +59,6 @@ namespace SCPSLBot.AI.FirstPersonControl
             mind.AddAction(new GoToSearchRoomForScp914(botPlayer));
             mind.AddAction(new GoToStartScp914OnSetting(Scp914.Scp914KnobSetting.Fine, botPlayer));
             mind.AddAction(new GoToStartScp914OnSetting(Scp914.Scp914KnobSetting.OneToOne, botPlayer));
-            mind.AddAction(new WaitForChamberDoorOpening(botPlayer));
 
 
             mind.AddBelief(new LockerSpawnsLocation(StructureType.StandardLocker, perception.GetSense<RoomSightSense>()));
@@ -369,13 +361,6 @@ namespace SCPSLBot.AI.FirstPersonControl
             mind.AddAction(new GoToItemSpawnInLocker<ItemOfType>(ItemType.KeycardJanitor, botPlayer));
             mind.AddActions(idx => new GoToSearchRoom<ItemOfType>(ItemType.KeycardJanitor, idx, botPlayer));
             #endregion
-
-
-            mind.AddAction(new OpenNonKeycardDoorObstacle(botPlayer));
-            mind.AddAction(new OpenKeycardDoorObstacle(DoorPermissionFlags.ContainmentLevelOne, botPlayer));
-            mind.AddAction(new OpenKeycardDoorObstacle(DoorPermissionFlags.ContainmentLevelTwo, botPlayer));
-            mind.AddAction(new OpenKeycardDoorObstacle(DoorPermissionFlags.Checkpoints, botPlayer));
-            mind.AddAction(new OpenKeycardDoorObstacle(DoorPermissionFlags.ExitGates, botPlayer));
 
 
             mind.AddBelief(new FacilityEscapeLocation(perception.GetSense<RoomSightSense>()));

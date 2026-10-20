@@ -79,6 +79,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return currentFirearm;
             }
 
+            if (combat.BotPlayer.ItemLease.IsHeld)
+            {
+                // Something else holds the hands for a moment (a keycard at a door); fire once it is done.
+                return null;
+            }
+
             var firearm = inventory.UserInventory.Items.Values.OfType<Firearm>().FirstOrDefault();
             if (firearm == null)
             {

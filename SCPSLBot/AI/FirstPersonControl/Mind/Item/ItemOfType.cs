@@ -1,6 +1,5 @@
 ﻿using InventorySystem.Items;
 using InventorySystem.Items.Pickups;
-using SCPSLBot.AI.FirstPersonControl.Mind.Door;
 using System;
 using UnityEngine;
 

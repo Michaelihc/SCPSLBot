@@ -232,20 +232,20 @@ namespace SCPSLBot.Navigation.Runtime
             return true;
         }
 
-        public bool ReportBlockedLink(ElevatorLinkSegment link)
+        public bool ReportBlockedAt(Vector3 position)
         {
             if (!service.IsBuilt)
             {
                 return false;
             }
 
-            // The landing in front of the elevator door is a dead-end alcove: carving it detaches
-            // the link start from the surface, so plans from this side stop using the elevator.
-            service.BlockCrossing(link.Origin);
+            // Carving a doorway closes it; carving an elevator landing (a dead-end alcove in front
+            // of the elevator door) detaches the link start, so plans from this side stop using it.
+            service.BlockCrossing(position);
             if (Time.time >= nextBlockedCrossingLogAt)
             {
                 nextBlockedCrossingLogAt = Time.time + 5f;
-                LabLogger.Warn($"[BotNav] LINK_PENALIZED bot={BotName} origin={Format(link.Origin)} destination={Format(link.Destination)} pos={Format(botPlayer.PlayerPosition)} obstacles={service.Obstacles.Count}");
+                LabLogger.Warn($"[BotNav] CROSSING_PENALIZED bot={BotName} spot={Format(position)} pos={Format(botPlayer.PlayerPosition)} obstacles={service.Obstacles.Count}");
             }
 
             ForceReplan();

@@ -84,10 +84,12 @@ namespace SCPSLBot.Navigation
         bool ReportBlockedCrossing();
 
         /// <summary>
-        /// Marks an elevator crossing the bot cannot use right now (locked doors, a chamber that
-        /// never answers) as blocked for a while so the next plan prefers another route, then replans.
+        /// Marks the crossing at <paramref name="position"/> (a doorway the bot cannot open, the
+        /// landing of an elevator it cannot use) as blocked for a while so the next plan prefers
+        /// another route, then replans. Prefer this over <see cref="ReportBlockedCrossing"/> when
+        /// the blocker is known: the penalty lands exactly on it.
         /// </summary>
-        bool ReportBlockedLink(ElevatorLinkSegment link);
+        bool ReportBlockedAt(Vector3 position);
 
         string DescribeState();
 
