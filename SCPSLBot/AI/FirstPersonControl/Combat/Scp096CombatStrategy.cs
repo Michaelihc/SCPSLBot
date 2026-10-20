@@ -1,6 +1,9 @@
+using Interactables.Interobjects;
+using Interactables.Interobjects.DoorUtils;
 using PlayerRoles;
 using PlayerRoles.PlayableScps.Scp096;
 using PlayerStatsSystem;
+using SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities;
 using System.Reflection;
 using UnityEngine;
 
@@ -14,6 +17,18 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         private const float AttackRange = 3.2f;
         private const float RageDelay = 6.6f;
         private const float PostRageCooldown = 6.5f;
+        private const float ChargeMinDistance = 6f;
+        private const float ChargeMaxDistance = 18f;
+        private const float ChargeAimAngle = 8f;
+        private const float ChargeRetrySeconds = 0.4f;
+        // Native Scp096PrygateAbility accepts a gate within sqrt(8.12) m of the player; stay just inside.
+        private const float PryReachSqr = 7.5f;
+        private const float PryRetrySeconds = 1.5f;
+
+        // The private result of the last swing, read only to decide on the close-range fallback.
+        private static readonly FieldInfo HitResultField = typeof(Scp096AttackAbility).GetField(
+            "_hitResult",
+            BindingFlags.Instance | BindingFlags.NonPublic);
 
         private readonly FpcBotCombat combat;
         private readonly CombatTargetSelector targetSelector;
@@ -24,6 +39,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         private float nextRageAllowedTime;
         private float nextDebugLogTime;
         private ReferenceHub rageTarget;
+        private float nextChargeTry;
+        private float nextPryTry;
+        private PryableDoor failedGate;
 
         public Scp096CombatStrategy(FpcBotCombat combat, CombatTargetSelector targetSelector)
         {
@@ -251,32 +269,98 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return true;
             }
 
-            if (!scp096Role.SubroutineModule.TryGetSubroutine<Scp096AttackAbility>(out var attackAbility))
+            if (!combat.Abilities.TryGet<Scp096AttackAbility>(out var attackAbility))
             {
                 LogDebug("native attack ability is unavailable.");
                 return false;
             }
 
-            var serverAttack = typeof(Scp096AttackAbility).GetMethod(
-                "ServerAttack",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            if (serverAttack == null)
+            // Same payload the client writes: owner position and camera rotation, no backtracked players.
+            // The native command swings the left/right hand sphere at the camera and enforces the cooldown.
+            if (!ScpAbilityCommands.SendOwnerPose(
+                    attackAbility,
+                    scp096Role.FpcModule.Position,
+                    combat.BotPlayer.BotHub.PlayerHub.PlayerCameraReference.rotation))
             {
-                LogDebug("native ServerAttack method was not found.");
                 return false;
             }
 
-            serverAttack.Invoke(attackAbility, null);
-            var hitResultField = typeof(Scp096AttackAbility).GetField(
-                "_hitResult",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            var hitResult = hitResultField?.GetValue(attackAbility);
+            // Only a swing that really ran (the native command sets the Attacking state) can have missed.
+            var hitResult = scp096Role.StateController.AbilityState is Scp096AbilityState.Attacking
+                ? HitResultField?.GetValue(attackAbility)
+                : null;
             if (hitResult is Scp096HitResult result && result == Scp096HitResult.None && target != null)
             {
                 TryApplyDirectCloseDamage(scp096Role, target);
             }
 
             return true;
+        }
+
+        /// <summary>Charge dash toward a rage target that is in clear sight at mid range.</summary>
+        public void TryUseChargeAbility(CombatTarget target)
+        {
+            var now = Time.time;
+            if (now < nextChargeTry
+                || !target.HasLineOfSight
+                || target.Distance < ChargeMinDistance
+                || target.Distance > ChargeMaxDistance
+                || !combat.Abilities.TryGet<Scp096ChargeAbility>(out var charge)
+                || !charge.CanCharge
+                || !combat.IsAimedAt(target.AimPoint, ChargeAimAngle))
+            {
+                return;
+            }
+
+            nextChargeTry = now + ChargeRetrySeconds;
+            ScpAbilityCommands.Send(charge);
+        }
+
+        /// <summary>
+        /// Pries a closed gate on the chase path instead of opening it like a normal door. Returns true
+        /// while the bot is approaching or prying it; false hands the door to the regular door logic.
+        /// </summary>
+        public bool TryPryGate(DoorVariant door, Vector3 hitPoint)
+        {
+            if (door is not PryableDoor gate
+                || combat.BotPlayer.BotHub.PlayerHub.roleManager.CurrentRole is not Scp096Role scp096Role
+                || scp096Role.StateController.RageState is not Scp096RageState.Enraged)
+            {
+                return false;
+            }
+
+            if (scp096Role.StateController.AbilityState is Scp096AbilityState.PryingGate)
+            {
+                return true;
+            }
+
+            var now = Time.time;
+            if (gate.TargetState
+                || gate.GetExactState() > 0f
+                || (failedGate == gate && now < nextPryTry)
+                || !combat.Abilities.TryGet<Scp096PrygateAbility>(out var prygate))
+            {
+                return false;
+            }
+
+            var offset = gate.transform.position - combat.BotPlayer.PlayerPosition;
+            if (offset.sqrMagnitude > PryReachSqr)
+            {
+                combat.BotPlayer.MoveToPosition(hitPoint);
+                return true;
+            }
+
+            ScpAbilityCommands.SendPryableDoor(prygate, gate);
+            if (gate.IsBeingPried || scp096Role.StateController.AbilityState is Scp096AbilityState.PryingGate)
+            {
+                failedGate = null;
+                return true;
+            }
+
+            // Locked or otherwise refused: let the regular door logic try before retrying the pry.
+            failedGate = gate;
+            nextPryTry = now + PryRetrySeconds;
+            return false;
         }
 
         private void TryApplyDirectCloseDamage(Scp096Role scp096Role, ReferenceHub target)
