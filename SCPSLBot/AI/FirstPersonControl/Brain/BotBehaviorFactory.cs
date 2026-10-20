@@ -22,6 +22,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
 
             // Behaviors owned by other features register below.
             Scp.ScpBehaviors.AddTo(brain, bot);
+            Human.HumanBehaviors.AddTo(brain, bot);
 
             return brain;
         }
