@@ -335,6 +335,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight
 
         public abstract void ProcessSightSensedItems();
 
+        /// <summary>False suppresses <see cref="OnAfterSightSensing"/> (its subscribers are objective beliefs).</summary>
+        protected virtual bool RaiseSightSensingEvent => true;
+
         public void ProcessSensedItems()
         {
             if (IsDisposed)
@@ -342,7 +345,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight
                 return;
             }
 
-            OnAfterSightSensing?.Invoke();
+            if (RaiseSightSensingEvent)
+            {
+                OnAfterSightSensing?.Invoke();
+            }
+
             ProcessSightSensedItems();
         }
 

@@ -6,13 +6,13 @@ using MapGeneration.Distributors;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.Spectating;
+using SCPSLBot.AI.FirstPersonControl.Brain;
 using SCPSLBot.AI.FirstPersonControl.Combat;
 using SCPSLBot.AI.FirstPersonControl.Looking;
 using SCPSLBot.AI.FirstPersonControl.Mind;
 using SCPSLBot.AI.FirstPersonControl.Movement;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
-using SCPSLBot.AI.FirstPersonControl.Roaming;
 using SCPSLBot.Components;
 using SCPSLBot.Navigation;
 using SCPSLBot.Presentation;
@@ -39,8 +39,10 @@ namespace SCPSLBot.AI.FirstPersonControl
         public FpcMindRunner MindRunner { get; }
 
         public FpcBotCombat Combat { get; }
-        public FpcZoneRoam ZoneRoam { get; }
         public IBotNavigator Navigator { get; }
+
+        /// <summary>Non-combat behaviors (explore, objective, ...); registered in <see cref="BotBehaviorFactory"/>.</summary>
+        public BotBrain Brain { get; }
 
         public FpcLook Look { get; }
         public FpcMove Move { get; }
@@ -71,11 +73,11 @@ namespace SCPSLBot.AI.FirstPersonControl
                 MindRunner = new FpcMindRunner();
 
                 Combat = new(this);
-                ZoneRoam = new(this);
                 Navigator = NavigationSystem.Instance.CreateNavigator(this);
                 Look = new(this);
                 Move = new(this);
                 Locomotion = new(this);
+                Brain = BotBehaviorFactory.Build(this);
 
                 FpcMindFactory.BuildMind(MindRunner, this, Perception);
 
@@ -125,6 +127,7 @@ namespace SCPSLBot.AI.FirstPersonControl
             // They only feed DesiredMove/Look; native FPC still owns gravity and collision.
             if (BotManager.Instance.TryGetOrderedTarget(BotHub.PlayerHub, out var orderedTargetPosition))
             {
+                Brain.Suspend();
                 MoveToPosition(orderedTargetPosition, out var waypoint);
                 BotManager.Instance.ObserveOrderTick(this, waypoint);
                 DisplaySpectatorDiagnostics("ordered", "order target");
@@ -136,13 +139,16 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             if (BotManager.Instance.ShouldHoldPosition(BotHub.PlayerHub))
             {
+                Brain.Suspend();
                 Locomotion.Stop();
                 DisplaySpectatorDiagnostics("held", "none");
                 yield break;
             }
 
+            // Combat pre-empts every behavior; it moves through the same locomotion.
             if (Combat.Tick())
             {
+                Brain.Suspend();
                 DisplaySpectatorDiagnostics();
                 Locomotion.EndFrame();
                 Locomotion.DiscardAbandonRequest();
@@ -151,6 +157,7 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             if (BotManager.Instance.TryGetPathTargetPosition(out var pathTargetPosition))
             {
+                Brain.Suspend();
                 MoveToPosition(pathTargetPosition);
                 Locomotion.EndFrame();
                 Locomotion.DiscardAbandonRequest();
@@ -160,7 +167,8 @@ namespace SCPSLBot.AI.FirstPersonControl
             if (Time.time >= nextPerceptionUpdateTime)
             {
                 nextPerceptionUpdateTime = Time.time + PerceptionIntervalSeconds;
-                using (var updatePerceptionHandles = Perception.Update())
+                var maintainObjectiveBeliefs = ObjectiveBehavior.AppliesTo(BotHub.PlayerHub.roleManager.CurrentRole.RoleTypeId);
+                using (var updatePerceptionHandles = Perception.Update(maintainObjectiveBeliefs))
                 {
                     while (updatePerceptionHandles.MoveNext())
                     {
@@ -171,48 +179,19 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             if (ShouldIdleOnSurfaceWithoutTarget())
             {
+                Brain.Suspend();
                 Locomotion.Stop();
                 DisplaySpectatorDiagnostics("surface idle", "none");
                 yield break;
             }
 
-            if (!ShouldUseEscapeGoal())
+            if (!Brain.Tick())
             {
-                if (!ZoneRoam.Tick())
-                {
-                    MindRunner.Tick();
-                    DisplaySpectatorDiagnostics();
-                }
-
-                Locomotion.EndFrame();
-                yield break;
-            }
-
-            MindRunner.Tick();
-
-            // If the planner has nothing to do (e.g. no reachable escape route sensed yet), roam
-            // instead of standing still for the rest of the round.
-            if (MindRunner.RunningAction == null)
-            {
-                ZoneRoam.Tick();
-            }
-            else
-            {
-                // Goal-driven actions re-plan through beliefs; a stuck ladder abandon only matters
-                // to the roam fallback, so keep the flag from lingering into a later roam tick.
-                Locomotion.DiscardAbandonRequest();
+                Locomotion.Stop();
             }
 
             DisplaySpectatorDiagnostics();
             Locomotion.EndFrame();
-
-            yield break;
-        }
-
-        private bool ShouldUseEscapeGoal()
-        {
-            var role = BotHub.PlayerHub.roleManager.CurrentRole.RoleTypeId;
-            return role is RoleTypeId.ClassD or RoleTypeId.Scientist;
         }
 
         private bool ShouldIdleOnSurfaceWithoutTarget()
@@ -236,6 +215,7 @@ namespace SCPSLBot.AI.FirstPersonControl
             nextPerceptionUpdateTime = Time.time;
             MindRunner.EvaluateGoalsToActions();
             Locomotion.Reset();
+            Brain.Suspend();
         }
 
         #region Moving
@@ -418,7 +398,7 @@ namespace SCPSLBot.AI.FirstPersonControl
                     ? "parked"
                     : Combat.DiagnosticHasTarget
                         ? Combat.DiagnosticState
-                        : MindRunner.RunningAction?.GetType().Name ?? "idle");
+                        : DescribeActiveBehavior());
             string target = targetOverride
                 ?? (Combat.DiagnosticHasTarget
                     ? $"{Combat.DiagnosticTarget} · {Combat.DiagnosticTargetRole} · {(Combat.DiagnosticHasLineOfSight ? "visible" : "remembered")}"
@@ -451,6 +431,23 @@ namespace SCPSLBot.AI.FirstPersonControl
                     presentation.ShowBotDiagnostics(spectator, view);
                 }
             }
+        }
+
+        private string DescribeActiveBehavior()
+        {
+            var active = Brain.Active;
+            if (active == null)
+            {
+                return "idle";
+            }
+
+            var detail = active switch
+            {
+                ObjectiveBehavior objective => objective.Detail,
+                ExploreBehavior explore => explore.Detail,
+                _ => null,
+            };
+            return detail != null ? $"{active.Name}: {detail}" : active.Name;
         }
 
         private readonly List<ReferenceHub> spectatorsCache = new();
