@@ -25,6 +25,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         // A waypoint floor this much above the feet means the path itself climbs (stairs, ramp).
         private const float PathRiseMeters = 0.25f;
         private const float WaypointFloorProbeMeters = 3f;
+        // A riser ends in a tread: just above the hit and just past it the way is clear. A wall
+        // (whose contact a capsule cast often reports low on the bottom sphere) is not.
+        private const float RiserClearanceProbeHeight = 0.5f;
+        private const float RiserClearanceProbeBeyond = 0.15f;
 
         private static readonly int ExcludedLayers = LayerMask.GetMask("Player", "Hitbox", "Door");
 
@@ -84,7 +88,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
             var feetY = center.y - height * 0.5f;
             if (hit.point.y - feetY <= (hit.distance + radius) * MaxWalkableRisePerMeter + NavigationAgentProfile.StepClearance
-                && IsPathClimbing(waypoint, feetY, mask))
+                && IsPathClimbing(waypoint, feetY, mask)
+                && IsClearAboveHit(center, worldMoveDirection, hit.point, mask))
             {
                 // The path climbs toward the waypoint and the hit sits no higher than a walkable
                 // rise at that distance: a stair riser on the planned route, which the motor's
@@ -129,6 +134,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             var steered = worldMoveDirection * (1f - weight) + tangent * weight + normal * (weight * 0.25f);
             steered = Vector3.ProjectOnPlane(steered, Vector3.up);
             return steered.sqrMagnitude < 1e-4f ? tangent : steered.normalized;
+        }
+
+        private static bool IsClearAboveHit(Vector3 center, Vector3 moveDirection, Vector3 hitPoint, int mask)
+        {
+            var origin = new Vector3(center.x, hitPoint.y + RiserClearanceProbeHeight, center.z);
+            var reach = Vector3.Dot(hitPoint - center, moveDirection) + RiserClearanceProbeBeyond;
+            return reach <= 0f || !Physics.Raycast(origin, moveDirection, reach, mask, QueryTriggerInteraction.Ignore);
         }
 
         // Waypoints are floor corners or capsule-height goals; measure the floor under the

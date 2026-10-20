@@ -3,6 +3,8 @@ using Interactables.Interobjects;
 using Interactables.Interobjects.DoorUtils;
 using InventorySystem.Items;
 using MapGeneration;
+using PlayerRoles;
+using Scp914;
 using SCPSLBot.Infrastructure;
 using SCPSLBot.Navigation;
 using System.Collections.Generic;
@@ -32,7 +34,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
     internal sealed class DoorTraversal
     {
         private const float RoomProbeStepMeters = 4f;
-        private const float DoorHalfWidth = 1.8f;
+        // Gates are about four meters wide; side doors never share a leg's crossing plane.
+        private const float DoorHalfWidth = 2.2f;
         private const float DoorVerticalTolerance = 3f;
         private const float ActRange = 3f;
         private const float ActVerticalTolerance = 2.5f;
@@ -67,18 +70,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         {
             public readonly List<Crossing> Crossings = new();
             public List<Vector3> Points;
-            public int Count = -1;
-            public Vector3 First;
-            public Vector3 Last;
+            public int PlanVersion = -1;
             public int Generation = -1;
             public float LastUsedAt;
 
-            public bool Matches(List<Vector3> points, int generation)
+            public bool Matches(List<Vector3> points, int planVersion, int generation)
             {
-                return ReferenceEquals(points, Points)
-                       && points.Count == Count
-                       && generation == Generation
-                       && (Count == 0 || (points[0] == First && points[Count - 1] == Last));
+                return ReferenceEquals(points, Points) && planVersion == PlanVersion && generation == Generation;
             }
         }
 
@@ -147,7 +145,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         private DoorTraversalResult Evaluate(IBotNavigator navigator)
         {
-            var crossings = GetCrossings(navigator.PointsPath);
+            var crossings = GetCrossings(navigator.PointsPath, navigator.PlanVersion);
             var position = botPlayer.PlayerPosition;
             var feetY = position.y - NavigationAgentProfile.RootHeight;
 
@@ -182,6 +180,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             if (!found)
             {
                 return DoorTraversalResult.Proceed;
+            }
+
+            if (doorSeenThisFrame && nearest.Door != activeDoor)
+            {
+                // A second move this frame (combat's helper goal) sees another door: leave the
+                // active door's attempt counters alone so its limits still apply.
+                return nearestDistance < HoldDistance && !nearest.Door.TargetState ? DoorTraversalResult.Hold : DoorTraversalResult.Proceed;
             }
 
             doorSeenThisFrame = true;
@@ -241,6 +246,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 closedSince = now;
             }
 
+            var hub = botPlayer.BotHub.PlayerHub;
+            if (hub.roleManager.CurrentRole.RoleTypeId == RoleTypeId.Scp106
+                && door is IScp106PassableDoor { IsScp106Passable: true })
+            {
+                // SCP-106 walks through it (Scp106MovementModule); nothing to open.
+                DiagnosticState = null;
+                return DoorTraversalResult.Proceed;
+            }
+
             if (door.TargetState)
             {
                 closedSince = now;
@@ -261,7 +275,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 return DoorTraversalResult.Blocked;
             }
 
-            var hub = botPlayer.BotHub.PlayerHub;
             var access = DoorAccess.Evaluate(hub, door, out var keycard);
             switch (access)
             {
@@ -270,6 +283,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                     return DoorTraversalResult.Blocked;
 
                 case DoorAccessKind.Wait:
+                    if (IsScp914Running())
+                    {
+                        // SCP-914 chamber doors reopen when the refine ends.
+                        closedSince = now;
+                    }
+
                     if (now - closedSince > WaitForSelfOpeningSeconds)
                     {
                         DiagnosticState = "door:denied";
@@ -342,6 +361,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 previousSerial = inventory.CurItem.SerialNumber;
             }
 
+            var swapStarted = keycardDoor == null;
             keycardDoor = door;
             keycardSerial = keycard.ItemSerial;
             if (inventory.CurItem.SerialNumber != keycardSerial)
@@ -349,7 +369,26 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 inventory.ServerSelectItem(keycardSerial);
             }
 
-            return inventory.CurItem.SerialNumber == keycardSerial && inventory.CurInstance == keycard;
+            if (inventory.CurItem.SerialNumber == keycardSerial && inventory.CurInstance == keycard)
+            {
+                return true;
+            }
+
+            if (swapStarted)
+            {
+                // Refused (the held item cannot holster right now): nothing to restore, so do not
+                // keep the hands claimed while waiting to retry.
+                keycardDoor = null;
+                lease.Release(this);
+            }
+
+            return false;
+        }
+
+        private static bool IsScp914Running()
+        {
+            var controller = Scp914Controller.Singleton;
+            return controller != null && (controller.IsUpgrading || controller.RemainingCooldown > 0f);
         }
 
         private void RestoreItem()
@@ -413,13 +452,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             return point;
         }
 
-        private List<Crossing> GetCrossings(List<Vector3> points)
+        // Keyed by the plan's own version: a replan toward the same goal from the same spot can
+        // keep the list, its count and its endpoints yet route through another door.
+        private List<Crossing> GetCrossings(List<Vector3> points, int planVersion)
         {
             var generation = NavigationSystem.Instance.MapGeneration;
             ScanCache oldest = caches[0];
             foreach (var cache in caches)
             {
-                if (points != null && cache.Matches(points, generation))
+                if (points != null && cache.Matches(points, planVersion, generation))
                 {
                     cache.LastUsedAt = Time.time;
                     return cache.Crossings;
@@ -431,11 +472,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 }
             }
 
-            var count = points?.Count ?? 0;
             oldest.Points = points;
-            oldest.Count = count;
-            oldest.First = count > 0 ? points![0] : default;
-            oldest.Last = count > 0 ? points![count - 1] : default;
+            oldest.PlanVersion = planVersion;
             oldest.Generation = generation;
             oldest.LastUsedAt = Time.time;
             Scan(points, oldest.Crossings);

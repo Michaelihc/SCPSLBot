@@ -184,9 +184,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             }
         }
 
+        // Never interact with a door that is already opening (TargetState): locomotion may have
+        // just opened it, and a second interaction once the animation cooldown ends closes it.
         private static bool CanOpenCombatDoor(DoorVariant door)
         {
             return door
+                   && !door.TargetState
                    && !door.IsConsideredOpen()
                    && door is not DummyDoor
                    && door is not ElevatorDoor

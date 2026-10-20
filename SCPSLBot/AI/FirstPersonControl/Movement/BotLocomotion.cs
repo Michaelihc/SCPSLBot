@@ -5,6 +5,7 @@ using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
 using SCPSLBot.Navigation;
 using System.Collections.Generic;
 using UnityEngine;
+using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SCPSLBot.AI.FirstPersonControl.Movement
 {
@@ -27,6 +28,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
     {
         private const float ElevatorStartMeters = 3f;
         private const float ElevatorStartVerticalMeters = 2f;
+        // The navigator holds its waypoint on the link start while the crossing is next.
+        private const float LinkStartWaypointMeters = 0.6f;
+        private const float CrossingLogIntervalSeconds = 2f;
         private const float GoalMismatchGraceSeconds = 1.5f;
         private const float BlockedMemorySeconds = 30f;
         private const float AbandonAfterBlockedSeconds = 1f;
@@ -43,6 +47,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private float lastBlockedDoorAt = float.NegativeInfinity;
         private Vector3 lastBlockedLinkOrigin;
         private float lastBlockedLinkAt = float.NegativeInfinity;
+        private float nextCrossingLogAt;
 
         private readonly struct StructureObstacle
         {
@@ -81,6 +86,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         /// <summary>True while the bot is inside a moving (or about to move) elevator cabin.</summary>
         public bool IsRidingElevator => elevator.CurrentStage is ElevatorTraversal.Stage.Send or ElevatorTraversal.Stage.Ride;
 
+        /// <summary>True while an elevator crossing is in progress (any stage).</summary>
+        public bool IsCrossingElevator => elevator.IsActive;
+
         public string DiagnosticState => elevator.DiagnosticState ?? doors.DiagnosticState;
 
         /// <summary>
@@ -110,7 +118,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             {
                 if (elevator.IsCommitted)
                 {
-                    waypoint = TickElevator();
+                    TickElevator(navigator, default, false, out waypoint);
                     lastWaypoint = waypoint;
                     return;
                 }
@@ -120,7 +128,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 {
                     elevator.Goal = goal;
                     elevator.LastGoalMatchAt = Time.time;
-                    waypoint = TickElevator();
+                    TickElevator(navigator, waypoint, true, out waypoint);
                     lastWaypoint = waypoint;
                     return;
                 }
@@ -129,7 +137,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 {
                     // Another goal in the same frame (combat's door helper) or a goal that moved
                     // for a moment: the landing still owns the body.
-                    waypoint = TickElevator();
+                    TickElevator(navigator, waypoint, false, out waypoint);
                     lastWaypoint = waypoint;
                     return;
                 }
@@ -139,9 +147,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             else
             {
                 waypoint = navigator.GetPositionTowards(goal);
-                if (TryStartElevator(navigator, goal))
+                if (TryStartElevator(navigator, goal, waypoint))
                 {
-                    waypoint = TickElevator();
+                    TickElevator(navigator, waypoint, true, out waypoint);
                     lastWaypoint = waypoint;
                     return;
                 }
@@ -178,7 +186,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             movedSinceEndFrame = false;
             if (StuckRecovery.ConsumeAbandonRequest())
             {
-                abandonRequested = true;
+                RequestAbandon("stuck recovery exhausted");
             }
         }
 
@@ -385,16 +393,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         #region Crossings
 
-        private bool TryStartElevator(IBotNavigator navigator, Vector3 goal)
+        private bool TryStartElevator(IBotNavigator navigator, Vector3 goal, Vector3 waypoint)
         {
             if (!navigator.TryGetElevatorLink(out var link))
             {
                 return false;
             }
 
+            // Only once the link start is the very next corner: a landing 3 m away behind a wall
+            // or a closed door is still reached by path following first.
             var position = botPlayer.PlayerPosition;
             var feetY = position.y - NavigationAgentProfile.RootHeight;
-            if (HorizontalDistance(position, link.Origin) > ElevatorStartMeters
+            if (HorizontalDistance(waypoint, link.Origin) > LinkStartWaypointMeters
+                || HorizontalDistance(position, link.Origin) > ElevatorStartMeters
                 || Mathf.Abs(feetY - link.Origin.y) > ElevatorStartVerticalMeters)
             {
                 return false;
@@ -407,7 +418,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 // Replanned through the same unusable elevator: there is no other way from here.
                 if (Time.time - lastBlockedLinkAt > AbandonAfterBlockedSeconds)
                 {
-                    abandonRequested = true;
+                    RequestAbandon("route needs an elevator that is blocked");
                 }
 
                 return false;
@@ -416,28 +427,69 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             return elevator.TryBegin(link, goal);
         }
 
-        private Vector3 TickElevator()
+        /// <param name="pathWaypoint">The navigator's waypoint this call (valid when <paramref name="pathWaypointValid"/>).</param>
+        private void TickElevator(IBotNavigator navigator, Vector3 pathWaypoint, bool pathWaypointValid, out Vector3 waypoint)
         {
             var status = elevator.Tick();
-            var target = elevator.CurrentTarget;
+            waypoint = elevator.CurrentTarget;
             switch (status)
             {
+                case ElevatorTraversalStatus.Running:
+                    if (elevator.CurrentStage == ElevatorTraversal.Stage.Approach)
+                    {
+                        // Walking to the landing is ordinary path following, doors included.
+                        waypoint = pathWaypointValid ? pathWaypoint : elevator.Link.Origin;
+                        SteerAlongPath(waypoint);
+                        HandleDoors(navigator);
+                    }
+
+                    break;
+
                 case ElevatorTraversalStatus.Completed:
                     elevator.Cancel();
+                    // The plan still holds the link; a fresh plan from the far landing never
+                    // steers back at the origin landing should the exit end short of the corner.
+                    navigator.ForceReplan();
                     break;
 
                 case ElevatorTraversalStatus.Blocked:
                     var link = elevator.Link;
+                    var group = elevator.Group;
+                    var reason = elevator.BlockReason;
                     elevator.Cancel();
                     StandStill();
                     lastBlockedLinkOrigin = link.Origin;
                     lastBlockedLinkAt = Time.time;
-                    botPlayer.Navigator.ReportBlockedAt(link.Origin);
+                    navigator.ReportBlockedAt(link.Origin);
+                    LogCrossing($"ELEVATOR_BLOCKED group={group} reason={reason ?? "unknown"} origin={Format(link.Origin)}");
                     break;
             }
-
-            return target;
         }
+
+        private void RequestAbandon(string reason)
+        {
+            if (!abandonRequested)
+            {
+                LogCrossing($"ABANDON reason={reason}");
+            }
+
+            abandonRequested = true;
+        }
+
+        private void LogCrossing(string message)
+        {
+            var now = Time.time;
+            if (now < nextCrossingLogAt)
+            {
+                return;
+            }
+
+            nextCrossingLogAt = now + CrossingLogIntervalSeconds;
+            var name = botPlayer.BotHub?.PlayerHub?.nicknameSync?.MyNick ?? "?";
+            LabLogger.Info($"[BotNav] {message} bot={name} pos={Format(botPlayer.PlayerPosition)}");
+        }
+
+        private static string Format(Vector3 value) => $"({value.x:F1},{value.y:F1},{value.z:F1})";
 
         private void HandleDoors(IBotNavigator navigator)
         {
@@ -458,12 +510,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                         if (door != null)
                         {
                             navigator.ReportBlockedAt(door.transform.position);
+                            LogCrossing($"DOOR_BLOCKED door={door.name} reason={doors.DiagnosticState ?? "unknown"} at={Format(door.transform.position)}");
                         }
                     }
                     else if (now - lastBlockedDoorAt > AbandonAfterBlockedSeconds)
                     {
                         // The replan still runs through the same door: nothing else reaches the goal.
-                        abandonRequested = true;
+                        RequestAbandon($"route still runs through blocked door {(door != null ? door.name : "?")}");
                     }
 
                     break;
