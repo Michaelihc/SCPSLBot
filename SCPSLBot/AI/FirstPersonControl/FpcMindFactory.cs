@@ -13,146 +13,94 @@ using MapGeneration.Distributors;
 using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Mind.Room;
 using SCPSLBot.AI.FirstPersonControl.Mind.Escape;
+using System.Collections.Generic;
 
 namespace SCPSLBot.AI.FirstPersonControl
 {
+    /// <summary>
+    /// Builds the EscapeTheFacility mind for Class-D and scientists. The goal needs the escape
+    /// route open (every zone border on the way passable); a border needs a keycard with
+    /// Checkpoints (LCZ/HCZ/EZ) or ExitGates (Surface) unless its gate is held open; keycards
+    /// come from pickups the bot sees, spawnpoints and lockers it checks, rooms it searches and
+    /// SCP-914 upgrades. Zone borders, the escape zone and SCP-914 are map knowledge.
+    /// </summary>
     internal class FpcMindFactory
     {
-        private const DoorPermissionFlags KeycardO5Permissions = DoorPermissionFlags.Checkpoints | DoorPermissionFlags.ExitGates | 
-                                                                DoorPermissionFlags.Intercom | DoorPermissionFlags.AlphaWarhead | 
-                                                                DoorPermissionFlags.ContainmentLevelOne | DoorPermissionFlags.ContainmentLevelTwo | DoorPermissionFlags.ContainmentLevelThree | 
-                                                                DoorPermissionFlags.ArmoryLevelOne | DoorPermissionFlags.ArmoryLevelTwo | DoorPermissionFlags.ArmoryLevelThree;
-        private const DoorPermissionFlags PermissionsCheckpointContainmentLevelOneTwo = DoorPermissionFlags.Checkpoints | DoorPermissionFlags.ContainmentLevelOne | DoorPermissionFlags.ContainmentLevelTwo;
+        /// <summary>Directed zone borders and the keycard permission their gates need by default.</summary>
+        private static readonly (FacilityZone From, FacilityZone To, DoorPermissionFlags Permission)[] Borders =
+        {
+            (FacilityZone.LightContainment, FacilityZone.HeavyContainment, DoorPermissionFlags.Checkpoints),
+            (FacilityZone.HeavyContainment, FacilityZone.LightContainment, DoorPermissionFlags.Checkpoints),
+            (FacilityZone.HeavyContainment, FacilityZone.Entrance, DoorPermissionFlags.Checkpoints),
+            (FacilityZone.Entrance, FacilityZone.HeavyContainment, DoorPermissionFlags.Checkpoints),
+            (FacilityZone.Entrance, FacilityZone.Surface, DoorPermissionFlags.ExitGates),
+            (FacilityZone.Surface, FacilityZone.Entrance, DoorPermissionFlags.ExitGates),
+        };
 
         public static void BuildMind(FpcMind mind, FpcBotPlayer botPlayer, FpcBotPerception perception)
         {
+            var roomSense = perception.GetSense<RoomSightSense>();
+            var itemsSense = perception.GetSense<ItemsWithinSightSense>();
+            var inventorySense = perception.GetSense<ItemsInInventorySense>();
+            var lockersSense = perception.GetSense<LockersWithinSightSense>();
+
             // Doors and elevators are crossed by BotLocomotion; the mind only chooses destinations.
             mind.AddBelief(new GlassObstacle(perception.GetSense<GlassSightSense>(), botPlayer.Navigator));
 
+            mind.AddBelief(new RoomEnterLocation(roomSense));
+            mind.AddBelief(new ZoneWithin(roomSense, botPlayer.Navigator));
 
-            mind.AddBelief(new RoomEnterLocation(perception.GetSense<RoomSightSense>()));
-            mind.AddBelief(new ZoneWithin(perception.GetSense<RoomSightSense>(), botPlayer.Navigator));
-            mind.AddBelief(new ZoneEnterLocation(FacilityZone.LightContainment, FacilityZone.HeavyContainment, perception.GetSense<RoomSightSense>()));
-            mind.AddBelief(new ZoneEnterLocation(FacilityZone.HeavyContainment, FacilityZone.LightContainment, perception.GetSense<RoomSightSense>()));
-            mind.AddBelief(new ZoneEnterLocation(FacilityZone.HeavyContainment, FacilityZone.Entrance, perception.GetSense<RoomSightSense>()));
-            mind.AddBelief(new ZoneEnterLocation(FacilityZone.Entrance, FacilityZone.HeavyContainment, perception.GetSense<RoomSightSense>()));
-            mind.AddBelief(new ZoneEnterLocation(FacilityZone.Entrance, FacilityZone.Surface, perception.GetSense<RoomSightSense>()));
-            mind.AddBelief(new ZoneEnterLocation(FacilityZone.Surface, FacilityZone.Entrance, perception.GetSense<RoomSightSense>()));
-
-            mind.AddAction(new GoToZoneEnterLocation(FacilityZone.LightContainment, FacilityZone.HeavyContainment, botPlayer));
-            mind.AddAction(new GoToZoneEnterLocation(FacilityZone.HeavyContainment, FacilityZone.LightContainment, botPlayer));
-            mind.AddAction(new GoToZoneEnterLocation(FacilityZone.HeavyContainment, FacilityZone.Entrance, botPlayer));
-            mind.AddAction(new GoToZoneEnterLocation(FacilityZone.Entrance, FacilityZone.HeavyContainment, botPlayer));
-            mind.AddAction(new GoToZoneEnterLocation(FacilityZone.Entrance, FacilityZone.Surface, botPlayer));
-            mind.AddAction(new GoToZoneEnterLocation(FacilityZone.Surface, FacilityZone.Entrance, botPlayer));
-            mind.AddAction(new GoToSearchRoomForZoneEnterLocation(FacilityZone.LightContainment, FacilityZone.HeavyContainment, botPlayer));
-            mind.AddAction(new GoToSearchRoomForZoneEnterLocation(FacilityZone.HeavyContainment, FacilityZone.LightContainment, botPlayer));
-            mind.AddAction(new GoToSearchRoomForZoneEnterLocation(FacilityZone.HeavyContainment, FacilityZone.Entrance, botPlayer));
-            mind.AddAction(new GoToSearchRoomForZoneEnterLocation(FacilityZone.Entrance, FacilityZone.HeavyContainment, botPlayer));
-            mind.AddAction(new GoToSearchRoomForZoneEnterLocation(FacilityZone.Surface, FacilityZone.Entrance, botPlayer));
-
-
-            mind.AddBelief(new Scp914Location(perception.GetSense<RoomSightSense>()));
-            mind.AddBelief(new Scp914Controls(perception.GetSense<InteractablesWithinSightSense>()));
-            mind.AddBelief(new Scp914RunningOnSetting(perception.GetSense<RoomSightSense>()));
-
-            mind.AddAction(new GoToSearchRoomForScp914(botPlayer));
-            mind.AddAction(new GoToStartScp914OnSetting(Scp914.Scp914KnobSetting.Fine, botPlayer));
-            mind.AddAction(new GoToStartScp914OnSetting(Scp914.Scp914KnobSetting.OneToOne, botPlayer));
-
-
-            mind.AddBelief(new LockerSpawnsLocation(StructureType.StandardLocker, perception.GetSense<RoomSightSense>()));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardJanitor, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardJanitor, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardJanitor, botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardZoneManager, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardZoneManager, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardZoneManager, botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardScientist, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardScientist, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardScientist, botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardResearchCoordinator, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardResearchCoordinator, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardResearchCoordinator, botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardFacilityManager, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardFacilityManager, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardFacilityManager, botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardMTFOperative, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardMTFOperative, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardMTFOperative, botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardMTFCaptain, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardMTFCaptain, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardMTFCaptain, botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardChaosInsurgency, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardChaosInsurgency, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardChaosInsurgency, botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(ItemType.KeycardO5, perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<ItemOfType>(ItemType.KeycardO5, perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<ItemOfType>(ItemType.KeycardO5, botPlayer));
-
-
-            #region ContainmentLevelOne keycard picking up and searching
-            mind.AddBelief(new ItemSightedLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), botPlayer));
-
-            var containmentLevelOneSpawnItemTypes = new ItemType[]
+            #region Zone borders and the escape
+            foreach (var (from, to, _) in Borders)
             {
-                ItemType.KeycardJanitor, ItemType.KeycardZoneManager, ItemType.KeycardScientist, ItemType.KeycardResearchCoordinator,
-                ItemType.KeycardGuard, ItemType.KeycardMTFPrivate, ItemType.KeycardMTFOperative, ItemType.KeycardMTFCaptain, ItemType.KeycardChaosInsurgency,
-                ItemType.KeycardContainmentEngineer, ItemType.KeycardFacilityManager, ItemType.KeycardO5
-            };
-            mind.AddBelief(new ItemSpawnsLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), containmentLevelOneSpawnItemTypes, perception.GetSense<RoomSightSense>(), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemSpawnsInSightedLocker<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), containmentLevelOneSpawnItemTypes, perception.GetSense<LockersWithinSightSense>()));
+                mind.AddBelief(new ZoneEnterLocation(to, from));
+                mind.AddBelief(new ZoneAccess(from, to));
+            }
 
-            mind.AddAction(new GoToItemSpawnLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), botPlayer));
-            mind.AddAction(new GoToLockerSpawnLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), StructureType.StandardLocker, botPlayer));
-            mind.AddAction(new GoToItemSpawnInLocker<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), botPlayer));
-            mind.AddActions(idx => new GoToSearchRoom<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelOne), idx, botPlayer));
+            mind.AddBelief(new FacilityEscapeLocation(roomSense));
+            mind.AddBelief(new EscapeRouteAccess());
+            mind.AddBelief(new PlayerEscaped(botPlayer));
+
+            foreach (var (from, to, _) in Borders)
+            {
+                var crossing = new GoToZoneEnterLocation(to, from, botPlayer);
+                mind.AddAction(crossing);
+                if (to == FacilityZone.Surface)
+                {
+                    // On Surface nothing stands between the bot and the escape zone.
+                    mind.ActionImpacts<EscapeRouteAccess>(crossing);
+                }
+            }
+
+            mind.AddAction(new GoToEscapeLocation(botPlayer));
             #endregion
 
-            #region ContainmentLevelTwo keycard picking up and searching
-            mind.AddBelief(new ItemSightedLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), botPlayer));
+            #region SCP-914
+            mind.AddBelief(new Scp914Location(roomSense));
+            mind.AddBelief(new Scp914Controls(perception.GetSense<InteractablesWithinSightSense>()));
+            mind.AddBelief(new Scp914RunningOnSetting(roomSense));
 
-            var containmentLevelTwoSpawnItemTypes = new ItemType[]
+            mind.AddAction(new GoToStartScp914OnSetting(Scp914.Scp914KnobSetting.Fine, botPlayer));
+            mind.AddAction(new GoToStartScp914OnSetting(Scp914.Scp914KnobSetting.OneToOne, botPlayer));
+            #endregion
+
+            mind.AddBelief(new LockerSpawnsLocation(StructureType.StandardLocker, roomSense, itemsSense));
+
+            #region Keycards of a type (SCP-914 inputs and outputs)
+            foreach (var keycardType in new[] { ItemType.KeycardJanitor, ItemType.KeycardScientist, ItemType.KeycardZoneManager, ItemType.KeycardResearchCoordinator, ItemType.KeycardFacilityManager })
             {
-                ItemType.KeycardScientist, ItemType.KeycardResearchCoordinator,
-                ItemType.KeycardMTFPrivate, ItemType.KeycardMTFOperative, ItemType.KeycardMTFCaptain, ItemType.KeycardChaosInsurgency,
-                ItemType.KeycardContainmentEngineer, ItemType.KeycardFacilityManager, ItemType.KeycardO5
-            };
-            mind.AddBelief(new ItemSpawnsLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), containmentLevelTwoSpawnItemTypes, perception.GetSense<RoomSightSense>(), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemSpawnsInSightedLocker<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), containmentLevelTwoSpawnItemTypes, perception.GetSense<LockersWithinSightSense>()));
-
-            mind.AddAction(new GoToItemSpawnLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), botPlayer));
-            mind.AddAction(new GoToLockerSpawnLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), StructureType.StandardLocker, botPlayer));
-            mind.AddAction(new GoToItemSpawnInLocker<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), botPlayer));
-            mind.AddActions(idx => new GoToSearchRoom<KeycardWithPermissions>(new(DoorPermissionFlags.ContainmentLevelTwo), idx, botPlayer));
+                mind.AddBelief(new ItemSightedLocation<ItemOfType>(keycardType, itemsSense));
+                mind.AddBelief(new ItemInInventory<ItemOfType>(keycardType, inventorySense));
+                mind.AddAction(new GoToPickupItem<ItemOfType>(keycardType, botPlayer));
+            }
             #endregion
 
             #region Checkpoints keycard picking up and searching
-            mind.AddBelief(new ItemSightedLocation<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), botPlayer));
+            var checkpointsCard = new KeycardWithPermissions(DoorPermissionFlags.Checkpoints);
+            mind.AddBelief(new ItemSightedLocation<KeycardWithPermissions>(checkpointsCard, itemsSense));
+            mind.AddBelief(new ItemInInventory<KeycardWithPermissions>(checkpointsCard, inventorySense));
+            var pickupCheckpointsCard = new GoToPickupItem<KeycardWithPermissions>(checkpointsCard, botPlayer);
+            mind.AddAction(pickupCheckpointsCard);
 
             var checkpointsSpawnItemTypes = new ItemType[]
             {
@@ -160,219 +108,162 @@ namespace SCPSLBot.AI.FirstPersonControl
                 ItemType.KeycardGuard, ItemType.KeycardMTFPrivate, ItemType.KeycardMTFOperative, ItemType.KeycardMTFCaptain, ItemType.KeycardChaosInsurgency,
                 ItemType.KeycardContainmentEngineer, ItemType.KeycardFacilityManager, ItemType.KeycardO5
             };
-            mind.AddBelief(new ItemSpawnsLocation<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), checkpointsSpawnItemTypes, perception.GetSense<RoomSightSense>(), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemSpawnsInSightedLocker<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), checkpointsSpawnItemTypes, perception.GetSense<LockersWithinSightSense>()));
+            mind.AddBelief(new ItemSpawnsLocation<KeycardWithPermissions>(checkpointsCard, checkpointsSpawnItemTypes, roomSense, itemsSense));
+            mind.AddBelief(new ItemSpawnsInSightedLocker<KeycardWithPermissions>(checkpointsCard, checkpointsSpawnItemTypes, lockersSense));
 
-            mind.AddAction(new GoToItemSpawnLocation<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), botPlayer));
-            mind.AddAction(new GoToLockerSpawnLocation<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), StructureType.StandardLocker, botPlayer));
-            mind.AddAction(new GoToItemSpawnInLocker<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), botPlayer));
-            mind.AddActions(idx => new GoToSearchRoom<KeycardWithPermissions>(new(DoorPermissionFlags.Checkpoints), idx, botPlayer));
+            mind.AddAction(new GoToItemSpawnLocation<KeycardWithPermissions>(checkpointsCard, botPlayer));
+            mind.AddAction(new GoToLockerSpawnLocation<KeycardWithPermissions>(checkpointsCard, StructureType.StandardLocker, botPlayer));
+            mind.AddAction(new GoToItemSpawnInLocker<KeycardWithPermissions>(checkpointsCard, botPlayer));
+            mind.AddAction(new GoToSearchRoom<KeycardWithPermissions>(checkpointsCard, botPlayer));
             #endregion
 
             #region ExitGates keycard picking up and searching
-            mind.AddBelief(new ItemSightedLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ExitGates), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemInInventory<KeycardWithPermissions>(new(DoorPermissionFlags.ExitGates), perception.GetSense<ItemsInInventorySense>()));
-            mind.AddAction(new GoToPickupItem<KeycardWithPermissions>(new(DoorPermissionFlags.ExitGates), botPlayer));
+            var exitGatesCard = new KeycardWithPermissions(DoorPermissionFlags.ExitGates);
+            mind.AddBelief(new ItemSightedLocation<KeycardWithPermissions>(exitGatesCard, itemsSense));
+            mind.AddBelief(new ItemInInventory<KeycardWithPermissions>(exitGatesCard, inventorySense));
+            var pickupExitGatesCard = new GoToPickupItem<KeycardWithPermissions>(exitGatesCard, botPlayer);
+            mind.AddAction(pickupExitGatesCard);
 
             var exitGatesSpawnItemTypes = new ItemType[]
             {
                 ItemType.KeycardMTFOperative, ItemType.KeycardMTFCaptain, ItemType.KeycardChaosInsurgency,
                 ItemType.KeycardFacilityManager, ItemType.KeycardO5
             };
-            mind.AddBelief(new ItemSpawnsLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ExitGates), exitGatesSpawnItemTypes, perception.GetSense<RoomSightSense>(), perception.GetSense<ItemsWithinSightSense>()));
+            mind.AddBelief(new ItemSpawnsLocation<KeycardWithPermissions>(exitGatesCard, exitGatesSpawnItemTypes, roomSense, itemsSense));
 
-            mind.AddAction(new GoToItemSpawnLocation<KeycardWithPermissions>(new(DoorPermissionFlags.ExitGates), botPlayer));
-            mind.AddActions(idx => new GoToSearchRoom<KeycardWithPermissions>(new(DoorPermissionFlags.ExitGates), FacilityZone.HeavyContainment, idx, botPlayer));
+            mind.AddAction(new GoToItemSpawnLocation<KeycardWithPermissions>(exitGatesCard, botPlayer));
+            // Searched in whichever zone the bot is in: the need shows up in Entrance (at the gate),
+            // and a zone-bound search would send it back and forth across the checkpoint.
+            mind.AddAction(new GoToSearchRoom<KeycardWithPermissions>(exitGatesCard, botPlayer));
             #endregion
 
-
-            var outputDoorPermissionFlags = new (KeycardWithPermissions, bool)[]
+            // Picking up the right card is what opens a border.
+            foreach (var (from, to, permission) in Borders)
             {
-                (new(DoorPermissionFlags.Checkpoints), true),
-                (new(DoorPermissionFlags.ExitGates), true),
-                (new(DoorPermissionFlags.Intercom), false),
-                (new(DoorPermissionFlags.AlphaWarhead), false),
-                (new(DoorPermissionFlags.ContainmentLevelOne), true),
-                (new(DoorPermissionFlags.ContainmentLevelTwo), true),
-                (new(DoorPermissionFlags.ContainmentLevelThree), false),
-                (new(DoorPermissionFlags.ArmoryLevelOne), false),
-                (new(DoorPermissionFlags.ArmoryLevelTwo), false),
-                (new(DoorPermissionFlags.ArmoryLevelThree), false),
-                (new(PermissionsCheckpointContainmentLevelOneTwo), false),
-            };
-            foreach (var (withPermissions, addAction) in outputDoorPermissionFlags)
-            {
-                mind.AddBelief(new ItemsInOutakeChamber(withPermissions, perception.GetSense<ItemsWithinSightSense>()));
-
-                if (addAction)
-                {
-                    mind.AddAction(new GoToItemInOutakeChamber<KeycardWithPermissions>(withPermissions, botPlayer));
-                }
+                var pickup = permission == DoorPermissionFlags.ExitGates ? pickupExitGatesCard : pickupCheckpointsCard;
+                mind.ActionImpacts<ZoneAccess>(pickup, b => b.From == from && b.To == to);
             }
 
-
+            #region SCP-914 keycard upgrades
             var outputKeycardFacilityManagerCriterias = new IItemBeliefCriteria[]
             {
                 new ItemOfType(ItemType.KeycardFacilityManager),
-                new KeycardWithPermissions(DoorPermissionFlags.Checkpoints),
-                new KeycardWithPermissions(DoorPermissionFlags.ExitGates),
-                new KeycardWithPermissions(DoorPermissionFlags.Intercom),
-                new KeycardWithPermissions(DoorPermissionFlags.AlphaWarhead),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelOne),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelTwo),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelThree),
-                new KeycardWithPermissions(PermissionsCheckpointContainmentLevelOneTwo),
+                checkpointsCard,
+                exitGatesCard,
             };
 
             var outputKeycardResearchSupervisorCriterias = new IItemBeliefCriteria[]
             {
                 new ItemOfType(ItemType.KeycardResearchCoordinator),
-                new KeycardWithPermissions(DoorPermissionFlags.Checkpoints),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelOne),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelTwo),
-                new KeycardWithPermissions(PermissionsCheckpointContainmentLevelOneTwo),
+                checkpointsCard,
             };
 
             var outputKeycardScientistCriterias = new IItemBeliefCriteria[]
             {
                 new ItemOfType(ItemType.KeycardScientist),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelOne),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelTwo),
             };
 
             var outputKeycardZoneManagerCriterias = new IItemBeliefCriteria[]
             {
                 new ItemOfType(ItemType.KeycardZoneManager),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelOne),
-                new KeycardWithPermissions(DoorPermissionFlags.Checkpoints),
+                checkpointsCard,
             };
 
-            var outputKeycardO5Criterias = new IItemBeliefCriteria[]
+            var outakes = new OutakeRegistry(mind, botPlayer, itemsSense);
+
+            foreach (var inputType in new[] { ItemType.KeycardJanitor, ItemType.KeycardScientist, ItemType.KeycardZoneManager, ItemType.KeycardResearchCoordinator })
             {
-                new ItemOfType(ItemType.KeycardO5),
-                new KeycardWithPermissions(DoorPermissionFlags.Checkpoints),
-                new KeycardWithPermissions(DoorPermissionFlags.ExitGates),
-                new KeycardWithPermissions(DoorPermissionFlags.Intercom),
-                new KeycardWithPermissions(DoorPermissionFlags.AlphaWarhead),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelOne),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelTwo),
-                new KeycardWithPermissions(DoorPermissionFlags.ContainmentLevelThree),
-                new KeycardWithPermissions(DoorPermissionFlags.ArmoryLevelOne),
-                new KeycardWithPermissions(DoorPermissionFlags.ArmoryLevelTwo),
-                new KeycardWithPermissions(DoorPermissionFlags.ArmoryLevelThree),
-                new KeycardWithPermissions(PermissionsCheckpointContainmentLevelOneTwo),
-            };
+                mind.AddBelief(new ItemInIntakeChamber<ItemOfType>(new(inputType)));
+                mind.AddAction(new GoToDropItemInIntakeChamber<ItemOfType>(new(inputType), botPlayer));
+            }
 
-            #region KeycardScientist in intake chamber
-            mind.AddBelief(new ItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardScientist)));
-            mind.AddAction(new GoToDropItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardScientist), botPlayer));
+            // KeycardScientist to KeycardResearchCoordinator on Fine
+            outakes.AddUpgrade(ItemType.KeycardScientist, outputKeycardResearchSupervisorCriterias, Scp914.Scp914KnobSetting.Fine);
+            // KeycardZoneManager to KeycardFacilityManager on Fine
+            outakes.AddUpgrade(ItemType.KeycardZoneManager, outputKeycardFacilityManagerCriterias, Scp914.Scp914KnobSetting.Fine);
+            // KeycardResearchCoordinator to KeycardFacilityManager on Fine
+            outakes.AddUpgrade(ItemType.KeycardResearchCoordinator, outputKeycardFacilityManagerCriterias, Scp914.Scp914KnobSetting.Fine);
+            // KeycardScientist to KeycardZoneManager on 1:1
+            outakes.AddUpgrade(ItemType.KeycardScientist, outputKeycardZoneManagerCriterias, Scp914.Scp914KnobSetting.OneToOne);
+            // KeycardJanitor to KeycardZoneManager on 1:1
+            outakes.AddUpgrade(ItemType.KeycardJanitor, outputKeycardZoneManagerCriterias, Scp914.Scp914KnobSetting.OneToOne);
+            // KeycardJanitor to KeycardScientist on Fine
+            outakes.AddUpgrade(ItemType.KeycardJanitor, outputKeycardScientistCriterias, Scp914.Scp914KnobSetting.Fine);
             #endregion
 
-            #region KeycardJanitor in intake chamber
-            mind.AddBelief(new ItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardJanitor)));
-            mind.AddAction(new GoToDropItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardJanitor), botPlayer));
+            #region Keycard searching for SCP-914 inputs
+            foreach (var keycardType in new[] { ItemType.KeycardScientist, ItemType.KeycardZoneManager, ItemType.KeycardJanitor })
+            {
+                var card = new ItemOfType(keycardType);
+                var spawnTypes = new[] { keycardType };
+                mind.AddBelief(new ItemSpawnsLocation<ItemOfType>(card, spawnTypes, roomSense, itemsSense));
+                mind.AddBelief(new ItemSpawnsInSightedLocker<ItemOfType>(card, spawnTypes, lockersSense));
+
+                mind.AddAction(new GoToItemSpawnLocation<ItemOfType>(card, botPlayer));
+                mind.AddAction(new GoToLockerSpawnLocation<ItemOfType>(card, StructureType.StandardLocker, botPlayer));
+                mind.AddAction(new GoToItemSpawnInLocker<ItemOfType>(card, botPlayer));
+                mind.AddAction(new GoToSearchRoom<ItemOfType>(card, botPlayer));
+            }
             #endregion
-
-            #region KeycardScientist to KeycardResearchCoordinator on Fine
-            mind.AddBelief(new ItemsInOutakeChamber(new ItemOfType(ItemType.KeycardResearchCoordinator), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddAction(new WaitForItemUpgrading(ItemType.KeycardScientist, outputKeycardResearchSupervisorCriterias, Scp914.Scp914KnobSetting.Fine));
-            mind.AddAction(new GoToItemInOutakeChamber<ItemOfType>(new(ItemType.KeycardResearchCoordinator), botPlayer));
-            #endregion
-
-            #region KeycardZoneManager to KeycardFacilityManager on Fine
-            mind.AddBelief(new ItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardZoneManager)));
-            mind.AddAction(new GoToDropItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardZoneManager), botPlayer));
-
-            mind.AddBelief(new ItemsInOutakeChamber(new ItemOfType(ItemType.KeycardFacilityManager), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddAction(new WaitForItemUpgrading(ItemType.KeycardZoneManager, outputKeycardFacilityManagerCriterias, Scp914.Scp914KnobSetting.Fine));
-            mind.AddAction(new GoToItemInOutakeChamber<ItemOfType>(new(ItemType.KeycardFacilityManager), botPlayer));
-            #endregion
-
-            #region KeycardResearchCoordinator to KeycardFacilityManager on Fine
-            mind.AddBelief(new ItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardResearchCoordinator)));
-            mind.AddAction(new GoToDropItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardResearchCoordinator), botPlayer));
-
-            mind.AddBelief(new ItemsInOutakeChamber(new ItemOfType(ItemType.KeycardFacilityManager), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddAction(new WaitForItemUpgrading(ItemType.KeycardResearchCoordinator, outputKeycardFacilityManagerCriterias, Scp914.Scp914KnobSetting.Fine));
-            mind.AddAction(new GoToItemInOutakeChamber<ItemOfType>(new(ItemType.KeycardFacilityManager), botPlayer));
-            #endregion
-
-            #region KeycardScientist to KeycardZoneManager on 1:1
-            mind.AddBelief(new ItemsInOutakeChamber(new ItemOfType(ItemType.KeycardZoneManager), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddAction(new WaitForItemUpgrading(ItemType.KeycardScientist, outputKeycardZoneManagerCriterias, Scp914.Scp914KnobSetting.OneToOne));
-            mind.AddAction(new GoToItemInOutakeChamber<ItemOfType>(new(ItemType.KeycardZoneManager), botPlayer));
-            #endregion
-
-            #region KeycardJanitor to KeycardScientist on Fine
-            mind.AddBelief(new ItemsInOutakeChamber(new ItemOfType(ItemType.KeycardZoneManager), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddAction(new WaitForItemUpgrading(ItemType.KeycardJanitor, outputKeycardZoneManagerCriterias, Scp914.Scp914KnobSetting.OneToOne));
-            mind.AddAction(new GoToItemInOutakeChamber<ItemOfType>(new(ItemType.KeycardZoneManager), botPlayer));
-            #endregion
-
-            #region KeycardJanitor to KeycardZoneManager on 1:1
-            mind.AddBelief(new ItemsInOutakeChamber(new ItemOfType(ItemType.KeycardScientist), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddAction(new WaitForItemUpgrading(ItemType.KeycardJanitor, outputKeycardScientistCriterias, Scp914.Scp914KnobSetting.Fine));
-            mind.AddAction(new GoToItemInOutakeChamber<ItemOfType>(new(ItemType.KeycardScientist), botPlayer));
-            #endregion
-
-            #region KeycardFacilityManager to KeycardO5 on Fine
-            mind.AddBelief(new ItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardFacilityManager)));
-            mind.AddAction(new GoToDropItemInIntakeChamber<ItemOfType>(new(ItemType.KeycardFacilityManager), botPlayer));
-
-            mind.AddBelief(new ItemsInOutakeChamber(new ItemOfType(ItemType.KeycardO5), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddAction(new WaitForItemUpgrading(ItemType.KeycardFacilityManager, outputKeycardO5Criterias, Scp914.Scp914KnobSetting.Fine));
-            mind.AddAction(new GoToItemInOutakeChamber<ItemOfType>(new(ItemType.KeycardO5), botPlayer));
-            #endregion
-
-
-            #region KeycardMTFOperative searching
-            mind.AddBelief(new ItemSpawnsLocation<ItemOfType>(ItemType.KeycardMTFOperative, new[] { ItemType.KeycardMTFOperative }, perception.GetSense<RoomSightSense>(), perception.GetSense<ItemsWithinSightSense>()));
-            
-            mind.AddAction(new GoToItemSpawnLocation<ItemOfType>(ItemType.KeycardMTFOperative, botPlayer));
-            mind.AddActions(idx => new GoToSearchRoom<ItemOfType>(ItemType.KeycardMTFOperative, FacilityZone.HeavyContainment, idx, botPlayer));
-            #endregion
-
-            #region KeycardScientist searching
-            mind.AddBelief(new ItemSpawnsLocation<ItemOfType>(ItemType.KeycardScientist, new[] { ItemType.KeycardScientist }, perception.GetSense<RoomSightSense>(), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemSpawnsInSightedLocker<ItemOfType>(ItemType.KeycardScientist, new[] { ItemType.KeycardScientist }, perception.GetSense<LockersWithinSightSense>()));
-
-            mind.AddAction(new GoToItemSpawnLocation<ItemOfType>(ItemType.KeycardScientist, botPlayer));
-            mind.AddAction(new GoToLockerSpawnLocation<ItemOfType>(ItemType.KeycardScientist, StructureType.StandardLocker, botPlayer));
-            mind.AddAction(new GoToItemSpawnInLocker<ItemOfType>(ItemType.KeycardScientist, botPlayer));
-            mind.AddActions(idx => new GoToSearchRoom<ItemOfType>(ItemType.KeycardScientist, idx, botPlayer));
-            #endregion
-
-            #region KeycardZoneManager searching
-            mind.AddBelief(new ItemSpawnsLocation<ItemOfType>(ItemType.KeycardZoneManager, new[] { ItemType.KeycardZoneManager }, perception.GetSense<RoomSightSense>(), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemSpawnsInSightedLocker<ItemOfType>(ItemType.KeycardZoneManager, new[] { ItemType.KeycardZoneManager }, perception.GetSense<LockersWithinSightSense>()));
-
-            mind.AddAction(new GoToItemSpawnLocation<ItemOfType>(ItemType.KeycardZoneManager, botPlayer));
-            mind.AddAction(new GoToLockerSpawnLocation<ItemOfType>(ItemType.KeycardZoneManager, StructureType.StandardLocker, botPlayer));
-            mind.AddAction(new GoToItemSpawnInLocker<ItemOfType>(ItemType.KeycardZoneManager, botPlayer));
-            mind.AddActions(idx => new GoToSearchRoom<ItemOfType>(ItemType.KeycardZoneManager, idx, botPlayer));
-            #endregion
-
-            #region KeycardJanitor searching
-            mind.AddBelief(new ItemSpawnsLocation<ItemOfType>(ItemType.KeycardJanitor, new[] { ItemType.KeycardJanitor }, perception.GetSense<RoomSightSense>(), perception.GetSense<ItemsWithinSightSense>()));
-            mind.AddBelief(new ItemSpawnsInSightedLocker<ItemOfType>(ItemType.KeycardJanitor, new[] { ItemType.KeycardJanitor }, perception.GetSense<LockersWithinSightSense>()));
-
-            mind.AddAction(new GoToItemSpawnLocation<ItemOfType>(ItemType.KeycardJanitor, botPlayer));
-            mind.AddAction(new GoToLockerSpawnLocation<ItemOfType>(ItemType.KeycardJanitor, StructureType.StandardLocker, botPlayer));
-            mind.AddAction(new GoToItemSpawnInLocker<ItemOfType>(ItemType.KeycardJanitor, botPlayer));
-            mind.AddActions(idx => new GoToSearchRoom<ItemOfType>(ItemType.KeycardJanitor, idx, botPlayer));
-            #endregion
-
-
-            mind.AddBelief(new FacilityEscapeLocation(perception.GetSense<RoomSightSense>()));
-            mind.AddBelief(new PlayerEscaped());
-            mind.AddAction(new GoToEscapeLocation(botPlayer));
-
-
-            mind.AddBelief(new ItemSightedLocation<ItemOfType>(new(ItemType.Medkit), perception.GetSense<ItemsWithinSightSense>()));
-
 
             mind.AddGoal(new EscapeTheFacility());
-            //mind.AddGoal(new GetO5Keycard());
+
+            _ = new FacilityAccessTracker(botPlayer, mind, inventorySense);
+        }
+
+        /// <summary>
+        /// One <see cref="ItemsInOutakeChamber"/> belief per distinct output criteria (several
+        /// recipes share outputs), and one trip to the output chamber for every output a sighting
+        /// belief can take over from.
+        /// </summary>
+        private sealed class OutakeRegistry
+        {
+            private readonly FpcMind mind;
+            private readonly FpcBotPlayer botPlayer;
+            private readonly ItemsWithinSightSense itemsSense;
+            private readonly List<IItemBeliefCriteria> registered = new();
+
+            public OutakeRegistry(FpcMind mind, FpcBotPlayer botPlayer, ItemsWithinSightSense itemsSense)
+            {
+                this.mind = mind;
+                this.botPlayer = botPlayer;
+                this.itemsSense = itemsSense;
+            }
+
+            public void AddUpgrade(ItemType input, IItemBeliefCriteria[] outputs, Scp914.Scp914KnobSetting setting)
+            {
+                foreach (var output in outputs)
+                {
+                    Ensure(output);
+                }
+
+                mind.AddAction(new WaitForItemUpgrading(input, outputs, setting));
+            }
+
+            private void Ensure(IItemBeliefCriteria criteria)
+            {
+                foreach (var known in registered)
+                {
+                    if (known.Equals(criteria))
+                    {
+                        return;
+                    }
+                }
+
+                registered.Add(criteria);
+                mind.AddBelief(new ItemsInOutakeChamber(criteria, itemsSense));
+
+                switch (criteria)
+                {
+                    case ItemOfType ofType when mind.Beliefs.ContainsKey(typeof(ItemSightedLocation<ItemOfType>))
+                                                && mind.GetBelief<ItemSightedLocation<ItemOfType>>(b => b.Criteria.Equals(ofType)) != null:
+                        mind.AddAction(new GoToItemInOutakeChamber<ItemOfType>(ofType, botPlayer));
+                        break;
+                    case KeycardWithPermissions withPermissions when mind.GetBelief<ItemSightedLocation<KeycardWithPermissions>>(b => b.Criteria.Equals(withPermissions)) != null:
+                        mind.AddAction(new GoToItemInOutakeChamber<KeycardWithPermissions>(withPermissions, botPlayer));
+                        break;
+                }
+            }
         }
     }
 }

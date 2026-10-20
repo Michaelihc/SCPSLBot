@@ -1,5 +1,4 @@
-﻿using InventorySystem.Items;
-using InventorySystem.Items.Firearms;
+using InventorySystem.Items;
 using System;
 using System.Collections.Generic;
 using Unity.Jobs;
@@ -9,8 +8,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
 {
     internal class ItemsInInventorySense : ISense
     {
-        public bool HasFirearmInInventory { get; private set; }
-
         public event Action<ItemBase> OnSensedItem;
         public event Action OnAfterSensedItems;
 
@@ -25,8 +22,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
             foreach (var item in userInventory.Items.Values)
             {
                 OnSensedItem?.Invoke(item);
-
-                HasFirearmInInventory = item is Firearm;
             }
             OnAfterSensedItems?.Invoke();
         }

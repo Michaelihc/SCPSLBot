@@ -4,13 +4,15 @@ using InventorySystem.Items.Firearms;
 using InventorySystem.Items.Firearms.Modules;
 using InventorySystem.Items.Firearms.ShotEvents;
 using PlayerStatsSystem;
-using System.Linq;
+using SCPSLBot.Api;
 using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Combat
 {
     /// <summary>
-    /// Owns human firearm selection, reload cadence, aiming, and firing behavior.
+    /// Owns human firearm selection, reload cadence, aiming, and firing behavior. Only Standard
+    /// warmup hands out a firearm; in a normal round a human without a usable firearm does not
+    /// engage (<see cref="CanEngage"/>) and the brain's survival behaviors take over.
     /// </summary>
     internal sealed class HumanWeaponCombatStrategy
     {
@@ -23,6 +25,59 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         public HumanWeaponCombatStrategy(FpcBotCombat combat)
         {
             this.combat = combat;
+        }
+
+        /// <summary>
+        /// True when this human can fight: Standard warmup (a firearm is granted on demand) or a
+        /// carried firearm with loaded or reserve ammo. Allocation-free; safe to call every frame.
+        /// </summary>
+        public bool CanEngage()
+        {
+            return BotServerPolicy.IsStandardWarmup || HasUsableFirearm(combat.BotPlayer.BotHub.PlayerHub);
+        }
+
+        /// <summary>A carried firearm that can still fire: loaded rounds, reserve ammo, or no magazine model at all.</summary>
+        internal static bool HasUsableFirearm(ReferenceHub hub)
+        {
+            return TryGetUsableFirearm(hub, out _);
+        }
+
+        internal static bool TryGetUsableFirearm(ReferenceHub hub, out Firearm firearm)
+        {
+            firearm = null;
+            var inventory = hub != null ? hub.inventory : null;
+            if (inventory == null)
+            {
+                return false;
+            }
+
+            if (inventory.CurInstance is Firearm held && HasAmmo(held))
+            {
+                firearm = held;
+                return true;
+            }
+
+            foreach (var item in inventory.UserInventory.Items.Values)
+            {
+                if (item is Firearm candidate && HasAmmo(candidate))
+                {
+                    firearm = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Rounds in the gun plus reserve ammo of its type; firearms without a magazine model count as armed.</summary>
+        internal static bool HasAmmo(Firearm firearm)
+        {
+            if (!firearm.TryGetModule<IPrimaryAmmoContainerModule>(out var primaryAmmo))
+            {
+                return true;
+            }
+
+            return GetLoadedAmmo(firearm, primaryAmmo) > 0 || firearm.Owner.inventory.GetCurAmmo(primaryAmmo.AmmoType) > 0;
         }
 
         public void Run(CombatTarget target)
@@ -85,8 +140,24 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return null;
             }
 
-            var firearm = inventory.UserInventory.Items.Values.OfType<Firearm>().FirstOrDefault();
-            if (firearm == null)
+            Firearm firearm = null;
+            foreach (var item in inventory.UserInventory.Items.Values)
+            {
+                if (item is not Firearm candidate)
+                {
+                    continue;
+                }
+
+                firearm ??= candidate;
+                if (HasAmmo(candidate))
+                {
+                    firearm = candidate;
+                    break;
+                }
+            }
+
+            // Standard warmup arms every human; a normal round never conjures a weapon.
+            if (firearm == null && BotServerPolicy.IsStandardWarmup)
             {
                 firearm = inventory.ServerAddItem(ItemType.GunCOM15, ItemAddReason.AdminCommand) as Firearm;
             }

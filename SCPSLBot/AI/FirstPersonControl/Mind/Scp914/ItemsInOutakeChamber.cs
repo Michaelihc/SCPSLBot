@@ -19,6 +19,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
         public ItemsInOutakeChamber(IItemBeliefCriteria criteria, ItemsWithinSightSense itemsSightSense) : base(criteria)
         {
             this.itemsSightSense = itemsSightSense;
+            this.isAbsent = absentPositions.Remove;
 
             this.itemsSightSense.OnSensedItemWithinSight += OnSensedItemWithinSight;
             this.itemsSightSense.OnAfterSensedItemsWithinSight += OnAfterSensedItemsWithinSight;
@@ -50,10 +51,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 
         private readonly HashSet<Vector3> absentPositions = new();
         private readonly Dictionary<Vector3, float> timesElapsed = new();
+        private Predicate<Vector3> isAbsent;
 
         private void OnAfterSensedItemsWithinSight()
         {
-            if (this.Positions.Any() && numItemsWithinSight < this.Positions.Count)
+            if (this.Positions.Count > 0 && numItemsWithinSight < this.Positions.Count)
             {
                 foreach (var itemPosition in Positions)
                 {
@@ -80,7 +82,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
                         timesElapsed[itemPosition] = timeElapsed;
                     }
                 }
-                RemoveAllPositions(absentPositions.Remove);
+                if (absentPositions.Count > 0)
+                {
+                    RemoveAllPositions(isAbsent);
+                    absentPositions.Clear();
+                }
             }
 
             numItemsWithinSight = 0;

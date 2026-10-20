@@ -1,22 +1,27 @@
-﻿using MapGeneration;
-using SCPSLBot.AI.FirstPersonControl.Mind.Room.Beliefs;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
-using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Escape
 {
+    /// <summary>
+    /// Walks into the escape zone once every border on the way is passable, from whichever zone
+    /// the bot is in: the navmesh plans the whole route and locomotion crosses checkpoints, gates
+    /// and elevators. Without that access the planner first works on the next zone border.
+    /// </summary>
     internal class GoToEscapeLocation : GoTo<FacilityEscapeLocation>
     {
-        private readonly FpcBotPlayer botPlayer;
+        private const float ArrivalMeters = 1.5f;
+        // Escaping changes the role at once; standing in the zone this long means it did not apply.
+        private const float NoEscapeSeconds = 8f;
 
-        public GoToEscapeLocation(FpcBotPlayer botPlayer) : base(0, botPlayer)
+        private float arrivedAt = -1f;
+
+        public GoToEscapeLocation(FpcBotPlayer botPlayer) : base(botPlayer)
         {
-            this.botPlayer = botPlayer;
         }
 
         public override void SetEnabledByBeliefs(FpcMind fpcMind)
         {
-            fpcMind.ActionEnabledBy<ZoneWithin, FacilityZone?>(this, b => FacilityZone.Surface, b => b.Zone);
+            fpcMind.ActionEnabledBy<EscapeRouteAccess>(this, b => b.CanReachExit);
 
             base.SetEnabledByBeliefs(fpcMind);
         }
@@ -28,15 +33,27 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Escape
 
         public override float Weight { get; } = 1f;
 
-        public override void Tick()
-        {
-            var enterPosition = location.Positions[Idx];
-
-            botPlayer.MoveToPosition(enterPosition);
-        }
-
         public override void Reset()
         {
+            arrivedAt = -1f;
+            base.Reset();
+        }
+
+        protected override ActionStatus TickTowardsTarget()
+        {
+            if (!MoveToTarget(ArrivalMeters))
+            {
+                arrivedAt = -1f;
+                return ActionStatus.Running;
+            }
+
+            botPlayer.Locomotion.Stop();
+            if (arrivedAt < 0f)
+            {
+                arrivedAt = UnityEngine.Time.time;
+            }
+
+            return UnityEngine.Time.time - arrivedAt > NoEscapeSeconds ? ActionStatus.Failed : ActionStatus.Running;
         }
 
         public override string ToString()

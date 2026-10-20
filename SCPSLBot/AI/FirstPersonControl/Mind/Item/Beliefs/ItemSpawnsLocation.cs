@@ -8,11 +8,17 @@ using System.Linq;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
 {
+    /// <summary>
+    /// Item spawnpoints in the current and neighbouring rooms that may hold a matching item and
+    /// have not been checked yet. Rebuilt only when the room (or the topology) changes; a
+    /// spawnpoint is checked once the bot sees it from up close (<see cref="ItemsWithinSightSense.IsSpotVisible"/>).
+    /// </summary>
     internal class ItemSpawnsLocation<C> : ItemLocations<C> where C : IItemBeliefCriteria
     {
         private readonly ItemType[] spawnItemTypes;
         private readonly RoomSightSense roomSense;
         private readonly ItemsWithinSightSense itemsSightSense;
+        private readonly Predicate<Vector3> isAbsent;
 
         public ItemSpawnsLocation(C criteria, ItemType[] spawnItemTypes, RoomSightSense roomSense, ItemsWithinSightSense itemsSightSense) 
             : base(criteria)
@@ -20,6 +26,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
             this.spawnItemTypes = spawnItemTypes;
             this.itemsSightSense = itemsSightSense;
             this.roomSense = roomSense;
+            isAbsent = absentPositions.Remove;
 
             this.roomSense.OnAfterSensedForeignRooms += OnAfterSensedForeignRooms;
             this.itemsSightSense.OnAfterSensedItemsWithinSight += OnAfterSensedItemsWithinSight;
@@ -29,27 +36,31 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
 
         private readonly HashSet<Vector3> visitedSpawnPositions = new();
         private readonly HashSet<Vector3> absentPositions = new();
+        private readonly List<Vector3> itemSpawnPositions = new();
+        private int generation = int.MinValue;
 
         private void OnAfterSensedItemsWithinSight()
         {
+            if (Positions.Count == 0)
+            {
+                return;
+            }
+
             foreach (var spawnPosition in Positions)
             {
-                if (this.itemsSightSense.IsPositionWithinFov(spawnPosition)
-                    //    && (!itemsSightSense.IsPositionObstructed(Position.Value) || itemsSightSense.GetDistanceToPosition(Position.Value) < 1.5f))
-                    && (!itemsSightSense.IsPositionObstructed(spawnPosition)))
+                if (this.itemsSightSense.IsSpotVisible(spawnPosition))
                 {
                     this.visitedSpawnPositions.Add(spawnPosition);
-                    ItemSpawnProbability.Remove(spawnPosition);
-
                     absentPositions.Add(spawnPosition);
                 }
             }
 
-            RemoveAllPositions(absentPositions.Remove);
+            if (absentPositions.Count > 0)
+            {
+                RemoveAllPositions(isAbsent);
+                absentPositions.Clear();
+            }
         }
-
-        private readonly List<Vector3> itemSpawnPositions = new();
-        private IEnumerable<Vector3> unvisitedSpawnPositions;
 
         private void OnAfterSensedForeignRooms()
         {
@@ -60,25 +71,40 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
                 return;
             }
 
-            var foreignRooms = this.roomSense.ForeignRooms;
+            var current = Navigation.NavigationSystem.Instance.MapGeneration;
+            if (current != generation)
+            {
+                // Spawnpoints and visits belong to the previous map.
+                generation = current;
+                visitedSpawnPositions.Clear();
+                roomItemSpawnPositions.Clear();
+                ItemSpawnProbability.Clear();
+            }
 
             itemSpawnPositions.Clear();
-            foreach (var foreignRoom in foreignRooms)
+            foreach (var foreignRoom in this.roomSense.ForeignRooms)
             {
-                itemSpawnPositions.AddRange(this.GetItemSpawnPositions(foreignRoom));
+                AddUnvisited(this.GetItemSpawnPositions(foreignRoom));
             }
-            itemSpawnPositions.AddRange(this.GetItemSpawnPositions(roomWithin));
+            AddUnvisited(this.GetItemSpawnPositions(roomWithin));
 
-            unvisitedSpawnPositions ??= itemSpawnPositions
-                .Where(spawnPosition => !this.visitedSpawnPositions.Contains(spawnPosition));
+            SetPositions(itemSpawnPositions);
+        }
 
-            SetPositions(unvisitedSpawnPositions);
+        private void AddUnvisited(Vector3[] spawnPositions)
+        {
+            foreach (var spawnPosition in spawnPositions)
+            {
+                if (!visitedSpawnPositions.Contains(spawnPosition) && !itemSpawnPositions.Contains(spawnPosition))
+                {
+                    itemSpawnPositions.Add(spawnPosition);
+                }
+            }
         }
 
         private readonly Dictionary<RoomIdentifier, Vector3[]> roomItemSpawnPositions = new();
 
         private readonly List<ItemSpawnpointBase> itemSpawnpoints = new();
-        private IEnumerable<(Vector3 Position, float Prob)> spawnPositionsQuery;
 
         private Vector3[] GetItemSpawnPositions(RoomIdentifier room)
         {
@@ -90,21 +116,24 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
 
             if (!this.roomItemSpawnPositions.TryGetValue(room, out var spawnPositions))
             {
+                // Once per room and map; the LINQ below never runs per pass.
                 room.GetComponentsInChildren(itemSpawnpoints);
 
-                spawnPositionsQuery ??= itemSpawnpoints
+                var spawns = itemSpawnpoints
                     .Select(spawnPoint => (spawnPoint, prob: GetSpawnProbability(spawnPoint)))
                     .Where(t => t.prob > 0f)
-                    .SelectMany(t => GetAcceptedPositions(t.spawnPoint), 
-                        (t, spawnTransform) => (spawnTransform.position, t.prob));
+                    .SelectMany(t => GetAcceptedPositions(t.spawnPoint),
+                        (t, spawnTransform) => (spawnTransform.position, t.prob))
+                    .ToArray();
 
-                spawnPositions = spawnPositionsQuery.Select(t => t.Position).ToArray();
-                this.roomItemSpawnPositions.Add(room, spawnPositions);
-
-                foreach (var (position, prob) in spawnPositionsQuery)
+                spawnPositions = new Vector3[spawns.Length];
+                for (var index = 0; index < spawns.Length; index++)
                 {
-                    this.ItemSpawnProbability.Add(position, prob);
+                    spawnPositions[index] = spawns[index].position;
+                    this.ItemSpawnProbability[spawns[index].position] = spawns[index].prob;
                 }
+
+                this.roomItemSpawnPositions.Add(room, spawnPositions);
             }
 
             return spawnPositions;
