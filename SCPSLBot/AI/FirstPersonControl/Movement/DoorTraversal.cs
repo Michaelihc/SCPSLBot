@@ -42,6 +42,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private const float InteractRange = 2f;
         private const float HoldDistance = 1.1f;
         private const float PassedMeters = 0.35f;
+        private const float FirstLegBacktrackMeters = 0.6f;
         private const float InteractRetrySeconds = 0.75f;
         private const int MaxInteractAttempts = 4;
         private const float WaitForSelfOpeningSeconds = 6f;
@@ -83,7 +84,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             }
         }
 
-        private static readonly HashSet<DoorVariant> checkpointSubDoors = new(ManagedReferenceComparer<DoorVariant>.Instance);
+        private static readonly Dictionary<DoorVariant, CheckpointDoor> checkpointParents = new(ManagedReferenceComparer<DoorVariant>.Instance);
         private static int subDoorsGeneration = -1;
         private static int subDoorsDoorCount = -1;
 
@@ -518,6 +519,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             {
                 var a = points[index];
                 var b = points[index + 1];
+                if (index == 0)
+                {
+                    // A plan made while standing in a doorway starts on or just past the door
+                    // plane; without reaching back the leg never crosses it and a door that
+                    // closed in the bot's face is walked into instead of opened.
+                    var leg = b - a;
+                    leg.y = 0f;
+                    if (leg.sqrMagnitude > 1e-4f)
+                    {
+                        a -= leg.normalized * FirstLegBacktrackMeters;
+                    }
+                }
+
                 CollectRooms(a, b);
                 foreach (var room in segmentRooms)
                 {
@@ -552,7 +566,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         private static void TestDoor(DoorVariant door, Vector3 a, Vector3 b, List<Crossing> output)
         {
-            if (door == null || door is ElevatorDoor || door is DummyDoor || checkpointSubDoors.Contains(door))
+            if (door == null || door is ElevatorDoor || door is DummyDoor || checkpointParents.ContainsKey(door))
             {
                 return;
             }
@@ -565,11 +579,35 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 }
             }
 
-            var doorTransform = door.transform;
+            if (door is CheckpointDoor { SubDoors: { Length: > 0 } subDoors })
+            {
+                // The leaves define the doorway: a checkpoint's own transform can face across
+                // the passage (the HCZ-EZ checkpoints), so its plane is never crossed.
+                foreach (var subDoor in subDoors)
+                {
+                    if (subDoor != null && TryCross(subDoor.transform, a, b, out var leafCrossing))
+                    {
+                        output.Add(new Crossing(door, leafCrossing.Point, leafCrossing.Normal, leafCrossing.Side));
+                        return;
+                    }
+                }
+
+                return;
+            }
+
+            if (TryCross(door.transform, a, b, out var crossing))
+            {
+                output.Add(new Crossing(door, crossing.Point, crossing.Normal, crossing.Side));
+            }
+        }
+
+        private static bool TryCross(Transform doorTransform, Vector3 a, Vector3 b, out Crossing crossing)
+        {
+            crossing = default;
             var normal = Vector3.ProjectOnPlane(doorTransform.forward, Vector3.up);
             if (normal.sqrMagnitude < 1e-4f)
             {
-                return;
+                return false;
             }
 
             normal.Normalize();
@@ -578,16 +616,32 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             var db = Vector3.Dot(b - origin, normal);
             if ((da > 0f) == (db > 0f) || Mathf.Abs(da - db) < 1e-4f)
             {
-                return;
+                return false;
             }
 
-            var crossing = a + (b - a) * (da / (da - db));
-            if (HorizontalDistance(crossing, origin) > DoorHalfWidth || Mathf.Abs(crossing.y - origin.y) > DoorVerticalTolerance)
+            var point = a + (b - a) * (da / (da - db));
+            if (HorizontalDistance(point, origin) > DoorHalfWidth || Mathf.Abs(point.y - origin.y) > DoorVerticalTolerance)
             {
-                return;
+                return false;
             }
 
-            output.Add(new Crossing(door, new Vector3(crossing.x, origin.y, crossing.z), normal, da >= 0f ? 1f : -1f));
+            crossing = new Crossing(null, new Vector3(point.x, origin.y, point.z), normal, da >= 0f ? 1f : -1f);
+            return true;
+        }
+
+        /// <summary>
+        /// The door a player interacts with for <paramref name="door"/>: its checkpoint for a
+        /// checkpoint leaf (the leaf's own permissions are empty), otherwise the door itself.
+        /// </summary>
+        public static DoorVariant ResolveInteractable(DoorVariant door)
+        {
+            if (door == null)
+            {
+                return null;
+            }
+
+            RefreshCheckpointSubDoors();
+            return checkpointParents.TryGetValue(door, out var checkpoint) && checkpoint != null ? checkpoint : door;
         }
 
         // Checkpoint leaves are doors of their own sharing the checkpoint's doorway; only the
@@ -603,7 +657,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
             subDoorsGeneration = generation;
             subDoorsDoorCount = doorCount;
-            checkpointSubDoors.Clear();
+            checkpointParents.Clear();
             foreach (var door in DoorVariant.AllDoors)
             {
                 if (door is CheckpointDoor checkpoint && checkpoint.SubDoors != null)
@@ -612,7 +666,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                     {
                         if (subDoor != null)
                         {
-                            checkpointSubDoors.Add(subDoor);
+                            checkpointParents[subDoor] = checkpoint;
                         }
                     }
                 }

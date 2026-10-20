@@ -129,7 +129,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 return false;
             }
 
-            var candidate = doorHit.collider.GetComponentInParent<DoorVariant>();
+            var candidate = DoorTraversal.ResolveInteractable(doorHit.collider.GetComponentInParent<DoorVariant>());
             if (candidate == null || candidate is ElevatorDoor || DoorAccess.IsPassable(candidate))
             {
                 return false;
