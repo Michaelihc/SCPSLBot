@@ -2,6 +2,7 @@ using LabApi.Features;
 using LabApi.Features.Console;
 using LabApi.Loader.Features.Plugins;
 using LabApi.Loader.Features.Plugins.Enums;
+using SCPSLBot.PlaytestScenarios.Harness;
 using System;
 
 namespace SCPSLBot.PlaytestScenarios;
@@ -25,11 +26,14 @@ public sealed class ScpslBotPlaytestScenariosPlugin : Plugin<ScenarioLibraryConf
             GameCore.ConfigFile.ServerConfig.SetString("team_respawn_queue", Config.NativeTeamQueue);
             Logger.Info($"[SCPSLBot.PlaytestScenarios] Isolated native team queue: {Config.NativeTeamQueue}");
         }
+        if (Config.LogScpAbilityEvents)
+            ScpAbilityEventLog.Enable();
         Logger.Info("[SCPSLBot.PlaytestScenarios] Loaded for PlaytestHarness discovery.");
     }
 
     public override void Disable()
     {
+        ScpAbilityEventLog.Disable();
         if (originalTeamQueue != null)
             GameCore.ConfigFile.ServerConfig.SetString("team_respawn_queue", originalTeamQueue);
         originalTeamQueue = null;
@@ -40,4 +44,5 @@ public sealed class ScenarioLibraryConfig
 {
     public bool Enabled { get; set; } = true;
     public string NativeTeamQueue { get; set; } = string.Empty;
+    public bool LogScpAbilityEvents { get; set; }
 }
