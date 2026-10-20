@@ -102,9 +102,29 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
                 bot.Combat.Scp939.ReleaseAmbushFocus();
             }
 
+            Finish();
+        }
+
+        /// <summary>
+        /// Ends the ambush. Also called from <see cref="Tick"/>: the brain re-selects right away, and a
+        /// behavior that still held its door would win again without ever exiting.
+        /// </summary>
+        private void Finish()
+        {
+            if (door != null)
+            {
+                nextAllowedTime = Time.time + CooldownSeconds;
+            }
+
             door = null;
             waiting = false;
-            nextAllowedTime = Time.time + CooldownSeconds;
+        }
+
+        private bool GiveUp()
+        {
+            bot.Combat.Scp939.ReleaseAmbushFocus();
+            Finish();
+            return false;
         }
 
         public bool Tick()
@@ -119,7 +139,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
             {
                 if (now > approachUntil)
                 {
-                    return false;
+                    return GiveUp();
                 }
 
                 if (HorizontalDistance(bot.PlayerPosition, spot) > ArriveMeters)
@@ -134,7 +154,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
 
             if (now >= waitUntil)
             {
-                return false;
+                return GiveUp();
             }
 
             // The lunge flies along the facing at focus start: face the doorway, then focus.

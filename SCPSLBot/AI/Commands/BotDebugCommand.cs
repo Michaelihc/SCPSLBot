@@ -31,7 +31,7 @@ internal sealed class BotDebugCommand : ICommand
             var room = RoomUtils.TryGetRoom(position, out var currentRoom) && currentRoom != null ? currentRoom.Name.ToString() : "none";
             var navigator = bot.Navigator;
             var path = navigator == null ? "none" : navigator.HasPath ? $"path/{navigator.PathNodeCount}" : navigator.HasPartialPath ? $"partial/{navigator.PathNodeCount}" : "nopath";
-            var combat = bot.Combat.DiagnosticHasTarget ? $"{bot.Combat.DiagnosticState}->{bot.Combat.DiagnosticTarget}" : "none";
+            var combat = bot.Combat.DiagnosticHasTarget ? $"{bot.Combat.DiagnosticState}->{bot.Combat.DiagnosticTarget}{(bot.Combat.DiagnosticHasLineOfSight ? "(los)" : "(memory)")}" : "none";
             builder.Append('\n')
                 .Append(hub.PlayerId).Append(' ').Append(hub.nicknameSync?.MyNick).Append(" role=").Append(role)
                 .Append(" room=").Append(room)
