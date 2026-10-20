@@ -135,7 +135,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
             if (IsInProgress(ability))
             {
                 started = true;
-                bot.Move.DesiredLocalDirection = Vector3.zero;
+                bot.Locomotion.Stop();
                 if (RagdollTracker.TryGetNearestBone(current, bot.PlayerPosition, out var heldBone, out _))
                 {
                     bot.LookToPosition(heldBone);
@@ -179,7 +179,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
         private bool TryStart(SubroutineBase ability, Vector3 bone, float now)
         {
             var bot = Bot;
-            bot.Move.DesiredLocalDirection = Vector3.zero;
+            bot.Locomotion.Stop();
             bot.LookToPosition(bone);
             if (now < nextStartTry)
             {
