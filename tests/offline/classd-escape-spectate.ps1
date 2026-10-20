@@ -57,6 +57,11 @@ try {
     $started = $true
     WaitRecording 'recording' 45
     Note 'recording started'
+    # Respawn the bot in the Class-D cells so the take covers the escape from the start; the
+    # spectator target follows the same player through the role change.
+    $null = Reply "/forcerole $($bot.id) ClassD"
+    $roundStart = Get-Date
+    Start-Sleep -Seconds 2
     $nextDebug = Get-Date
     while (((Get-Date) - $roundStart).TotalSeconds -lt $escapeDeadlineSeconds) {
         $bot = Bot
