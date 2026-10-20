@@ -77,6 +77,16 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             var settings = CurrentSettings;
             var botHub = botPlayer.BotHub.PlayerHub;
             var role = botHub.roleManager.CurrentRole.RoleTypeId;
+            if (botHub.roleManager.CurrentRole.Team != Team.SCPs && !humanStrategy.CanEngage())
+            {
+                // Nothing to fight with (normal round, no usable firearm): the brain's survival
+                // behaviors keep this human away from threats instead.
+                targetSelector.Clear();
+                DiagnosticHasLineOfSight = false;
+                DiagnosticState = "unarmed";
+                return false;
+            }
+
             scpStrategy.PrepareForTick(role);
 
             CombatTarget target;
