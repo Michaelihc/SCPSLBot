@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Drive every non-combat bot through a utility brain (explore, objective, loot, heal, flee and SCP
+  corpse abilities) and route all movement through one locomotion layer. Every role and every
+  movement source now opens doors with a matching keycard and rides elevators, so bots cross zones
+  (Surface to Entrance through the Gate elevators, LCZ and HCZ through the checkpoint elevators).
+- Replace zone roaming with facility-wide exploration toward room interiors with visited-room memory.
+  Bots no longer turn back at doorways in corridors; SCPs roam the whole facility.
+- Stop treating walkable slopes and stair risers as walls in obstacle avoidance.
+- Use native SCP abilities: SCP-049 Doctor's Call, native attack reach and corpse revival; SCP-049-2
+  corpse consumption; SCP-096 charge and gate prying; SCP-106 stalk and Hunter's Atlas; SCP-939
+  focus, lunge and amnestic cloud; SCP-3114 disguise, reveal and strangle.
+- Human bots pick up useful items with the native search time, heal with medical items when safe,
+  flee when unarmed, and equip keycards for keycard lockers. Only Standard warmup issues a COM-15 to
+  unarmed humans.
+- Make the GOAP escape objective recover from failed actions and rejected pickups, target the nearest
+  untried position, replan periodically and route straight to the exit once every border is passable.
+- Add `bot_debug` and `bot_trace`, the `round_trace` setting and the `tools/round-map` renderer for
+  top-down round maps.
 - Pause the native Halloween moon during Standard warmup to prevent its ending sequence from
   repeatedly exploding respawned players and bots; restore it when warmup ends.
 - Enforce warmup warhead suppression for administrator and server-triggered starts and detonations.

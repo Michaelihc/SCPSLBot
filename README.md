@@ -25,23 +25,23 @@ See [Credits](#credits).
 <td width="50%"><img src="docs/media/scp173.webp" alt="SCP-173 bot attacking guards and scientists"><br>
 <b>SCP-173</b>: blinks toward its target and snaps necks only while nobody is watching. It drops tantrum at close range and uses Breakneck Speeds on long chases.</td>
 <td width="50%"><img src="docs/media/scp096.webp" alt="SCP-096 bot enraged, seen from its own view"><br>
-<b>SCP-096</b>: enrages at the first hostile it sees and tears into it.</td>
+<b>SCP-096</b>: enrages at the first hostile it sees, charges down straight corridors, pries gates open and tears into its targets.</td>
 </tr>
 <tr>
 <td><img src="docs/media/scp049.webp" alt="SCP-049 bot using Sense on a guard"><br>
-<b>SCP-049</b>: uses Sense on its target and closes in for the kill.</td>
+<b>SCP-049</b>: uses Sense and Doctor's Call on its target, closes in for the kill and revives fresh corpses as SCP-049-2.</td>
 <td><img src="docs/media/scp049-2.webp" alt="SCP-049-2 bot attacking a soldier"><br>
-<b>SCP-049-2</b>: hunts and claws humans.</td>
+<b>SCP-049-2</b>: hunts and claws humans, and consumes corpses to heal.</td>
 </tr>
 <tr>
 <td><img src="docs/media/scp106.webp" alt="SCP-106 bot closing in on its prey"><br>
-<b>SCP-106</b>: hunts and attacks, and drags corroded victims into the pocket dimension.</td>
+<b>SCP-106</b>: stalks underground to close distance, uses Hunter's Atlas to reach distant prey, and drags corroded victims into the pocket dimension.</td>
 <td><img src="docs/media/scp939.webp" alt="SCP-939 bot mauling scientists"><br>
-<b>SCP-939</b>: hunts and claws humans.</td>
+<b>SCP-939</b>: focuses and lunges from mid range, lays amnestic clouds against groups and claws up close.</td>
 </tr>
 <tr>
 <td><img src="docs/media/scp3114.webp" alt="SCP-3114 bot attacking scientists"><br>
-<b>SCP-3114</b>: hunts and slaps humans.</td>
+<b>SCP-3114</b>: steals a disguise from a fresh corpse, walks up to humans disguised, then reveals itself to strangle and slap.</td>
 <td><b>SCP-079</b> is not supported: it has no body for a bot to drive.</td>
 </tr>
 </table>
@@ -52,12 +52,17 @@ difficulty. The SCP bots were invulnerable so that each take ran its full length
 ### Humans
 
 - **Every armed role fights.** Bots choose targets by faction: the Foundation fights Chaos and Class-D,
-  SCPs fight everyone, and everyone fights Tutorial. A bot fires the gun it carries (an unarmed
-  bot is issued a COM-15), reloads when its magazine runs dry, strafes at mid range and backs off
-  when rushed.
+  SCPs fight everyone, and everyone fights Tutorial. A bot fires the gun it carries, reloads when
+  its magazine runs dry, strafes at mid range and backs off when rushed. Only Standard warmup issues
+  a COM-15 to an unarmed bot; in normal rounds an unarmed human runs from SCPs and armed enemies.
+- **Humans pick up and use items.** They pick up firearms, ammo for their gun, better armor,
+  medical items, grenades and keycards that add permissions, taking the native search time and
+  respecting inventory limits. They heal with medkits, SCP-500, painkillers or adrenaline once out
+  of danger, and equip a matching keycard to open keycard doors and lockers.
 - **Class-D and Scientists try to escape.** They search floors, lockers and rooms for keycards,
   upgrade them in SCP-914, and work toward the exit through keycard doors and elevators.
-- **Guards, NTF and Chaos patrol.** With no target in sight they roam their current zone.
+- **Everyone else explores.** Guards patrol their zone, NTF and Chaos also visit neighbouring
+  zones, and SCPs roam the whole facility, preferring rooms they have not visited recently.
 - **Four difficulty levels.** `bot_difficulty easy|normal|hard|hardest` tunes fire rate, aim, strafing,
   how long bots chase a target they've lost, and SCP-096's rage.
 
@@ -69,7 +74,10 @@ difficulty. The SCP bots were invulnerable so that each take ran its full length
   to doors, admin toys and other geometry are rebuilt incrementally.
 - Routing is keycard-aware: a Class-D never plans through a door its inventory cannot open, while
   a Scientist holding the right card does.
-- Bots open doors, ride checkpoint and gate elevators, and jump across clutter in door-less connectors.
+- Every movement (exploring, objectives, chasing a target, orders) plans across zones and executes
+  the crossings: bots open doors with the right keycard, ride every elevator (a bot on Surface heading
+  into the facility walks to a Gate elevator first), climb stairs and jump across clutter in
+  door-less connectors.
 - Stuck recovery runs in escalating steps: nudge, jump, back off, re-plan, then avoid that crossing
   for 45 s.
 - Custom maps built from static admin toys can be added to the navmesh (`nav rebuild <center> <size>`).

@@ -75,7 +75,14 @@ navigation:
   voxel_size: 0.09
   keycard_area_routing: true
   blocked_crossing_seconds: 45
+round_trace:
+  enabled: false                               # record every round to <plugin folder>/traces
+  sample_interval_seconds: 1
 
 ```
+
+`round_trace` writes one JSONL file per round with every player's position, role changes and
+deaths. Render it as a top-down map with `tools/round-map/render_round_map.py`
+([usage](../tools/round-map/README.md)). `bot_trace` records on demand regardless of `enabled`.
 
 Duel configuration and player commands: [BotRoundControl](../BotRoundControl/README.md).

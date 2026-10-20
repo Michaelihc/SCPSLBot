@@ -9,6 +9,8 @@
 | `bot_unmanage <player ID>` | Release a maintained bot without despawning it; the controller creates a replacement | `PlayersManagement` |
 | `bot_warmup [none\|standard]` | Query or change the persisted warmup mode; refused while `bots_only` is on | Query: none; change: `PlayersManagement` |
 | `bot_difficulty [easy\|normal\|hard\|hardest]` | Query or change combat difficulty (default `hardest`, not persisted) | Query: none; change: `PlayersManagement` |
+| `bot_debug` | One line per bot: role, room, active behavior, combat target, door/elevator crossing, path and stuck time | `FacilityManagement` |
+| `bot_trace start\|stop\|status` | Record the current (or next) round to a JSONL position trace; see [round traces](../tools/round-map/README.md) | `FacilityManagement` |
 | `bot_path`, `botspike ...` | Pathing and native movement diagnostics | Mutation: `PlayersManagement`; spike status: `GameplayData` |
 | `botspike survey <clutter\|doors\|all\|keycard> [both\|forward]`, `botspike survey_status`, `botspike survey_stop` | Walk the spike bot natively across every door-less connector (or plain door) and log per-case `[BotSurvey]` verdicts; `keycard` asserts keycard-aware routing with path queries only | Survey: `PlayersManagement`; status: `GameplayData` |
 | `nav status` | Active/configured backend, readiness, bake and reconcile diagnostics | `GameplayData` |
