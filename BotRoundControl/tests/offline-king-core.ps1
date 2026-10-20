@@ -39,10 +39,14 @@ if ($ModelViews) {
     if ((CoreActor 0).life -ne $life) { throw 'Repeated entry reset the viewer' }
     $null = Set-LabLook -Yaw 180 -Pitch 0 -ClientId $coreClients[0] -ActorId $coreIds[0]
     $null = Invoke-LabScreenshot -Name duel-model-board -ClientId $coreClients[0]
-    $walk = Invoke-LabInput @{id='model-platform-walk';frames=60;inputFrames=12;keys=@(119);capture=$true;audio=$true} -ClientId $coreClients[0]
+    # Framebuffer capture can lower FPS enough for a frame-counted walk to cross the viewing boundary.
+    # Measure this short walk without framebuffer capture, then inspect its resulting native pose.
+    $walk = Invoke-LabInput @{id='model-platform-walk';frames=60;inputFrames=12;keys=@(119);audio=$true} -ClientId $coreClients[0]
     $walked = CoreActor 0
+    @{before=$viewer;after=$walked;input=$walk} | ConvertTo-Json -Depth 12 | Set-Content "$($Context.Evidence)/duel-platform-walk.json" -Encoding utf8
     if ([Math]::Abs($walked.position.z-$viewer.position.z) -lt 0.25 -or [Math]::Abs($walked.position.y-$viewer.position.y) -gt 0.25) { throw 'Native walking did not stay on the supplied platform' }
-    $null = Invoke-LabInput @{id='model-platform-return';frames=60;inputFrames=12;keys=@(115);capture=$true;audio=$true} -ClientId $coreClients[0]
+    $null = Invoke-LabScreenshot -Name duel-model-platform-walked -ClientId $coreClients[0]
+    $null = Invoke-LabInput @{id='model-platform-return';frames=60;inputFrames=12;keys=@(115);audio=$true} -ClientId $coreClients[0]
     foreach ($view in @(@{name='duel-model-1v1';x=-9.900002;y=1.52485085;z=0.67},@{name='duel-model-motto';x=9.849998;y=1.52485085;z=0.67},@{name='duel-model-overview';x=0;y=0;z=0})) {
         $null = Set-LabAim -Target @{x=$coreOrigin.x+$view.x;y=$coreOrigin.y+$view.y;z=$coreOrigin.z+$view.z} -ClientId $coreClients[0] -ActorId $coreIds[0]
         $null = Invoke-LabScreenshot -Name $view.name -ClientId $coreClients[0]
