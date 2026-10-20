@@ -507,13 +507,22 @@ function visible(i) {
   return state.focus === null || state.focus === i;
 }
 
+// A step faster than any walk, charge or lunge is a teleport (respawn, pocket dimension, Hunter's
+// Atlas, admin teleport); break the trail there instead of drawing a line across the map.
+var TELEPORT_SPEED = 25, TELEPORT_RISE = 8;
+function jumped(p, i) {
+  var dt = Math.max(p.T[i] - p.T[i - 1], 0.25);
+  var dx = p.X[i] - p.X[i - 1], ds = p.S[i] - p.S[i - 1];
+  return Math.sqrt(dx * dx + ds * ds) / dt > TELEPORT_SPEED || Math.abs(p.Y[i] - p.Y[i - 1]) > TELEPORT_RISE;
+}
+
 // ---- Segments: contiguous runs of one player in one zone with one team color ----
 D.players.forEach(function (p, index) {
   p.index = index;
   p.segs = [];
   var n = p.T.length, start = 0;
   for (var i = 1; i <= n; i++) {
-    var split = i === n || p.T[i] - p.T[i - 1] > gapLimit || p.Z[i] !== p.Z[i - 1] || color(p.R[i]) !== color(p.R[i - 1]);
+    var split = i === n || p.T[i] - p.T[i - 1] > gapLimit || p.Z[i] !== p.Z[i - 1] || color(p.R[i]) !== color(p.R[i - 1]) || jumped(p, i);
     if (split) {
       if (i > start) p.segs.push({ a: start, b: i - 1, z: p.Z[start], c: color(p.R[start]) });
       start = i;
@@ -534,7 +543,7 @@ function posAt(p, t) {
   if (i < 0) return null;
   var j = i + 1;
   if (j < p.T.length && p.T[j] - p.T[i] <= gapLimit) {
-    if (p.Z[j] === p.Z[i]) {
+    if (p.Z[j] === p.Z[i] && !jumped(p, j)) {
       var f = (t - p.T[i]) / (p.T[j] - p.T[i]);
       return { z: p.Z[i], x: p.X[i] + (p.X[j] - p.X[i]) * f, s: p.S[i] + (p.S[j] - p.S[i]) * f, y: p.Y[i], r: p.R[i], i: i };
     }
