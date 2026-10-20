@@ -41,6 +41,7 @@ internal sealed class BotDebugCommand : ICommand
                 .Append(" combat=").Append(combat)
                 .Append(" loco=").Append(bot.Locomotion?.DiagnosticState ?? "-")
                 .Append(" nav=").Append(path)
+                .Append(navigator != null && (navigator.HasPath || navigator.HasPartialPath) ? $" wp=({navigator.CurrentWaypoint.x:F1},{navigator.CurrentWaypoint.y:F1},{navigator.CurrentWaypoint.z:F1})" : string.Empty)
                 .Append($" stuck={bot.StuckRecovery.StuckSeconds:F1}s")
                 .Append(" lease=").Append(bot.ItemLease.IsHeld);
         }
