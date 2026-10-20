@@ -6,13 +6,13 @@ using MapGeneration.Distributors;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.Spectating;
+using SCPSLBot.AI.FirstPersonControl.Brain;
 using SCPSLBot.AI.FirstPersonControl.Combat;
 using SCPSLBot.AI.FirstPersonControl.Looking;
 using SCPSLBot.AI.FirstPersonControl.Mind;
 using SCPSLBot.AI.FirstPersonControl.Movement;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses.Sight;
-using SCPSLBot.AI.FirstPersonControl.Roaming;
 using SCPSLBot.Components;
 using SCPSLBot.Navigation;
 using SCPSLBot.Presentation;
@@ -39,8 +39,10 @@ namespace SCPSLBot.AI.FirstPersonControl
         public FpcMindRunner MindRunner { get; }
 
         public FpcBotCombat Combat { get; }
-        public FpcZoneRoam ZoneRoam { get; }
         public IBotNavigator Navigator { get; }
+
+        /// <summary>Non-combat behaviors (explore, objective, ...); registered in <see cref="BotBehaviorFactory"/>.</summary>
+        public BotBrain Brain { get; }
 
         public FpcLook Look { get; }
         public FpcMove Move { get; }
@@ -51,8 +53,14 @@ namespace SCPSLBot.AI.FirstPersonControl
         public Vector3 CameraPosition { get; private set; }
         public Vector3 CameraForward { get; private set; }
 
-        public FpcStuckRecovery StuckRecovery { get; }
-        public FpcObstacleAvoidance ObstacleAvoidance { get; }
+        /// <summary>Movement executor behind <see cref="MoveToPosition(Vector3)"/>: path following, doors, elevators, stuck recovery.</summary>
+        public BotLocomotion Locomotion { get; }
+
+        /// <summary>Claim on the held item while something temporarily equips another one (keycard at a door).</summary>
+        public BotItemLease ItemLease { get; } = new();
+
+        public FpcStuckRecovery StuckRecovery => Locomotion.StuckRecovery;
+        public FpcObstacleAvoidance ObstacleAvoidance => Locomotion.ObstacleAvoidance;
 
         private float nextPerceptionUpdateTime;
 
@@ -65,12 +73,11 @@ namespace SCPSLBot.AI.FirstPersonControl
                 MindRunner = new FpcMindRunner();
 
                 Combat = new(this);
-                ZoneRoam = new(this);
                 Navigator = NavigationSystem.Instance.CreateNavigator(this);
                 Look = new(this);
                 Move = new(this);
-                StuckRecovery = new(this);
-                ObstacleAvoidance = new(this);
+                Locomotion = new(this);
+                Brain = BotBehaviorFactory.Build(this);
 
                 FpcMindFactory.BuildMind(MindRunner, this, Perception);
 
@@ -120,43 +127,48 @@ namespace SCPSLBot.AI.FirstPersonControl
             // They only feed DesiredMove/Look; native FPC still owns gravity and collision.
             if (BotManager.Instance.TryGetOrderedTarget(BotHub.PlayerHub, out var orderedTargetPosition))
             {
+                Brain.Suspend();
                 MoveToPosition(orderedTargetPosition, out var waypoint);
                 BotManager.Instance.ObserveOrderTick(this, waypoint);
                 DisplaySpectatorDiagnostics("ordered", "order target");
-                StuckRecovery.Tick(waypoint);
+                Locomotion.EndFrame();
                 // Orders own their own failure semantics (stall telemetry / timeouts).
-                StuckRecovery.ConsumeAbandonRequest();
+                Locomotion.DiscardAbandonRequest();
                 yield break;
             }
 
             if (BotManager.Instance.ShouldHoldPosition(BotHub.PlayerHub))
             {
-                Move.DesiredLocalDirection = Vector3.zero;
-                StuckRecovery.Reset();
+                Brain.Suspend();
+                Locomotion.Stop();
                 DisplaySpectatorDiagnostics("held", "none");
                 yield break;
             }
 
+            // Combat pre-empts every behavior; it moves through the same locomotion.
             if (Combat.Tick())
             {
+                Brain.Suspend();
                 DisplaySpectatorDiagnostics();
-                StuckRecovery.Tick(Navigator.CurrentWaypoint);
-                StuckRecovery.ConsumeAbandonRequest();
+                Locomotion.EndFrame();
+                Locomotion.DiscardAbandonRequest();
                 yield break;
             }
 
             if (BotManager.Instance.TryGetPathTargetPosition(out var pathTargetPosition))
             {
+                Brain.Suspend();
                 MoveToPosition(pathTargetPosition);
-                StuckRecovery.Tick(Navigator.CurrentWaypoint);
-                StuckRecovery.ConsumeAbandonRequest();
+                Locomotion.EndFrame();
+                Locomotion.DiscardAbandonRequest();
                 yield break;
             }
 
             if (Time.time >= nextPerceptionUpdateTime)
             {
                 nextPerceptionUpdateTime = Time.time + PerceptionIntervalSeconds;
-                using (var updatePerceptionHandles = Perception.Update())
+                var maintainObjectiveBeliefs = ObjectiveBehavior.AppliesTo(BotHub.PlayerHub.roleManager.CurrentRole.RoleTypeId);
+                using (var updatePerceptionHandles = Perception.Update(maintainObjectiveBeliefs))
                 {
                     while (updatePerceptionHandles.MoveNext())
                     {
@@ -167,49 +179,19 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             if (ShouldIdleOnSurfaceWithoutTarget())
             {
-                Move.DesiredLocalDirection = Vector3.zero;
-                StuckRecovery.Reset();
+                Brain.Suspend();
+                Locomotion.Stop();
                 DisplaySpectatorDiagnostics("surface idle", "none");
                 yield break;
             }
 
-            if (!ShouldUseEscapeGoal())
+            if (!Brain.Tick())
             {
-                if (!ZoneRoam.Tick())
-                {
-                    MindRunner.Tick();
-                    DisplaySpectatorDiagnostics();
-                }
-
-                StuckRecovery.Tick(Navigator.CurrentWaypoint);
-                yield break;
-            }
-
-            MindRunner.Tick();
-
-            // If the planner has nothing to do (e.g. no reachable escape route sensed yet), roam
-            // instead of standing still for the rest of the round.
-            if (MindRunner.RunningAction == null)
-            {
-                ZoneRoam.Tick();
-            }
-            else
-            {
-                // Goal-driven actions re-plan through beliefs; a stuck ladder abandon only matters
-                // to the roam fallback, so keep the flag from lingering into a later roam tick.
-                StuckRecovery.ConsumeAbandonRequest();
+                Locomotion.Stop();
             }
 
             DisplaySpectatorDiagnostics();
-            StuckRecovery.Tick(Navigator.CurrentWaypoint);
-
-            yield break;
-        }
-
-        private bool ShouldUseEscapeGoal()
-        {
-            var role = BotHub.PlayerHub.roleManager.CurrentRole.RoleTypeId;
-            return role is RoleTypeId.ClassD or RoleTypeId.Scientist;
+            Locomotion.EndFrame();
         }
 
         private bool ShouldIdleOnSurfaceWithoutTarget()
@@ -232,147 +214,20 @@ namespace SCPSLBot.AI.FirstPersonControl
 
             nextPerceptionUpdateTime = Time.time;
             MindRunner.EvaluateGoalsToActions();
-            StuckRecovery.Reset();
+            Locomotion.Reset();
+            Brain.Suspend();
         }
 
         #region Moving
 
+        /// <summary>
+        /// The one movement entry point: walk toward <paramref name="goalPosition"/> this frame.
+        /// Doors on the way are opened and elevators ridden by <see cref="Locomotion"/>.
+        /// </summary>
         public void MoveToPosition(Vector3 goalPosition) => MoveToPosition(goalPosition, out _);
         public void MoveToPosition(Vector3 goalPosition, out Vector3 positionTowardsGoal)
         {
-            positionTowardsGoal = Navigator.GetPositionTowards(goalPosition);
-            SteerToPosition(positionTowardsGoal);
-            SteerAwayFromObstacles();
-            SteerAroundAhead(positionTowardsGoal);
-        }
-
-        // Generic local avoidance for whatever collider is directly ahead (spawned clutter, props,
-        // other players). Runs after the structure-specific steering so its result is included.
-        private void SteerAroundAhead(Vector3 positionTowardsGoal)
-        {
-            var desired = Move.DesiredLocalDirection;
-            if (desired.sqrMagnitude < 1e-4f)
-            {
-                return;
-            }
-
-            var moveDirection = Vector3.ProjectOnPlane(FpcRole.FpcModule.transform.TransformDirection(desired), Vector3.up);
-            if (moveDirection.sqrMagnitude < 1e-4f)
-            {
-                return;
-            }
-
-            var adjusted = ObstacleAvoidance.Adjust(moveDirection.normalized, positionTowardsGoal);
-            Move.DesiredLocalDirection = FpcRole.FpcModule.transform.InverseTransformDirection(adjusted);
-        }
-
-        private void SteerToPosition(Vector3 positionTowardsGoal)
-        {
-            var relativePos = positionTowardsGoal - this.FpcRole.CameraPosition;
-            var relativeHorizontalPos = Vector3.ProjectOnPlane(relativePos, Vector3.up);
-            var turnPosition = relativeHorizontalPos + this.FpcRole.CameraPosition;
-
-            this.Look.ToPosition(turnPosition);
-
-            if (relativeHorizontalPos.sqrMagnitude < 1e-4f)
-            {
-                this.Move.DesiredLocalDirection = Vector3.zero;
-                return;
-            }
-
-            var dirTowardsTarget = Vector3.Normalize(relativeHorizontalPos);
-
-            // Feed the exact world direction through the motor's local-input boundary even when the
-            // first waypoint is behind the spawn facing. Waiting for mouse-look before emitting any
-            // input can deadlock native dummies whose rotation update is input-driven. Transforming
-            // this local vector back in FpcMotorPatches preserves the intended world direction while
-            // native FPC continues to own collision, gravity, and speed.
-            this.Move.DesiredLocalDirection = FpcRole.FpcModule.transform.InverseTransformDirection(dirTowardsTarget);
-        }
-
-        private readonly List<StructureSpawnpoint> structureSpawnpoints = new();
-        private readonly List<Collider> spawnableStructureColliders = new();
-        private void SteerAwayFromObstacles()
-        {
-            var roomSightSense = Perception.GetSense<RoomSightSense>();
-            var roomWithin = roomSightSense.RoomWithin;
-            if (!roomWithin)
-            {
-                return;
-            }
-
-            roomWithin.GetComponentsInChildren(structureSpawnpoints);
-            if (structureSpawnpoints.Count < 1)
-            {
-                return;
-            }
-
-            var playerPosition = this.PlayerPosition;
-            var moveDirection = this.FpcRole.FpcModule.transform.TransformDirection(this.Move.DesiredLocalDirection);
-            var characterController = this.BotHub.PlayerHub.GetComponent<CharacterController>();
-            var playerRadius = characterController.radius;
-            var playerHeight = characterController.height;
-
-            var playerBottomPosition = playerPosition + Vector3.down * (playerHeight / 2f);
-
-            var obstructingStructure = (SpawnableStructure)null;
-            var structureExtent = 0f;
-            foreach (var spawnpoint in structureSpawnpoints)
-            {
-                var structure = spawnpoint.GetComponentInChildren<SpawnableStructure>();
-                if (!structure)
-                {
-                    continue;
-                }
-
-                switch (structure.StructureType)
-                {
-                    case StructureType.Workstation:
-                        structureExtent = 1.25f;
-                        break;
-                    case StructureType.ScpPedestal:
-                        structureExtent = .75f;
-                        break;
-                    default:
-                        continue;
-                }
-
-                structure.GetComponentsInChildren(spawnableStructureColliders);
-
-                Collider obstructingCollider = null;
-                var movementRay = new Ray(playerBottomPosition, moveDirection);
-                var nextPosition = playerBottomPosition + moveDirection;
-                var playerRadiusSqr = playerRadius * playerRadius;
-                foreach (var collider in spawnableStructureColliders)
-                {
-                    if (collider.Raycast(movementRay, out _, 1f)
-                        || (nextPosition - collider.ClosestPointOnBounds(nextPosition)).sqrMagnitude < playerRadiusSqr)
-                    {
-                        obstructingCollider = collider;
-                        break;
-                    }
-                }
-
-                if (obstructingCollider)
-                {
-                    obstructingStructure = structure;
-                    break;
-                }
-            }
-
-            if (obstructingStructure == null)
-            {
-                return;
-            }
-
-            var obstructingPosition = obstructingStructure.transform.position;
-            var obstructingForward = obstructingStructure.transform.forward;
-
-            var obstructingPlane = new Plane(obstructingForward, obstructingPosition);
-            var obstructingDepth = Mathf.Max(structureExtent + playerRadius - obstructingPlane.GetDistanceToPoint(playerPosition + moveDirection), 0f);
-
-            moveDirection = Vector3.Normalize(moveDirection + obstructingForward * obstructingDepth);
-            this.Move.DesiredLocalDirection = FpcRole.FpcModule.transform.InverseTransformDirection(moveDirection);
+            Locomotion.MoveTo(goalPosition, out positionTowardsGoal);
         }
 
         #endregion
@@ -543,7 +398,7 @@ namespace SCPSLBot.AI.FirstPersonControl
                     ? "parked"
                     : Combat.DiagnosticHasTarget
                         ? Combat.DiagnosticState
-                        : MindRunner.RunningAction?.GetType().Name ?? "idle");
+                        : DescribeActiveBehavior());
             string target = targetOverride
                 ?? (Combat.DiagnosticHasTarget
                     ? $"{Combat.DiagnosticTarget} · {Combat.DiagnosticTargetRole} · {(Combat.DiagnosticHasLineOfSight ? "visible" : "remembered")}"
@@ -556,6 +411,11 @@ namespace SCPSLBot.AI.FirstPersonControl
             if (StuckRecovery.StuckSeconds > 0.5f)
             {
                 navigation += $" · stuck {StuckRecovery.StuckSeconds:F1}s";
+            }
+            var crossing = Locomotion.DiagnosticState;
+            if (crossing != null)
+            {
+                navigation += $" · {crossing}";
             }
             var view = new BotDiagnosticView(
                 $"{botName} · {role}",
@@ -571,6 +431,23 @@ namespace SCPSLBot.AI.FirstPersonControl
                     presentation.ShowBotDiagnostics(spectator, view);
                 }
             }
+        }
+
+        private string DescribeActiveBehavior()
+        {
+            var active = Brain.Active;
+            if (active == null)
+            {
+                return "idle";
+            }
+
+            var detail = active switch
+            {
+                ObjectiveBehavior objective => objective.Detail,
+                ExploreBehavior explore => explore.Detail,
+                _ => null,
+            };
+            return detail != null ? $"{active.Name}: {detail}" : active.Name;
         }
 
         private readonly List<ReferenceHub> spectatorsCache = new();
@@ -629,6 +506,7 @@ namespace SCPSLBot.AI.FirstPersonControl
             }
 
             spectatorsCache.Clear();
+            ItemLease.Reset();
             PerceptionComponent = null;
         }
 

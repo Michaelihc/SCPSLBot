@@ -29,6 +29,9 @@ namespace SCPSLBot.AI
     internal class BotManager
     {
         private const float ArrivalDistance = 0.75f;
+        // Goals may be floor or standing-root coordinates (about a meter apart); another storey or
+        // the far side of an elevator is several meters away.
+        private const float ArrivalVerticalTolerance = 1.75f;
         private const float ProgressEpsilon = 0.1f;
         private const float StallSeconds = 5f;
         private const float TeleportThreshold = 1.5f;
@@ -633,7 +636,8 @@ namespace SCPSLBot.AI
             {
                 var tickDistance = Vector3.Distance(position, state.LastPosition);
                 state.MaxTickDistance = Mathf.Max(state.MaxTickDistance, tickDistance);
-                if (tickDistance > TeleportThreshold)
+                // A riding cabin is moved (and between shafts relocated) by the native elevator.
+                if (tickDistance > TeleportThreshold && !player.Locomotion.IsRidingElevator)
                 {
                     state.TeleportDetected = true;
                     LabLogger.Error($"[BotOrders] TELEPORT bot={BotName(hub)} tickDistance={tickDistance:F3} from={Format(state.LastPosition)} to={Format(position)} threshold={TeleportThreshold:F2}");
@@ -647,7 +651,7 @@ namespace SCPSLBot.AI
 
             TrackRoomAndDoor(hub, state, position);
 
-            if (remaining <= ArrivalDistance)
+            if (remaining <= ArrivalDistance && Mathf.Abs(position.y - state.Goal.y) <= ArrivalVerticalTolerance)
             {
                 CompleteOrder(hub, state);
                 return;
@@ -671,7 +675,14 @@ namespace SCPSLBot.AI
 
             var waypointDistance = HorizontalDistance(position, waypoint);
             var progressStamp = player.Navigator.ProgressStamp;
-            if (progressStamp != state.LastProgressStamp)
+            if (player.Locomotion.IsTraversingCrossing)
+            {
+                // Waiting for a door or riding an elevator is bounded by locomotion itself.
+                state.LastWaypointDistance = float.PositiveInfinity;
+                state.LastProgressPosition = position;
+                MarkProgress(state, now);
+            }
+            else if (progressStamp != state.LastProgressStamp)
             {
                 // A portal was crossed or a new goal was planned: real progress.
                 state.LastProgressStamp = progressStamp;

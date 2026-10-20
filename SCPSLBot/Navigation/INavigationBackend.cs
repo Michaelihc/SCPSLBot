@@ -68,6 +68,7 @@ namespace SCPSLBot.Navigation
         /// <summary>World points of the current path, starting at the bot's position when planned.</summary>
         List<Vector3> PointsPath { get; }
 
+        /// <summary>Consecutive path points from the leg the bot is walking onward (allocates an iterator; not for per-frame loops over many bots).</summary>
         IEnumerable<(Vector3 point, Vector3 nextPoint)> PathSegments { get; }
 
         Vector3 GetPositionTowards(Vector3 goalPosition);
@@ -81,6 +82,14 @@ namespace SCPSLBot.Navigation
         /// not attempting a crossing.
         /// </summary>
         bool ReportBlockedCrossing();
+
+        /// <summary>
+        /// Marks the crossing at <paramref name="position"/> (a doorway the bot cannot open, the
+        /// landing of an elevator it cannot use) as blocked for a while so the next plan prefers
+        /// another route, then replans. Prefer this over <see cref="ReportBlockedCrossing"/> when
+        /// the blocker is known: the penalty lands exactly on it.
+        /// </summary>
+        bool ReportBlockedAt(Vector3 position);
 
         string DescribeState();
 

@@ -17,6 +17,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private const float HeadOnDot = 0.35f;
         private const float SideProbeMeters = 1.5f;
 
+        // Matches the runtime navmesh agentSlope: anything flatter is floor the motor walks up.
+        private const float MaxWalkableSlopeDegrees = 45f;
+        private static readonly float MinWalkableNormalY = Mathf.Cos(MaxWalkableSlopeDegrees * Mathf.Deg2Rad);
+        private static readonly float MaxWalkableRisePerMeter = Mathf.Tan(MaxWalkableSlopeDegrees * Mathf.Deg2Rad);
+
+        // A waypoint floor this much above the feet means the path itself climbs (stairs, ramp).
+        private const float PathRiseMeters = 0.25f;
+        private const float WaypointFloorProbeMeters = 3f;
+
         private static readonly int ExcludedLayers = LayerMask.GetMask("Player", "Hitbox", "Door");
 
         private readonly FpcBotPlayer botPlayer;
@@ -66,10 +75,28 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 return worldMoveDirection;
             }
 
+            if (hit.normal.y >= MinWalkableNormalY)
+            {
+                // A ramp, slope or stair tread: walkable floor, not a wall to slide along.
+                LastObstacle = "none";
+                return worldMoveDirection;
+            }
+
+            var feetY = center.y - height * 0.5f;
+            if (hit.point.y - feetY <= (hit.distance + radius) * MaxWalkableRisePerMeter + NavigationAgentProfile.StepClearance
+                && IsPathClimbing(waypoint, feetY, mask))
+            {
+                // The path climbs toward the waypoint and the hit sits no higher than a walkable
+                // rise at that distance: a stair riser on the planned route, which the motor's
+                // step offset climbs. Steering sideways here walked bots into the stair rails.
+                LastObstacle = "none";
+                return worldMoveDirection;
+            }
+
             var normal = Vector3.ProjectOnPlane(hit.normal, Vector3.up);
             if (normal.sqrMagnitude < 1e-4f)
             {
-                // Floor/ceiling contact (a slope or a low ceiling); nothing to slide along.
+                // Ceiling contact; nothing to slide along.
                 LastObstacle = "none";
                 return worldMoveDirection;
             }
@@ -102,6 +129,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             var steered = worldMoveDirection * (1f - weight) + tangent * weight + normal * (weight * 0.25f);
             steered = Vector3.ProjectOnPlane(steered, Vector3.up);
             return steered.sqrMagnitude < 1e-4f ? tangent : steered.normalized;
+        }
+
+        // Waypoints are floor corners or capsule-height goals; measure the floor under the
+        // waypoint instead of trusting its height. Only runs for low hits, never per clear tick.
+        private static bool IsPathClimbing(Vector3 waypoint, float feetY, int mask)
+        {
+            var floorY = waypoint.y;
+            if (Physics.Raycast(waypoint + Vector3.up * 0.5f, Vector3.down, out var floorHit, WaypointFloorProbeMeters, mask, QueryTriggerInteraction.Ignore))
+            {
+                floorY = floorHit.point.y;
+            }
+
+            return floorY - feetY > PathRiseMeters;
         }
     }
 }

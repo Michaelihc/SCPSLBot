@@ -9,6 +9,13 @@ namespace SCPSLBot.AI.FirstPersonControl
 {
     internal class FpcMindRunner : FpcMind, IDisposable
     {
+        // Belief updates only trigger planning for beliefs on the current plan. With no plan at
+        // all that set is empty, so an idle mind must retry on its own (new sightings, a keycard
+        // picked up, a zone entered) instead of waiting for the next role change.
+        private const float IdleReplanSeconds = 3f;
+
+        private float nextIdleReplanAt;
+
         public IAction RunningAction { get; private set; }
         public float RunningActionCost { get; private set; }
 
@@ -97,23 +104,54 @@ namespace SCPSLBot.AI.FirstPersonControl
 
         public void Tick()
         {
+            UpdatePlan();
+            TickRunningAction();
+        }
+
+        /// <summary>Re-plans when a relevant belief changed (or periodically while idle); never ticks the action.</summary>
+        public void UpdatePlan()
+        {
             if (isDisposed)
             {
                 return;
             }
 
-            Profiler.BeginSample($"{nameof(FpcMindRunner)}.{nameof(Tick)}");
+            if (RunningAction == null && Time.time >= nextIdleReplanAt)
+            {
+                isBeliefsUpdated = true;
+            }
+
+            if (!isBeliefsUpdated)
+            {
+                return;
+            }
+
+            Profiler.BeginSample($"{nameof(FpcMindRunner)}.{nameof(UpdatePlan)}");
             try
             {
-                if (isBeliefsUpdated)
-                {
-                    isBeliefsUpdated = false;
+                isBeliefsUpdated = false;
+                nextIdleReplanAt = Time.time + IdleReplanSeconds;
 
-                    IEnumerable<IAction> enabledActions = GetEnabledActionsTowardsGoals();
+                IEnumerable<IAction> enabledActions = GetEnabledActionsTowardsGoals();
 
-                    SelectActionAndRun(enabledActions);
-                }
+                SelectActionAndRun(enabledActions);
+            }
+            finally
+            {
+                Profiler.EndSample();
+            }
+        }
 
+        public void TickRunningAction()
+        {
+            if (isDisposed)
+            {
+                return;
+            }
+
+            Profiler.BeginSample($"{nameof(FpcMindRunner)}.{nameof(TickRunningAction)}");
+            try
+            {
                 RunningAction?.Tick();
             }
             finally

@@ -10,7 +10,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
     /// Engine glue for <see cref="StuckRecoveryPolicy"/>: measures progress toward the current
     /// waypoint, and turns the policy's escalation ladder into door interactions, sideways nudges,
     /// native jumps, short back-offs, replans, crossing penalties, and finally a goal-abandon signal
-    /// that the owning behavior (roam / order) consumes.
+    /// that <see cref="BotLocomotion"/> forwards to the goal's owner.
     /// </summary>
     internal sealed class FpcStuckRecovery
     {
@@ -76,12 +76,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
             if ((actions & StuckRecoveryActions.OpenDoor) != 0 && blockingDoor != null)
             {
-                // The camera ray may hit the leaf rather than the interactable panel; fall back to
-                // the nearest interactable collider of that same door.
-                if (!botPlayer.OpenDoor(blockingDoor, 2.5f))
-                {
-                    botPlayer.InteractDoorDirectly(blockingDoor, 2.5f);
-                }
+                // Same permission rules and keycard swap as path doors, so a door the bot cannot
+                // open is left alone instead of beeping at it.
+                botPlayer.Locomotion.TryOpenDoor(blockingDoor);
             }
 
             if ((actions & StuckRecoveryActions.BackOff) != 0)

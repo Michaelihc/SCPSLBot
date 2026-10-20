@@ -15,6 +15,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
         public List<RoomIdentifier> ForeignRooms => foreignRooms;
         public RoomIdentifier RoomWithin { get; private set; }
 
+        /// <summary>When false the room and its entries are still tracked, but no belief-feeding events are raised.</summary>
+        public bool RaiseEvents { get; set; } = true;
+
+        protected override bool RaiseSightSensingEvent => RaiseEvents;
+
         public event Action<RoomEntry> OnSensedForeignRoomEntry;
         public event Action OnAfterSensedForeignRooms;
 
@@ -36,6 +41,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
         {
             UpdateRoomWithin();
             UpdateForeignRoomEntries();
+            if (!RaiseEvents)
+            {
+                return;
+            }
 
             foreach (var entry in ForeignRoomEntries)
             {
@@ -54,7 +63,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
                 return;
             }
 
-            OnSensedRoomWithin?.Invoke(newRoomWithin);
+            if (RaiseEvents)
+            {
+                OnSensedRoomWithin?.Invoke(newRoomWithin);
+            }
+
             RoomWithin = newRoomWithin;
         }
 

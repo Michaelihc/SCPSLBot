@@ -588,6 +588,9 @@ namespace SCPSLBot.Navigation.Authored
             return true;
         }
 
+        /// <summary>Cell links carry the penalty; penalize the crossing the bot is attempting.</summary>
+        public bool ReportBlockedAt(Vector3 position) => ReportBlockedCrossing();
+
         private static string Describe(TransformCell cell)
         {
             var form = cell.Transform != null ? NavigationMesh.GetForm(cell.Transform.gameObject) : "null";
