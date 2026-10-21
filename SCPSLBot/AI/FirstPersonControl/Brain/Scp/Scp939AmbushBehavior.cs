@@ -17,6 +17,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
     internal sealed class Scp939AmbushBehavior : IBotBehavior, IDescribedBehavior
     {
         private const float AmbushChance = 0.3f;
+        private const float PreparationCloudChance = 0.25f;
+        private const float PreparationCloudSeconds = 2.5f;
         private const float CooldownSeconds = 75f;
         private const float MinWaitSeconds = 20f;
         private const float MaxWaitSeconds = 45f;
@@ -42,6 +44,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
         private float waitUntil;
         private float approachUntil;
         private float nextAllowedTime;
+        private bool cloudRolled;
+        private float cloudUntil;
+        private float cloudStartedAt;
 
         public Scp939AmbushBehavior(FpcBotPlayer bot)
         {
@@ -52,7 +57,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
 
         public string Detail => door == null
             ? null
-            : waiting
+            : cloudUntil > Time.time
+                ? $"cloud {cloudUntil - Time.time:F1}s door={DoorLabel()}"
+                : waiting
                 ? $"wait {Mathf.Max(0f, waitUntil - Time.time):F0}s door={DoorLabel()} aim={AimAngle():F0} focus={bot.Combat.Scp939.FocusState:F2}"
                 : $"approach door={DoorLabel()}";
 
@@ -93,11 +100,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
         public void OnEnter()
         {
             waiting = false;
+            cloudRolled = false;
+            cloudUntil = 0f;
             approachUntil = Time.time + ApproachBaseSeconds + Vector3.Distance(bot.PlayerPosition, spot) * ApproachSecondsPerMeter;
         }
 
         public void OnExit()
         {
+            bot.Combat.Scp939.ReleaseAmbushCloud();
             // Combat pre-empting on sight keeps the focus held so it can lunge from the ambush.
             if (!bot.Combat.DiagnosticHasTarget)
             {
@@ -124,6 +134,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
 
         private bool GiveUp()
         {
+            bot.Combat.Scp939.ReleaseAmbushCloud();
             bot.Combat.Scp939.ReleaseAmbushFocus();
             Finish();
             return false;
@@ -164,6 +175,29 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
             bot.LookToPosition(lookPoint);
             if (bot.Combat.IsAimedAt(lookPoint, FocusAimAngle))
             {
+                if (!cloudRolled)
+                {
+                    cloudRolled = true;
+                    if (Random.value < PreparationCloudChance && bot.Combat.Scp939.TryStartAmbushCloud())
+                    {
+                        cloudStartedAt = now;
+                        cloudUntil = now + PreparationCloudSeconds;
+                    }
+                }
+
+                if (cloudUntil > 0f)
+                {
+                    // The native instance registers after spawning; respect its minimum charge time.
+                    cloudUntil = Mathf.Max(cloudUntil, cloudStartedAt + bot.Combat.Scp939.AmbushCloudMinimumHoldSeconds + 0.1f);
+                }
+
+                if (cloudUntil > now)
+                {
+                    return true;
+                }
+
+                bot.Combat.Scp939.ReleaseAmbushCloud();
+                cloudUntil = 0f;
                 bot.Combat.Scp939.HoldAmbushFocus();
             }
 

@@ -125,7 +125,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                     scp106.TickChase(target);
                     return false;
                 case RoleTypeId.Scp939:
-                    return scp939.Tick(target, coordinator);
+                    return scp939.Tick(target);
                 case RoleTypeId.Scp3114:
                     return scp3114.Tick(target);
                 default:

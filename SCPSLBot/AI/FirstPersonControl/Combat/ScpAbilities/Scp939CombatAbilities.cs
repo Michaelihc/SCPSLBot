@@ -7,7 +7,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
     /// <summary>
     /// SCP-939 focus, lunge and amnestic cloud. Focus stops the body, so a chasing 939 never focuses:
     /// focus and lunge are an ambush tool. <see cref="Brain.Scp.Scp939AmbushBehavior"/> holds focus
-    /// while lying in wait behind a door, and combat lunges when a human comes into reach. The focus
+    /// while lying in wait behind a door, optionally preparing a cloud first, and combat lunges when a human comes into reach. The focus
     /// key and the cloud toggle are submitted as direct commands (the native key subroutines only
     /// send on a key change, so a held value persists); the lunge itself goes through the dummy
     /// Shoot action because it needs the motor's lunge request, and the motor reports the hit
@@ -25,12 +25,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
         private const float FocusRetrySeconds = 1.5f;
         private const float LungeRequestRetrySeconds = 0.3f;
 
-        private const float CloudMaxTargetDistance = 10f;
-        private const float CloudGroupRadius = 9f;
-        private const int CloudGroupSize = 2;
-        private const float CloudHoldSeconds = 2.5f;
-        private const float CloudRetrySeconds = 6f;
-
         private readonly FpcBotCombat combat;
 
         private bool focusHeld;
@@ -39,8 +33,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
         private float lastSightTime;
         private float nextFocusTime;
         private float nextLungeRequestTime;
-        private float cloudReleaseTime;
-        private float nextCloudTime;
 
         public Scp939CombatAbilities(FpcBotCombat combat)
         {
@@ -60,14 +52,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
         }
 
         /// <summary>
-        /// Releases held inputs when combat has no target, so a stuck cloud or focus cannot block the
-        /// claw. Runs on every idle combat tick, so an ambush still lying in wait (no contact yet)
-        /// keeps its focus; the ambush behavior releases that one itself.
+        /// Releases combat focus when combat has no target. An ambush owns its preparation cloud
+        /// and waiting focus, so idle combat ticks must leave those inputs to the behavior.
         /// </summary>
         public void ReleaseHeld()
         {
             var releaseFocus = focusHeld && contactStartedTime >= 0f;
-            if (!releaseFocus && !cloudHeld)
+            if (!releaseFocus)
             {
                 return;
             }
@@ -77,27 +68,21 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
             {
                 ReleaseFocus(focusKey, Time.time, FocusRetrySeconds);
             }
-
-            if (cloudHeld && abilities.TryGet<Scp939AmnesticCloudAbility>(out var cloud))
-            {
-                ScpAbilityCommands.SendBool(cloud, false);
-            }
-
-            cloudHeld = false;
         }
 
         /// <summary>Native focus progress (0..1) for diagnostics; -1 when the bot is not SCP-939.</summary>
         public float FocusState => combat.Abilities.TryGet<Scp939FocusAbility>(out var focus) ? focus.State : -1f;
 
         /// <summary>Returns true while focusing or recovering, so the caller skips claw attacks.</summary>
-        public bool Tick(CombatTarget target, ScpCombatStrategy coordinator)
+        public bool Tick(CombatTarget target)
         {
+            // Contact interrupts preparation immediately; cloud is never a chase ability.
+            ReleaseAmbushCloud();
             var abilities = combat.Abilities;
             if (!abilities.TryGet<Scp939FocusKeySync>(out var focusKey)
                 || !abilities.TryGet<Scp939FocusAbility>(out var focus)
                 || !abilities.TryGet<Scp939LungeAbility>(out var lunge)
-                || !abilities.TryGet<Scp939ClawAbility>(out var claw)
-                || !abilities.TryGet<Scp939AmnesticCloudAbility>(out var cloud))
+                || !abilities.TryGet<Scp939ClawAbility>(out _))
             {
                 return false;
             }
@@ -105,12 +90,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
             var now = Time.time;
             var botPlayer = combat.BotPlayer;
             var aimPoint = ScpCombatStrategy.GetAimPoint(target);
-
-            if (cloudHeld && now >= cloudReleaseTime)
-            {
-                cloudHeld = false;
-                ScpAbilityCommands.SendBool(cloud, false);
-            }
 
             if (focusHeld)
             {
@@ -138,16 +117,54 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
                 return true;
             }
 
-            if (!cloudHeld && now >= nextCloudTime && ShouldDeployCloud(target, coordinator, cloud, now))
+            return false;
+        }
+
+        /// <summary>Starts a stationary preparation cloud before an ambush begins focusing.</summary>
+        public bool TryStartAmbushCloud()
+        {
+            var abilities = combat.Abilities;
+            if (combat.DiagnosticHasTarget || focusHeld || cloudHeld
+                || !abilities.TryGet<Scp939FocusAbility>(out var focus) || focus.State > 0f
+                || !abilities.TryGet<Scp939LungeAbility>(out var lunge) || lunge.State != Scp939LungeState.None
+                || !abilities.TryGet<Scp939AmnesticCloudAbility>(out var cloud)
+                || cloud.TargetState || !cloud.Cooldown.IsReady || !cloud.ValidateFloor())
             {
-                cloudHeld = true;
-                cloudReleaseTime = now + CloudHoldSeconds;
-                nextCloudTime = now + CloudRetrySeconds;
-                ScpAbilityCommands.SendBool(cloud, true);
                 return false;
             }
 
-            return false;
+            ScpAbilityCommands.SendBool(cloud, true);
+            cloudHeld = cloud.TargetState;
+            return cloudHeld;
+        }
+
+        /// <summary>Native minimum charge time for this bot's current preparation cloud.</summary>
+        public float AmbushCloudMinimumHoldSeconds
+        {
+            get
+            {
+                foreach (var instance in Scp939AmnesticCloudInstance.ActiveInstances)
+                {
+                    if (instance != null && instance.Owner == combat.BotPlayer.BotHub.PlayerHub
+                        && instance.State == Scp939AmnesticCloudInstance.CloudState.Spawning)
+                    {
+                        return instance.MinMaxTime.x;
+                    }
+                }
+
+                return 0f;
+            }
+        }
+
+        /// <summary>Releases preparation on completion, cancellation or combat contact.</summary>
+        public void ReleaseAmbushCloud()
+        {
+            if (cloudHeld && combat.Abilities.TryGet<Scp939AmnesticCloudAbility>(out var cloud))
+            {
+                ScpAbilityCommands.SendBool(cloud, false);
+            }
+
+            cloudHeld = false;
         }
 
         /// <summary>
@@ -251,44 +268,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
             focusHeld = false;
             nextFocusTime = now + retrySeconds;
             ScpAbilityCommands.SendBool(focusKey, false);
-        }
-
-        private bool ShouldDeployCloud(
-            CombatTarget target,
-            ScpCombatStrategy coordinator,
-            Scp939AmnesticCloudAbility cloud,
-            float now)
-        {
-            if (target.Distance > CloudMaxTargetDistance
-                || !target.HasLineOfSight
-                || !cloud.Cooldown.IsReady
-                || cloud.TargetState)
-            {
-                return false;
-            }
-
-            if (!coordinator.IsUnderFire && CountEnemiesNear(now) < CloudGroupSize)
-            {
-                return false;
-            }
-
-            return cloud.ValidateFloor();
-        }
-
-        private int CountEnemiesNear(float now)
-        {
-            var position = combat.BotPlayer.PlayerPosition;
-            var radiusSqr = CloudGroupRadius * CloudGroupRadius;
-            var count = 0;
-            foreach (var entry in CombatWorldSnapshot.Get(now))
-            {
-                if (entry.Team != Team.SCPs && (entry.Position - position).sqrMagnitude <= radiusSqr)
-                {
-                    count++;
-                }
-            }
-
-            return count;
         }
     }
 }

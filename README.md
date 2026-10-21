@@ -37,7 +37,7 @@ See [Credits](#credits).
 <td><img src="docs/media/scp106.webp" alt="SCP-106 bot closing in on its prey"><br>
 <b>SCP-106</b>: walks through doors, stalks underground to close distance, uses Hunter's Atlas to reach distant prey, and drags corroded victims into the pocket dimension.</td>
 <td><img src="docs/media/scp939.webp" alt="SCP-939 bot mauling scientists"><br>
-<b>SCP-939</b>: lies in wait behind doors and lunges at whoever comes through, claws its way through a chase and lays amnestic clouds against groups.</td>
+<b>SCP-939</b>: lies in wait behind doors and lunges at whoever comes through, sometimes prepares an amnestic cloud before waiting, and claws its way through a chase.</td>
 </tr>
 <tr>
 <td><img src="docs/media/scp3114.webp" alt="SCP-3114 bot attacking scientists"><br>

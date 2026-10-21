@@ -17,6 +17,8 @@
 - Let SCP-106 walk through doors in a chase instead of stopping to open them.
 - Make SCP-939 lunge only from door ambushes: on entering a room it sometimes waits, focused, behind
   a closed door and lunges at whoever opens it. In a chase it claws instead of focusing.
+- Restrict SCP-939 amnestic clouds to a 25% preparation chance before a door ambush; combat contact
+  interrupts preparation instead of starting or holding a cloud during a chase.
 - Human bots pick up useful items with the native search time, heal with medical items when safe,
   flee when unarmed, and equip keycards for keycard lockers. Only Standard warmup issues a COM-15 to
   unarmed humans.
