@@ -241,6 +241,24 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             return Interact(door);
         }
 
+        public bool TryCloseNow(DoorVariant door, float range)
+        {
+            var hub = botPlayer.BotHub.PlayerHub;
+            if (door == null || !door.TargetState || DoorAccess.Evaluate(hub, door, out _) != DoorAccessKind.Open)
+                return false;
+            var target = GetInteractionPoint(door, door.transform.position, out var colliderId);
+            // Use the same reachable interaction surface as an ordinary door interaction.
+            if (!InteractableCollider.AllInstances.TryGetValue(door, out var colliders)
+                || !colliders.TryGetValue(colliderId, out var interactable) || interactable == null)
+                return false;
+            var collider = interactable.GetComponent<Collider>();
+            if (collider == null || (collider.ClosestPoint(botPlayer.CameraPosition) - botPlayer.CameraPosition).sqrMagnitude > range * range
+                || !door.AllowInteracting(hub, colliderId)) return false;
+            botPlayer.LookToPosition(target);
+            door.ServerInteract(hub, colliderId);
+            return !door.TargetState;
+        }
+
         private DoorTraversalResult HandleDoor(DoorVariant door, Vector3 crossingPoint, float distance)
         {
             var now = Time.time;

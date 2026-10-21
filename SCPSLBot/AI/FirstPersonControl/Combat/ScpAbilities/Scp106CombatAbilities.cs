@@ -16,7 +16,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
         private const float DecisionIntervalSeconds = 0.3f;
         private const float AtlasRetrySeconds = 4f;
 
-        private const float StalkMinDistance = 24f;
+        private const float StalkMinDistance = 18f;
         private const float StalkEmergeDistance = 9f;
         private const float StalkEmergeDistanceHurt = 5f;
 
@@ -28,7 +28,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
         private const float HurtHealthFraction = 0.35f;
         private const float HurtStalkMaxDistance = 16f;
 
-        private const float AtlasMinDistance = 30f;
+        private const float AtlasMinDistance = 24f;
         private const float AtlasVigorReserve = 0.25f;
         private const float AtlasBaseCost = 0.15f;
         private const float AtlasCostPerMeter = 0.015f;

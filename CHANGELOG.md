@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Close a recently crossed door when a human observes an SCP pursuing its retreat, while clearing
+  the doorway and avoiding nearby humans, door toggling and doors SCP-106 can phase through.
+- Use SCP-106 Stalk and Hunter's Atlas at medium chase distances while retaining native vigor costs.
+
 - Drive every non-combat bot through a utility brain (explore, objective, loot, heal, flee and SCP
   corpse abilities) and route all movement through one locomotion layer. Every role and every
   movement source now opens doors with a matching keycard and rides elevators, so bots cross zones

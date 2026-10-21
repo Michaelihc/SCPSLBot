@@ -41,12 +41,12 @@ internal static class ScpAbilityEventLog
         Add<LabApi.Events.Arguments.Scp173Events.Scp173TeleportedEventArgs>(h => Scp173Events.Teleported += h, h => Scp173Events.Teleported -= h, "173.Blink");
         Add<LabApi.Events.Arguments.Scp173Events.Scp173CreatedTantrumEventArgs>(h => Scp173Events.CreatedTantrum += h, h => Scp173Events.CreatedTantrum -= h, "173.Tantrum");
         Add<LabApi.Events.Arguments.Scp173Events.Scp173BreakneckSpeedChangedEventArgs>(h => Scp173Events.BreakneckSpeedChanged += h, h => Scp173Events.BreakneckSpeedChanged -= h, "173.Breakneck");
-        // An SCP opening a door it could have phased through (SCP-106) shows up here.
+        // Native interactions expose both human door defense and the pursuing SCP's response.
         LabEventHandler<LabApi.Events.Arguments.PlayerEvents.PlayerInteractedDoorEventArgs> door = ev =>
         {
-            if (ev.Player?.Team == PlayerRoles.Team.SCPs)
+            if (ev.Player != null)
             {
-                Log("door.Interacted", ev, $" door={ev.Door?.Base?.name ?? "none"} canOpen={ev.CanOpen}");
+                Log("door.Interacted", ev, $" door={ev.Door?.Base?.name ?? "none"} canOpen={ev.CanOpen} targetOpen={ev.Door?.Base?.TargetState}");
             }
         };
         PlayerEvents.InteractedDoor += door;

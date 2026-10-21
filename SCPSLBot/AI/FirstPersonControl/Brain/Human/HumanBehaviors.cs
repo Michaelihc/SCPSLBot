@@ -32,7 +32,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         public HumanBotContext(FpcBotPlayer bot)
         {
             Bot = bot;
-            Threats = new HumanThreatAwareness(bot);
+            Threats = bot.HumanThreats;
         }
 
         public FpcBotPlayer Bot { get; }

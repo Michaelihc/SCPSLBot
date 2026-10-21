@@ -70,6 +70,7 @@ try {
         @{name='militant';role='FacilityGuard';armed=$false;seconds=55;anchor='GR18'},
         @{name='blocked-civilian';role='ClassD';armed=$false;seconds=30;anchor='LCZ_CAFE';locked='LCZ_CAFE'}
     )
+    if ($Context.Options.pursuitCases) { $cases = @($Context.Options.pursuitCases) }
     if ($Context.Options.cases) {
         $cases = @($cases | Where-Object { $_.name -in $Context.Options.cases })
         if (!$cases.Count) { throw 'No matching escape cases' }
@@ -84,9 +85,13 @@ try {
         if ($case.locked) { $null = Command "/close $($case.locked)"; $null = Command "/lock $($case.locked)" }
         if ((Command "/doortp $humanId $($case.anchor)") -notmatch 'affected 1 player') { throw 'Human door placement failed' }
         Spectate $nick
-        $null = Command "/forcerole $scpId Scp0492"
+        $scpRole = if ($case.scpRole) { $case.scpRole } else { 'Scp0492' }
+        $null = Command "/forcerole $scpId $scpRole"
         $null = Command "/hp $scpId 10000"
         if ((Command "/doortp $scpId $($case.anchor)") -notmatch 'affected 1 player') { throw 'SCP door placement failed' }
+        if ($case.stationary) {
+            if ((Command "/effect Ensnared 1 60 $scpId") -notmatch 'affected 1 player') { throw 'Stationary SCP fixture failed' }
+        }
         if ($Context.Options.followScp) { Spectate $scpNick }
         $first = @(Snapshot | Where-Object id -eq $humanId)[0]
         if ($first.role -ne $case.role) { throw 'Fixture role mismatch' }
@@ -112,7 +117,7 @@ try {
             $actors = @(Snapshot)
             $human = @($actors | Where-Object id -eq $humanId)[0]
             $scp = @($actors | Where-Object id -eq $scpId)[0]
-            if (!$human -or $human.role -ne $case.role -or !$scp -or $scp.role -ne 'Scp0492') { throw 'Case actor changed unexpectedly' }
+            if (!$human -or $human.role -ne $case.role -or !$scp -or $scp.role -ne $scpRole) { throw 'Case actor changed unexpectedly' }
             $step = Distance $human.position $last
             $travel += $step
             if ($released) { $afterReleaseTravel += $step }

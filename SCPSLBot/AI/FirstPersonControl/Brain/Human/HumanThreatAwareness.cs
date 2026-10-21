@@ -40,6 +40,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         /// <summary>Where the threat was last noticed.</summary>
         public Vector3 ThreatPosition { get; private set; }
         public bool ThreatIsScp { get; private set; }
+        public ReferenceHub ThreatHub { get; private set; }
 
         public bool HasRecentThreat => Time.time - LastSeenAt <= MemorySeconds;
 
@@ -63,6 +64,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             var nearestSqr = float.PositiveInfinity;
             var nearest = Vector3.zero;
             var nearestIsScp = false;
+            ReferenceHub nearestHub = null;
             var preferScps = HumanInventory.IsCivilian(botHub.roleManager.CurrentRole.RoleTypeId);
 
             var snapshot = CombatWorldSnapshot.Get(now);
@@ -108,6 +110,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                     nearestSqr = sqrDistance;
                     nearest = candidate.Position;
                     nearestIsScp = candidate.Team == Team.SCPs;
+                    nearestHub = candidate.Hub;
                 }
 
                 if (nearestSqr < float.PositiveInfinity)
@@ -122,6 +125,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                 LastSeenAt = now;
                 ThreatPosition = nearest;
                 ThreatIsScp = nearestIsScp;
+                ThreatHub = nearestHub;
             }
         }
 

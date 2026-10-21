@@ -221,6 +221,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         /// <summary>Opens <paramref name="door"/> now if this bot may (keycard swap included); used by the stuck ladder.</summary>
         public bool TryOpenDoor(DoorVariant door) => doors.TryOpenNow(door);
+        internal bool TryCloseDoor(DoorVariant door, float range) => doors.TryCloseNow(door, range);
 
         #region Steering
 

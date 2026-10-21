@@ -7,6 +7,7 @@ using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.Spectating;
 using SCPSLBot.AI.FirstPersonControl.Brain;
+using SCPSLBot.AI.FirstPersonControl.Brain.Human;
 using SCPSLBot.AI.FirstPersonControl.Combat;
 using SCPSLBot.AI.FirstPersonControl.Looking;
 using SCPSLBot.AI.FirstPersonControl.Mind;
@@ -58,6 +59,8 @@ namespace SCPSLBot.AI.FirstPersonControl
 
         /// <summary>Claim on the held item while something temporarily equips another one (keycard at a door).</summary>
         public BotItemLease ItemLease { get; } = new();
+        internal HumanThreatAwareness HumanThreats { get; }
+        private readonly PursuitDoorDefense pursuitDoors;
 
         public FpcStuckRecovery StuckRecovery => Locomotion.StuckRecovery;
         public FpcObstacleAvoidance ObstacleAvoidance => Locomotion.ObstacleAvoidance;
@@ -77,6 +80,8 @@ namespace SCPSLBot.AI.FirstPersonControl
                 Look = new(this);
                 Move = new(this);
                 Locomotion = new(this);
+                HumanThreats = new(this);
+                pursuitDoors = new(this);
                 Brain = BotBehaviorFactory.Build(this);
 
                 FpcMindFactory.BuildMind(MindRunner, this, Perception);
@@ -149,6 +154,7 @@ namespace SCPSLBot.AI.FirstPersonControl
             if (Combat.Tick())
             {
                 Brain.Suspend();
+                pursuitDoors.Tick();
                 DisplaySpectatorDiagnostics();
                 Locomotion.EndFrame();
                 Locomotion.DiscardAbandonRequest();
@@ -191,6 +197,7 @@ namespace SCPSLBot.AI.FirstPersonControl
             }
 
             DisplaySpectatorDiagnostics();
+            pursuitDoors.Tick();
             Locomotion.EndFrame();
         }
 
@@ -215,6 +222,7 @@ namespace SCPSLBot.AI.FirstPersonControl
             nextPerceptionUpdateTime = Time.time;
             MindRunner.EvaluateGoalsToActions();
             Locomotion.Reset();
+            pursuitDoors.Reset();
             Brain.Suspend();
         }
 
