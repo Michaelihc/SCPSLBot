@@ -1,7 +1,7 @@
 param($Context)
 # The negative case has a nearby immobile SCP; all other cases let native AI pursue freely.
 # No door-close commands are issued: human closures and SCP responses must come from gameplay.
-$Context.Options.takeName = 'pursuit-door-defense'
+if (!$Context.Options.takeName) { $Context.Options.takeName = 'pursuit-door-defense' }
 $Context.Options.pursuitCases = @(
     @{name='nearby-stationary';role='ClassD';seconds=15;anchor='GR18';scpRole='Scp0492';stationary=$true},
     @{name='zombie-pursuit';role='ClassD';seconds=40;anchor='GR18';scpRole='Scp0492'},
