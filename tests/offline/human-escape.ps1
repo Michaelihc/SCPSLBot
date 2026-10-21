@@ -53,6 +53,7 @@ $null = Command '/wave forcepause Chaos true'
 foreach ($bot in $bots[2..4]) { $null = Command "/forcerole $($bot.id) Spectator" }
 $debug = Command '/bot_debug'
 $nick = if ($debug -match "(?<![\d.])$humanId (SCPSL Round Bot \d+) role=") { $Matches[1] } else { throw 'Missing human bot nickname' }
+$scpNick = if ($debug -match "(?<![\d.])$scpId (SCPSL Round Bot \d+) role=") { $Matches[1] } else { throw 'Missing SCP bot nickname' }
 $null = Command "/forcerole $($client.id) Overwatch"
 Start-Sleep -Seconds 10
 $started = $false
@@ -86,6 +87,7 @@ try {
         $null = Command "/forcerole $scpId Scp0492"
         $null = Command "/hp $scpId 10000"
         if ((Command "/doortp $scpId $($case.anchor)") -notmatch 'affected 1 player') { throw 'SCP door placement failed' }
+        if ($Context.Options.followScp) { Spectate $scpNick }
         $first = @(Snapshot | Where-Object id -eq $humanId)[0]
         if ($first.role -ne $case.role) { throw 'Fixture role mismatch' }
         if ($case.armed -and !(@($first.items) -contains 'GunCOM15')) { throw 'Fixture firearm missing' }
