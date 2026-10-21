@@ -81,6 +81,7 @@ try {
         $null = Command "/kill $humanId"
         $null = Command "/forcerole $humanId $($case.role)"
         $null = Command "/hp $humanId 10000"
+        $null = Command "/god $humanId $(if ($case.invulnerable) { 'enable' } else { 'disable' })"
         if ($case.armed) { $null = Command "/give $humanId 13" }
         if ($case.locked) { $null = Command "/close $($case.locked)"; $null = Command "/lock $($case.locked)" }
         if ((Command "/doortp $humanId $($case.anchor)") -notmatch 'affected 1 player') { throw 'Human door placement failed' }
@@ -96,6 +97,7 @@ try {
         $first = @(Snapshot | Where-Object id -eq $humanId)[0]
         if ($first.role -ne $case.role) { throw 'Fixture role mismatch' }
         if ($case.armed -and !(@($first.items) -contains 'GunCOM15')) { throw 'Fixture firearm missing' }
+        if ($case.invulnerable -and !$first.godMode) { throw 'Extended ability-observation fixture needs native god mode' }
         $initialShots = $first.shots
         $initialReloads = $first.reloads
         $travel = 0.0
