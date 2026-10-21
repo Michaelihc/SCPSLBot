@@ -1,4 +1,8 @@
 using MapGeneration;
+using PlayerRoles.FirstPersonControl;
+using PlayerStatsSystem;
+using SCPSLBot.Api;
+using LabLogger = LabApi.Features.Console.Logger;
 using SCPSLBot.Navigation;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,17 +10,18 @@ using UnityEngine;
 namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
 {
     /// <summary>
-    /// Humans that cannot fight (no firearm that can still fire, outside Standard warmup) move
-    /// away from an SCP or armed enemy they noticed. The destination is an entry point one or two
-    /// rooms away, scored by distance from the threat, travel distance and heading away from it,
-    /// confirmed with at most two path queries; it is kept until reached, until the threat gets
-    /// closer to it than the bot is, or until locomotion gives up, and re-picked at most every
-    /// two seconds. Highest band: running beats healing or looting.
+    /// Civilians escape from noticed SCPs even while armed; other humans flee when unable to fight.
+    /// Route probes are bounded independently of movement. Local floor samples keep the bot moving
+    /// between probes and around a failed route while normal locomotion owns collision and doors.
     /// </summary>
-    internal sealed class FleeBehavior : IBotBehavior
+    internal sealed class FleeBehavior : IBotBehavior, IDescribedBehavior
     {
         private const float ThreatMeters = 25f;
-        private const float RepickSeconds = 2f;
+        private const float LocalStepMeters = 2f;
+        private const float LocalRefreshSeconds = 0.25f;
+        private static readonly float[] LocalAngles = { 0f, 55f, -55f, 100f, -100f, 140f, -140f };
+        private static readonly int LocalBlockers = LayerMask.GetMask("Default", "Door", "Glass", "InteractableNoPlayerCollision");
+        private const float RepickSeconds = 0.5f;
         private const float ArrivalMeters = 1.5f;
         private const float MinTripMeters = 4f;
         private const float FallbackMeters = 8f;
@@ -24,7 +29,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         private const float TowardThreatDot = -0.2f;
         private const float ThreatGainMeters = 2f;
         private const float TripTimeoutSeconds = 12f;
-        private const int MaxPathChecks = 2;
+        private const int MaxRoomPathChecks = 1;
         private const int RankedCandidates = 3;
 
         private readonly HumanBotContext context;
@@ -38,6 +43,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         private Vector3 destination;
         private float nextPickAt;
         private float deadline;
+        private int candidateCursor;
+        private Vector3 localDestination;
+        private bool hasLocalDestination;
+        private float nextLocalPickAt;
+        private bool sprintHeld;
+        private string state = "search";
+        private float nextLogAt;
 
         public FleeBehavior(HumanBotContext context)
         {
@@ -46,10 +58,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         }
 
         public string Name => "flee";
+        public string Detail => state;
+
+        public bool ShouldPreemptCombat => HumanInventory.IsCivilian(bot.BotHub.PlayerHub.roleManager.CurrentRole.RoleTypeId)
+            && Evaluate() > 0f;
 
         public float Evaluate()
         {
-            if (!context.IsHuman || context.Inventory.CanFight)
+            if (!context.IsHuman)
             {
                 return 0f;
             }
@@ -57,6 +73,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             var threats = context.Threats;
             threats.Refresh();
             if (!threats.HasRecentThreat)
+            {
+                return 0f;
+            }
+
+            var civilianScpEscape = !BotServerPolicy.IsStandardWarmup && threats.ThreatIsScp
+                && HumanInventory.IsCivilian(bot.BotHub.PlayerHub.roleManager.CurrentRole.RoleTypeId);
+            if (!civilianScpEscape && context.Inventory.CanFight)
             {
                 return 0f;
             }
@@ -77,11 +100,20 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             hasDestination = false;
             repickRequested = false;
             nextPickAt = 0f;
+            nextLocalPickAt = 0f;
+            hasLocalDestination = false;
         }
 
         public void OnExit()
         {
             hasDestination = false;
+            hasLocalDestination = false;
+            if (sprintHeld && HumanInventory.IsHumanBot(bot.BotHub.PlayerHub.roleManager.CurrentRole))
+            {
+                bot.FpcRole.FpcModule.CurrentMovementState = PlayerMovementState.Walking;
+            }
+
+            sprintHeld = false;
         }
 
         public bool Tick()
@@ -101,25 +133,100 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             var overtaken = hasDestination
                             && HorizontalDistance(destination, threat) + ThreatGainMeters < HorizontalDistance(position, threat);
 
-            // Every pick (path queries included) waits for the repick timer, even without a destination.
-            if (now >= nextPickAt && (!hasDestination || repickRequested || now > deadline || arrived || overtaken))
+            var partialEnd = hasDestination && bot.Navigator.HasPartialPath
+                && HorizontalDistance(position, bot.Navigator.CurrentWaypoint) < 0.6f;
+            if (arrived || overtaken || repickRequested || partialEnd || now > deadline)
+            {
+                hasDestination = false;
+            }
+
+            if (!hasDestination && now >= nextPickAt)
             {
                 repickRequested = false;
                 nextPickAt = now + RepickSeconds;
                 hasDestination = TryPick(position, threat, out destination);
                 deadline = now + TripTimeoutSeconds;
-                arrived = false;
+                SetState(hasDestination ? "route" : "local:route unavailable");
             }
 
-            if (!hasDestination || arrived)
+            var stamina = bot.BotHub.PlayerHub.playerStats.GetModule<StaminaStat>().CurValue;
+            sprintHeld = sprintHeld ? stamina > 0f : stamina >= 0.1f;
+            bot.FpcRole.FpcModule.CurrentMovementState = sprintHeld
+                ? PlayerMovementState.Sprinting : PlayerMovementState.Walking;
+
+            if (hasDestination)
             {
+                bot.MoveToPosition(destination);
+            }
+            else if (!MoveLocally(position, threat, now))
+            {
+                // Only a physically blocked local floor may stop escape, never the route retry timer.
+                SetState("blocked:no local floor");
                 bot.Locomotion.Stop();
-                bot.LookToPosition(threat + Vector3.up);
+            }
+
+            return true;
+        }
+
+        private bool MoveLocally(Vector3 position, Vector3 threat, float now)
+        {
+            if (hasLocalDestination && HorizontalDistance(position, localDestination) > 0.4f && now < nextLocalPickAt)
+            {
+                bot.MoveToPosition(localDestination);
                 return true;
             }
 
-            bot.MoveToPosition(destination);
-            return true;
+            if (!hasLocalDestination && now < nextLocalPickAt)
+            {
+                return false;
+            }
+
+            var backend = NavigationSystem.Instance.Backend;
+            var away = Vector3.ProjectOnPlane(position - threat, Vector3.up);
+            away = away.sqrMagnitude > 0.01f ? away.normalized : -bot.PlayerForward;
+            var feet = position - Vector3.up * NavigationAgentProfile.RootHeight;
+            hasLocalDestination = false;
+            nextLocalPickAt = now + LocalRefreshSeconds;
+            if (backend == null)
+            {
+                return false;
+            }
+
+            foreach (var angle in LocalAngles)
+            {
+                var direction = Quaternion.AngleAxis(angle, Vector3.up) * away;
+                if (!backend.TryGetNearestPoint(feet + direction * LocalStepMeters, 0.75f, out var sample, out _)
+                    || Mathf.Abs(sample.y - feet.y) > 1f
+                    || HorizontalDistance(position, sample) < 0.5f
+                    || Physics.Linecast(position, sample + Vector3.up * NavigationAgentProfile.RootHeight,
+                        LocalBlockers, QueryTriggerInteraction.Ignore))
+                {
+                    continue;
+                }
+
+                localDestination = sample;
+                hasLocalDestination = true;
+                bot.MoveToPosition(localDestination);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void SetState(string value)
+        {
+            if (state == value)
+            {
+                return;
+            }
+
+            state = value;
+            if (Time.time >= nextLogAt)
+            {
+                nextLogAt = Time.time + 1f;
+                var p = bot.PlayerPosition;
+                LabLogger.Info($"[BotFlee] bot={bot.BotHub.PlayerHub.nicknameSync.MyNick} state={state} pos=({p.x:F1},{p.y:F1},{p.z:F1})");
+            }
         }
 
         private bool TryPick(Vector3 position, Vector3 threat, out Vector3 picked)
@@ -157,25 +264,23 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                 }
             }
 
-            var checks = 0;
-            foreach (var (candidate, _) in ranked)
+            // Reserve a separate check for the fallback, and rotate failed room candidates.
+            var checks = Mathf.Min(MaxRoomPathChecks, ranked.Count);
+            for (var index = 0; index < checks; index++)
             {
-                if (checks >= MaxPathChecks)
-                {
-                    break;
-                }
-
-                checks++;
+                var candidate = ranked[(candidateCursor + index) % ranked.Count].Position;
                 if (bot.Navigator.CanReach(candidate))
                 {
                     picked = candidate;
+                    candidateCursor++;
                     return true;
                 }
             }
 
-            // Nowhere better known: a reachable spot straight away from the threat.
-            if (checks < MaxPathChecks
-                && backend.TryGetNearestPoint(position + away * FallbackMeters, FallbackSnapMeters, out var nearest, out _)
+            candidateCursor++;
+            if (backend.TryGetNearestPoint(position - Vector3.up * NavigationAgentProfile.RootHeight + away * FallbackMeters,
+                    FallbackSnapMeters, out var nearest, out _)
+                && Mathf.Abs(nearest.y + NavigationAgentProfile.RootHeight - position.y) <= 2f
                 && HorizontalDistance(nearest, position) >= MinTripMeters
                 && bot.Navigator.CanReach(nearest))
             {

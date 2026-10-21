@@ -136,7 +136,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             return role is HumanRole && role.RoleTypeId != RoleTypeId.Tutorial;
         }
 
-        /// <summary>Roles that fight by default: guards, MTF and Chaos (Class-D and scientists only when armed).</summary>
+        public static bool IsCivilian(RoleTypeId role) => role is RoleTypeId.ClassD or RoleTypeId.Scientist;
+
+        /// <summary>Roles that fight by default: guards, MTF and Chaos.</summary>
         public static bool IsCombatRole(RoleTypeId role)
         {
             return role is RoleTypeId.FacilityGuard

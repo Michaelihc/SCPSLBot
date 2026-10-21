@@ -5,6 +5,7 @@ using NetworkManagerUtils.Dummies;
 using PlayerRoles;
 using SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities;
 using SCPSLBot.AI.FirstPersonControl.Movement;
+using SCPSLBot.AI.FirstPersonControl.Brain.Human;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,6 +33,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         private float nextShotTime;
         private float nextSurfaceDoorDebugLogTime;
         private int strafeDirection = 1;
+        private FleeBehavior civilianFlee;
 
         public static BotCombatDifficulty Difficulty { get; set; } = BotCombatDifficulty.Hardest;
 
@@ -79,13 +81,20 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             var settings = CurrentSettings;
             var botHub = botPlayer.BotHub.PlayerHub;
             var role = botHub.roleManager.CurrentRole.RoleTypeId;
-            if (botHub.roleManager.CurrentRole.Team != Team.SCPs && !humanStrategy.CanEngage())
+            var civilianEvading = false;
+            if (HumanInventory.IsCivilian(role))
+            {
+                civilianFlee ??= botPlayer.Brain.Get<FleeBehavior>();
+                civilianEvading = civilianFlee?.ShouldPreemptCombat == true;
+            }
+
+            if (botHub.roleManager.CurrentRole.Team != Team.SCPs && (!humanStrategy.CanEngage() || civilianEvading))
             {
                 // Nothing to fight with (normal round, no usable firearm): the brain's survival
                 // behaviors keep this human away from threats instead.
                 targetSelector.Clear();
                 DiagnosticHasLineOfSight = false;
-                DiagnosticState = "unarmed";
+                DiagnosticState = civilianEvading ? "evading" : "unarmed";
                 return false;
             }
 

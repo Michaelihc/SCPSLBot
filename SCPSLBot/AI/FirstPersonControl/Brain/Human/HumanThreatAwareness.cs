@@ -39,6 +39,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
 
         /// <summary>Where the threat was last noticed.</summary>
         public Vector3 ThreatPosition { get; private set; }
+        public bool ThreatIsScp { get; private set; }
 
         public bool HasRecentThreat => Time.time - LastSeenAt <= MemorySeconds;
 
@@ -61,41 +62,58 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
             var checks = 0;
             var nearestSqr = float.PositiveInfinity;
             var nearest = Vector3.zero;
+            var nearestIsScp = false;
+            var preferScps = HumanInventory.IsCivilian(botHub.roleManager.CurrentRole.RoleTypeId);
 
-            foreach (var candidate in CombatWorldSnapshot.Get(now))
+            var snapshot = CombatWorldSnapshot.Get(now);
+            // Armed civilians must not lose their SCP escape priority to a nearer enemy human.
+            for (var pass = 0; pass < (preferScps ? 2 : 1); pass++)
             {
-                if (candidate.Hub == botHub || candidate.Role == RoleTypeId.Scp079)
+                foreach (var candidate in snapshot)
                 {
-                    continue;
-                }
-
-                var sqrDistance = (candidate.Position - position).sqrMagnitude;
-                if (sqrDistance > SightMeters * SightMeters || sqrDistance >= nearestSqr)
-                {
-                    continue;
-                }
-
-                if (!IsDangerous(candidate) || !CombatTargetSelector.AreHostile(botHub, candidate.Hub))
-                {
-                    continue;
-                }
-
-                if (sqrDistance > HearMeters * HearMeters)
-                {
-                    if (checks >= MaxSightChecks)
+                    if (preferScps && (candidate.Team == Team.SCPs) != (pass == 0))
+                    {
+                        continue;
+                    }
+                    if (candidate.Hub == botHub || candidate.Role == RoleTypeId.Scp079)
                     {
                         continue;
                     }
 
-                    checks++;
-                    if (Physics.Linecast(origin, candidate.Position + Vector3.up * 0.8f, VisionMask, QueryTriggerInteraction.Ignore))
+                    var sqrDistance = (candidate.Position - position).sqrMagnitude;
+                    if (sqrDistance > SightMeters * SightMeters || sqrDistance >= nearestSqr)
                     {
                         continue;
                     }
-                }
 
-                nearestSqr = sqrDistance;
-                nearest = candidate.Position;
+                    if (!IsDangerous(candidate) || !CombatTargetSelector.AreHostile(botHub, candidate.Hub))
+                    {
+                        continue;
+                    }
+
+                    if (sqrDistance > HearMeters * HearMeters)
+                    {
+                        if (checks >= MaxSightChecks)
+                        {
+                            continue;
+                        }
+
+                        checks++;
+                        if (Physics.Linecast(origin, candidate.Position + Vector3.up * 0.8f, VisionMask, QueryTriggerInteraction.Ignore))
+                        {
+                            continue;
+                        }
+                    }
+
+                    nearestSqr = sqrDistance;
+                    nearest = candidate.Position;
+                    nearestIsScp = candidate.Team == Team.SCPs;
+            }
+
+            if (nearestSqr < float.PositiveInfinity)
+            {
+                break;
+            }
             }
 
             if (nearestSqr < float.PositiveInfinity)
@@ -103,6 +121,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                 SeesThreat = true;
                 LastSeenAt = now;
                 ThreatPosition = nearest;
+                ThreatIsScp = nearestIsScp;
             }
         }
 

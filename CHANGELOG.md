@@ -19,6 +19,8 @@
   a closed door and lunges at whoever opens it. In a chase it claws instead of focusing.
 - Restrict SCP-939 amnestic clouds to a 25% preparation chance before a door ambush; combat contact
   interrupts preparation instead of starting or holding a cloud during a chase.
+- Prioritize civilian escape from SCPs even while armed, request native sprinting while fleeing, and
+  keep moving between bounded route retries instead of waiting at escape waypoints.
 - Human bots pick up useful items with the native search time, heal with medical items when safe,
   flee when unarmed, and equip keycards for keycard lockers. Only Standard warmup issues a COM-15 to
   unarmed humans.

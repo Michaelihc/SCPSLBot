@@ -51,10 +51,11 @@ difficulty. The SCP bots were invulnerable so that each take ran its full length
 
 ### Humans
 
-- **Every armed role fights.** Bots choose targets by faction: the Foundation fights Chaos and Class-D,
+- **Militants fight; civilians prioritize survival.** Bots choose targets by faction: the Foundation fights Chaos and Class-D,
   SCPs fight everyone, and everyone fights Tutorial. A bot fires the gun it carries, reloads when
   its magazine runs dry, strafes at mid range and backs off when rushed. Only Standard warmup issues
-  a COM-15 to an unarmed bot; in normal rounds an unarmed human runs from SCPs and armed enemies.
+  a COM-15 to an unarmed bot. In normal rounds Class-D and Scientists flee noticed SCPs even when
+  armed; unarmed humans flee SCPs and armed enemies.
 - **Humans pick up and use items.** They pick up firearms, ammo for their gun, better armor,
   medical items, grenades and keycards that add permissions, taking the native search time and
   respecting inventory limits. They heal with medkits, SCP-500, painkillers or adrenaline once out
