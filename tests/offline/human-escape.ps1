@@ -88,7 +88,8 @@ try {
         Spectate $nick
         $scpRole = if ($case.scpRole) { $case.scpRole } else { 'Scp0492' }
         $null = Command "/forcerole $scpId $scpRole"
-        $null = Command "/hp $scpId 10000"
+        $scpHealth = if ($case.scpHealth) { $case.scpHealth } else { 10000 }
+        $null = Command "/hp $scpId $scpHealth"
         $scpAnchor = if ($case.scpAnchor) { $case.scpAnchor } else { $case.anchor }
         if ((Command "/doortp $scpId $scpAnchor") -notmatch 'affected 1 player') { throw 'SCP door placement failed' }
         if ($case.stationary) {

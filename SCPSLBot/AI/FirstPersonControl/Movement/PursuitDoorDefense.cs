@@ -76,7 +76,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             {
                 foreach (var door in doors)
                 {
-                    // Bulk gates/checkpoints and automatic doors cannot be shut safely while sprinting.
+                    // Checkpoint leaves share their parent's controls; automatic doors have no button.
                     if (door is not BasicDoor || DoorTraversal.ResolveInteractable(door) != door
                         || !door.TargetState || !DoorAccess.IsPlayerDoor(door)) continue;
                     var origin = door.transform.position;
