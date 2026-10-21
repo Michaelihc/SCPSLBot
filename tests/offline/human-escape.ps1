@@ -7,7 +7,7 @@ $samples = Join-Path $Context.Evidence 'human-escape.jsonl'
 $failures = [Collections.Generic.List[string]]::new()
 function Note([string]$text) { "$(Get-Date -Format HH:mm:ss.fff) $text" | Add-Content $log }
 function Command([string]$text) {
-    $reply = (& "$($Context.Root)/LocalAdmin/LocalAdmin.exe" ctl --quiet-ms 100 --timeout-ms 3000 $Context.Port console $text) -join "`n"
+    $reply = (& "$($Context.Root)/LocalAdmin/LocalAdmin.exe" ctl --quiet-ms 1000 --timeout-ms 6000 $Context.Port console $text) -join "`n"
     if ($LASTEXITCODE -ne 0) { throw "Console failed: $text => $reply" }
     Note "$text => $reply"
     return $reply
@@ -89,7 +89,8 @@ try {
         $scpRole = if ($case.scpRole) { $case.scpRole } else { 'Scp0492' }
         $null = Command "/forcerole $scpId $scpRole"
         $null = Command "/hp $scpId 10000"
-        if ((Command "/doortp $scpId $($case.anchor)") -notmatch 'affected 1 player') { throw 'SCP door placement failed' }
+        $scpAnchor = if ($case.scpAnchor) { $case.scpAnchor } else { $case.anchor }
+        if ((Command "/doortp $scpId $scpAnchor") -notmatch 'affected 1 player') { throw 'SCP door placement failed' }
         if ($case.stationary) {
             if ((Command "/effect Ensnared 1 60 $scpId") -notmatch 'affected 1 player') { throw 'Stationary SCP fixture failed' }
         }
