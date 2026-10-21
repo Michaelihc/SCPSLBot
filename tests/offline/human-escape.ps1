@@ -13,10 +13,14 @@ function Command([string]$text) {
     return $reply
 }
 function Snapshot {
-    $reply = Command 'labobserve'
-    $line = @($reply -split "`n" | Where-Object { $_.StartsWith('OFFLINE_LAB_SNAPSHOT ') })[-1]
-    if (!$line) { throw 'Missing native observer snapshot' }
-    return ($line.Substring(21) | ConvertFrom-Json).players
+    for ($attempt = 0; $attempt -lt 2; $attempt++) {
+        $quiet = if ($attempt) { 1000 } else { 100 }
+        $reply = (& "$($Context.Root)/LocalAdmin/LocalAdmin.exe" ctl --quiet-ms $quiet --timeout-ms 6000 $Context.Port console labobserve) -join "`n"
+        Note "labobserve => $reply"
+        $line = @($reply -split "`n" | Where-Object { $_.StartsWith('OFFLINE_LAB_SNAPSHOT ') })[-1]
+        if ($line) { return ($line.Substring(21) | ConvertFrom-Json).players }
+    }
+    throw 'Missing native observer snapshot after read-only retry'
 }
 function RecordingState { (Invoke-LabSetup 'record-status').setupResponse | ConvertFrom-Json }
 function WaitRecording([string]$phase) {
@@ -53,7 +57,8 @@ $null = Command "/forcerole $($client.id) Overwatch"
 Start-Sleep -Seconds 10
 $started = $false
 try {
-    $null = Invoke-LabSetup 'record-start human-escape'
+    $takeName = if ($Context.Options.takeName) { $Context.Options.takeName } else { 'human-escape' }
+    $null = Invoke-LabSetup "record-start $takeName"
     $started = $true
     WaitRecording 'recording'
     $take = Get-Date
@@ -61,8 +66,13 @@ try {
         @{name='unarmed-classd';role='ClassD';armed=$false;seconds=30;anchor='GR18'},
         @{name='armed-scientist';role='Scientist';armed=$true;seconds=30;anchor='LCZ_CAFE'},
         @{name='armed-classd';role='ClassD';armed=$true;seconds=30;anchor='GR18'},
-        @{name='militant';role='FacilityGuard';armed=$false;seconds=55;anchor='GR18'}
+        @{name='militant';role='FacilityGuard';armed=$false;seconds=55;anchor='GR18'},
+        @{name='blocked-civilian';role='ClassD';armed=$false;seconds=30;anchor='LCZ_CAFE';locked='LCZ_CAFE'}
     )
+    if ($Context.Options.cases) {
+        $cases = @($cases | Where-Object { $_.name -in $Context.Options.cases })
+        if (!$cases.Count) { throw 'No matching escape cases' }
+    }
     foreach ($case in $cases) {
         $null = Command "/forcerole $scpId Spectator"
         # Native death/respawn between cases also exercises release of flee movement state.
@@ -70,6 +80,7 @@ try {
         $null = Command "/forcerole $humanId $($case.role)"
         $null = Command "/hp $humanId 10000"
         if ($case.armed) { $null = Command "/give $humanId 13" }
+        if ($case.locked) { $null = Command "/close $($case.locked)"; $null = Command "/lock $($case.locked)" }
         if ((Command "/doortp $humanId $($case.anchor)") -notmatch 'affected 1 player') { throw 'Human door placement failed' }
         Spectate $nick
         $null = Command "/forcerole $scpId Scp0492"
@@ -86,13 +97,23 @@ try {
         $last = $first.position
         $nextDebug = Get-Date
         $end = (Get-Date).AddSeconds($case.seconds)
+        $unlockAt = (Get-Date).AddSeconds(5)
+        $released = !$case.locked
+        $afterReleaseTravel = 0.0
         Note "CASE $($case.name) sourceOffset=$([int]((Get-Date)-$take).TotalSeconds)"
         while ((Get-Date) -lt $end) {
+            if (!$released -and (Get-Date) -ge $unlockAt) {
+                $null = Command "/unlock $($case.locked)"
+                $released = $true
+                Note 'Blocked escape door released'
+            }
             $actors = @(Snapshot)
             $human = @($actors | Where-Object id -eq $humanId)[0]
             $scp = @($actors | Where-Object id -eq $scpId)[0]
             if (!$human -or $human.role -ne $case.role -or !$scp -or $scp.role -ne 'Scp0492') { throw 'Case actor changed unexpectedly' }
-            $travel += Distance $human.position $last
+            $step = Distance $human.position $last
+            $travel += $step
+            if ($released) { $afterReleaseTravel += $step }
             $last = $human.position
             @{utc=(Get-Date).ToUniversalTime().ToString('o');case=$case.name;human=$human;scp=$scp} | ConvertTo-Json -Depth 8 -Compress | Add-Content $samples
             if ((Get-Date) -ge $nextDebug) {
@@ -106,12 +127,14 @@ try {
         }
         $shots = $human.shots-$initialShots
         $reloads = $human.reloads-$initialReloads
-        Note "RESULT $($case.name) travel=$([Math]::Round($travel,1)) shots=$shots reloads=$reloads flee=$fleeSeen combat=$combatSeen"
+        Note "RESULT $($case.name) travel=$([Math]::Round($travel,1)) afterRelease=$([Math]::Round($afterReleaseTravel,1)) shots=$shots reloads=$reloads flee=$fleeSeen combat=$combatSeen"
         if ($case.name -eq 'militant') {
             if (!$combatSeen -or $shots -lt 31 -or $reloads -lt 1) { $failures.Add('Militant did not sustain fire through a reload') }
         } else {
             if (!$fleeSeen -or $travel -lt 10 -or $shots -gt 0) { $failures.Add("$($case.name) failed escape acceptance: travel=$travel shots=$shots flee=$fleeSeen") }
+            if ($case.locked -and $afterReleaseTravel -lt 10) { $failures.Add('Civilian did not recover after the escape door unlocked') }
         }
+        if ($case.locked) { $null = Command "/unlock $($case.locked)" }
     }
 }
 finally {

@@ -108,12 +108,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
                     nearestSqr = sqrDistance;
                     nearest = candidate.Position;
                     nearestIsScp = candidate.Team == Team.SCPs;
-            }
+                }
 
-            if (nearestSqr < float.PositiveInfinity)
-            {
-                break;
-            }
+                if (nearestSqr < float.PositiveInfinity)
+                {
+                    break;
+                }
             }
 
             if (nearestSqr < float.PositiveInfinity)
