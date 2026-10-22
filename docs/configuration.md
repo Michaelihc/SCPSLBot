@@ -59,7 +59,7 @@ wants exclusive control of the menu creates `LabAPI/configs/<port>/ServerKeybind
 foreign_settings: Block
 ```
 
-See the [ServerKeybinds README](https://github.com/Michaelihc/serverkeybinds#foreign-settings).
+See the [ServerKeybinds README](https://github.com/sl-plugins-cement/serverkeybinds#foreign-settings).
 
 ## AI and navigation
 
