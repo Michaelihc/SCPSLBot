@@ -110,7 +110,6 @@ try {
             if ((Command 'pursuitkeycards enable') -notmatch 'PURSUIT_KEYCARDS enabled=[1-9]') { throw 'Keycard fixture failed' }
         }
         if ($case.locked) { $null = Command "/close $($case.locked)"; $null = Command "/lock $($case.locked)" }
-        if ((Command "/doortp $humanId $($case.anchor)") -notmatch 'affected 1 player') { throw 'Human door placement failed' }
         Spectate $nick $humanId
         # Capture before spawning the pursuer so early native ability activations count.
         $eventOffset = if ($nativeLog) { (Get-Item -LiteralPath $nativeLog).Length } else { 0 }
@@ -119,6 +118,8 @@ try {
         $scpHealth = if ($case.scpHealth) { $case.scpHealth } else { 10000 }
         $null = Command "/hp $scpId $scpHealth"
         $scpAnchor = if ($case.scpAnchor) { $case.scpAnchor } else { $case.anchor }
+        # Place the pair after spectator setup, before the human can leave the encounter room.
+        if ((Command "/doortp $humanId $($case.anchor)") -notmatch 'affected 1 player') { throw 'Human door placement failed' }
         if ((Command "/doortp $scpId $scpAnchor") -notmatch 'affected 1 player') { throw 'SCP door placement failed' }
         if ($case.stationary) {
             if ((Command "/effect Ensnared 1 60 $scpId") -notmatch 'affected 1 player') { throw 'Stationary SCP fixture failed' }
