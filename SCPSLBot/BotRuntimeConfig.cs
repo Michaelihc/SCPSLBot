@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SCPSLBot.Diagnostics;
 using SCPSLBot.Navigation;
 using SCPSLBot.Presentation;
 
@@ -11,6 +12,7 @@ public sealed class BotRuntimeConfig
     public string Language { get; set; } = "cn";
     public HintDisplayConfig HintDisplay { get; set; } = new();
     public NavigationConfig Navigation { get; set; } = new();
+    public RoundTraceConfig RoundTrace { get; set; } = new();
     public bool ForceStandardDoorConnectors { get; set; }
     internal IReadOnlyList<string> Normalize()
     {
@@ -21,6 +23,8 @@ public sealed class BotRuntimeConfig
         HintDisplay ??= new();
         Navigation ??= new();
         Navigation.Normalize(changes);
+        RoundTrace ??= new();
+        RoundTrace.Normalize(changes);
         return changes;
     }
 }

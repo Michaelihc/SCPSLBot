@@ -33,8 +33,9 @@ The runtime backend works in stages:
 1. **Collect.** Two frames after map generation, it collects the live colliders the human capsule
    collides with. Players, door leaves and glass, pickups, ragdolls, elevator chambers, invisible
    doorway blockers, the Surface helicopter, the capybara and non-collidable admin toys are excluded.
-2. **Build.** It builds asynchronously with the human capsule: radius 0.36 m plus 5 cm clearance,
-   height 1.8 m, 0.3 m step, 45° slope, 9 cm voxels.
+2. **Build.** It builds asynchronously with the human capsule: radius 0.36 m (eroded by whole
+   voxels, not beyond the capsule, so one-meter stair flights stay walkable), height 1.8 m, 0.3 m
+   step, 45° slope, 9 cm voxels.
 3. **Fill gaps.** Rooms whose meshes still cannot be read fall back to a probed floor
    (`NAV_ROOM_PROBED`).
 4. **Link.** Each elevator group gets a bidirectional link between its landings. Door-less clutter
@@ -59,12 +60,23 @@ Keeping the navmesh current:
 
 How bots move and recover:
 
+- All bot movement goes through one locomotion layer, so exploring, objectives, combat chases and
+  orders share the same crossing logic.
 - Bots follow string-pulled corners nudged into each turn and slide around whatever collider is
-  directly ahead.
+  directly ahead. Walkable slopes and stair risers are not treated as walls.
+- Closed doors on the path are opened when the role or a carried keycard satisfies the native door
+  policy; the bot briefly equips the card and then restores its previous item. A door it cannot
+  open, or one that stops opening short of open, is reported as a blocked crossing and the route is
+  re-planned (`[BotNav] DOOR_BLOCKED`).
+- When the next waypoint is an elevator landing, the bot calls the elevator, boards, sends it to
+  the other floor, rides and walks out (`[BotNav] ELEVATOR` logs each stage). A locked elevator or
+  a cabin that never arrives is reported blocked (`ELEVATOR_BLOCKED`).
 - When they stop making progress they escalate: door interaction and sideways nudges after 0.7 s,
   a native jump after 1.5 s, a short back-off, a re-plan after 2.5 s, then the crossing is carved out.
-- Roam targets come only from reachable points. An unreachable goal produces a partial path toward
-  the closest reachable point.
+- Exploration picks a destination room, not a doorway: it prefers rooms the bot has not visited
+  recently, walks to a reachable point inside the room and counts it reached only inside that room.
+  Unreachable rooms are skipped for 30 s. A bot that starts off the navmesh walks to the nearest
+  navmesh point first.
 
 ## Authored backend
 

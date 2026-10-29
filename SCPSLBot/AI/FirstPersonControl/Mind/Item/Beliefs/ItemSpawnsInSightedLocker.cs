@@ -1,21 +1,30 @@
-﻿using DrawableLine;
-using Interactables;
-using InventorySystem.Items.Pickups;
-using MapGeneration.Distributors;
+﻿using MapGeneration.Distributors;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
+using SCPSLBot.Infrastructure;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
 {
+    /// <summary>
+    /// Closed chambers of lockers the bot has seen that can hold one of the spawn item types.
+    /// A chamber is remembered from the first sighting until it is seen open (then its contents
+    /// are ordinary pickups), so turning away does not forget it. Whether a chamber accepts the
+    /// item types is evaluated once per chamber; a sensing pass only walks the lockers in sight.
+    /// </summary>
     internal class ItemSpawnsInSightedLocker<C> : ItemLocations<C> where C : IItemBeliefCriteria
     {
+        private static readonly HashSet<StructureType> LockerStructureTypes = new() { StructureType.StandardLocker, StructureType.SmallWallCabinet };
+
         private readonly ItemType[] spawnItemTypes;
         private readonly LockersWithinSightSense lockersSightSense;
+        private readonly Dictionary<LockerChamber, bool> acceptsSpawnTypes = new(ManagedReferenceComparer<LockerChamber>.Instance);
+        private readonly List<Locker> lockers = new();
+        private readonly List<int> chamberIndices = new();
+        private int generation = int.MinValue;
 
-        public ItemSpawnsInSightedLocker(C criteria, ItemType[] spawnItemTypes, LockersWithinSightSense lockersSightSense) 
+        public ItemSpawnsInSightedLocker(C criteria, ItemType[] spawnItemTypes, LockersWithinSightSense lockersSightSense)
             : base(criteria)
         {
             this.spawnItemTypes = spawnItemTypes;
@@ -24,96 +33,108 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs
             this.lockersSightSense.OnAfterSightSensing += OnAfterSensedLockersWithinSight;
         }
 
-        public Dictionary<Vector3, Vector3> LockerDirections { get; } = new();
-        public Dictionary<Vector3, InteractableCollider> LockerDoors { get; } = new();
-
-        private static readonly HashSet<StructureType> lockerStructureTypes = new() { StructureType.StandardLocker, StructureType.SmallWallCabinet };
-
-        private readonly HashSet<(Vector3 Position, LockerChamber)> itemSpawns = new();
-        private readonly HashSet<Vector3> visitedItemSpawnPositions = new();
-
-        private void ProcessSensedInteractableCollider(InteractableCollider interactable)
+        /// <summary>The locker and chamber index known at <paramref name="position"/>.</summary>
+        public bool TryGetChamber(Vector3 position, out Locker locker, out int chamberIndex)
         {
-            if (interactable.Target is not Locker locker)
+            for (var index = 0; index < Positions.Count; index++)
             {
-                return;
+                if ((Positions[index] - position).sqrMagnitude <= 0.01f)
+                {
+                    locker = lockers[index];
+                    chamberIndex = chamberIndices[index];
+                    return locker != null && chamberIndex < locker.Chambers.Length;
+                }
             }
 
-
-            if (!lockerStructureTypes.Contains(locker.StructureType))
-            {
-                return;
-            }
-
-            var chamber = locker.Chambers[interactable.ColliderId];
-            if (!Array.Exists(chamber.AcceptableItems, type => this.spawnItemTypes.Contains(type)))
-            {
-                return;
-            }
-
-            var itemSpawnPosition = chamber.transform.position;
-
-            this.itemSpawns.Add((itemSpawnPosition, chamber));
+            locker = null;
+            chamberIndex = -1;
+            return false;
         }
-
-        private readonly HashSet<Vector3> absentPositions = new();
 
         private void OnAfterSensedLockersWithinSight()
         {
+            var changed = ResetOnNewMap();
+
             foreach (var locker in lockersSightSense.LockersWithinSight)
             {
-                if (!lockerStructureTypes.Contains(locker.StructureType))
+                if (locker == null || !LockerStructureTypes.Contains(locker.StructureType))
                 {
                     continue;
                 }
 
-                foreach (var chamber in locker.Chambers)
+                var chambers = locker.Chambers;
+                for (var chamberIndex = 0; chamberIndex < chambers.Length; chamberIndex++)
                 {
-                    if (!Array.Exists(chamber.AcceptableItems, type => this.spawnItemTypes.Contains(type)))
+                    var chamber = chambers[chamberIndex];
+                    if (chamber == null || acceptsSpawnTypes.ContainsKey(chamber))
                     {
                         continue;
                     }
 
-                    var itemSpawnPosition = chamber.transform.position;
-
-                    this.itemSpawns.Add((itemSpawnPosition, chamber));
+                    var accepts = Accepts(chamber);
+                    acceptsSpawnTypes.Add(chamber, accepts);
+                    if (accepts && !chamber.IsOpen)
+                    {
+                        lockers.Add(locker);
+                        chamberIndices.Add(chamberIndex);
+                        Positions.Add(chamber.transform.position);
+                        changed = true;
+                    }
                 }
             }
 
-            foreach (var itemSpawnPosition in this.Positions)
+            for (var index = Positions.Count - 1; index >= 0; index--)
             {
-                if (this.lockersSightSense.IsPositionWithinFov(itemSpawnPosition))
+                var locker = lockers[index];
+                if (locker != null && !locker.Chambers[chamberIndices[index]].IsOpen)
                 {
-                    if (!lockersSightSense.IsPositionObstructed(itemSpawnPosition, out var obstruction)
-                        || (this.LockerDoors.TryGetValue(itemSpawnPosition, out var storedInteractableObstruction) 
-                            && storedInteractableObstruction != obstruction.collider.GetComponentInParent<InteractableCollider>()))
-                    {
-                        this.visitedItemSpawnPositions.Add(itemSpawnPosition);
-                        absentPositions.Add(itemSpawnPosition);
+                    continue;
+                }
 
-                        this.LockerDoors.Remove(itemSpawnPosition);
-                        this.LockerDirections.Remove(itemSpawnPosition);
-                    }
-                    else if (obstruction.collider.GetComponentInParent<InteractableCollider>() is InteractableCollider interactableObstruction
-                        && interactableObstruction.Target is Locker)
-                    {
-                        this.LockerDoors[itemSpawnPosition] = interactableObstruction;
-                    }
+                lockers.RemoveAt(index);
+                chamberIndices.RemoveAt(index);
+                Positions.RemoveAt(index);
+                changed = true;
+            }
+
+            if (changed)
+            {
+                InvokeOnUpdate();
+            }
+        }
+
+        private bool ResetOnNewMap()
+        {
+            var current = Navigation.NavigationSystem.Instance.MapGeneration;
+            if (current == generation)
+            {
+                return false;
+            }
+
+            generation = current;
+            acceptsSpawnTypes.Clear();
+            lockers.Clear();
+            chamberIndices.Clear();
+            if (Positions.Count == 0)
+            {
+                return false;
+            }
+
+            Positions.Clear();
+            return true;
+        }
+
+        private bool Accepts(LockerChamber chamber)
+        {
+            foreach (var acceptable in chamber.AcceptableItems)
+            {
+                if (Array.IndexOf(spawnItemTypes, acceptable) >= 0)
+                {
+                    return true;
                 }
             }
 
-            RemoveAllPositions(absentPositions.Remove);
-
-            var unvisitedItemSpawns = this.itemSpawns
-                .Where(itemSpawn => !this.visitedItemSpawnPositions.Contains(itemSpawn.Position));
-
-            SetPositions(unvisitedItemSpawns.Select(s => s.Position));
-            foreach (var (position, chamber) in unvisitedItemSpawns)
-            {
-                this.LockerDirections[position] = chamber.transform.forward;
-            }
-
-            this.itemSpawns.Clear();
+            return false;
         }
 
         public override string ToString()

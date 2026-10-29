@@ -17,7 +17,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Room.Beliefs
 
         private void OnSensedRoomWithin(RoomIdentifier room)
         {
-            if (navigator.IsOnMesh())
+            // The mesh probe only matters for a zone change; skip it on the common no-change pass.
+            if (room.Zone != Zone && navigator.IsOnMesh())
             {
                 Update(room.Zone);
             }

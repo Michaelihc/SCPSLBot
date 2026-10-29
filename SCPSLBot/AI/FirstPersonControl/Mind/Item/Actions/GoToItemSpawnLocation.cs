@@ -1,14 +1,17 @@
-﻿using SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs;
+using SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs;
 using System;
 using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
 {
+    /// <summary>Walks to an item spawnpoint that may hold a matching item and looks at it; the sighting beliefs take it from there.</summary>
     internal class GoToItemSpawnLocation<C> : GoTo<ItemSpawnsLocation<C>, C> where C : IItemBeliefCriteria, IEquatable<C>
     {
-        public GoToItemSpawnLocation(C criteria, FpcBotPlayer botPlayer) : base(criteria, 0, botPlayer)
+        private const float ArrivalMeters = 1.75f;
+        private const float CheckedSpotSeconds = 600f;
+
+        public GoToItemSpawnLocation(C criteria, FpcBotPlayer botPlayer) : base(criteria, botPlayer)
         {
-            this.botPlayer = botPlayer;
         }
 
         public override void SetImpactsBeliefs(FpcMind fpcMind)
@@ -16,39 +19,30 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
             fpcMind.ActionImpacts<ItemSightedLocation<C>>(this, b => b.Criteria.Equals(Criteria));
         }
 
-        public override float Weight => location.Positions.Count > Idx 
-            ? 1f / location.ItemSpawnProbability[location.Positions[Idx]] 
+        public override float Weight => HasTarget() && location.ItemSpawnProbability.TryGetValue(Target, out var probability) && probability > 0f
+            ? 1f / probability
             : 1f;
 
-        public override void Reset()
-        { }
-
-        public override void Tick()
+        protected override ActionStatus TickTowardsTarget()
         {
-            var spawnPosition = location.Positions[Idx];
-            var cameraPosition = botPlayer.BotHub.PlayerHub.PlayerCameraReference.position;
-
-            var dist = Vector3.Distance(spawnPosition, cameraPosition);
-            if (dist > 1.75f)
+            if (!MoveToTarget(ArrivalMeters))
             {
-                botPlayer.MoveToPosition(spawnPosition);
-                return;
+                return ActionStatus.Running;
             }
 
-            var cameraDirection = botPlayer.BotHub.PlayerHub.PlayerCameraReference.forward;
-
-            if (Vector3.Dot((spawnPosition - cameraPosition).normalized, cameraDirection) <= 1f - .0001f)
+            if (!LookAt(Target))
             {
-                botPlayer.LookToPosition(spawnPosition);
-                return;
+                return ActionStatus.Running;
             }
+
+            // Looked at it: whatever lies there is now seen (or the spot is empty).
+            MarkTargetDone(CheckedSpotSeconds);
+            return ActionStatus.Completed;
         }
 
         public override string ToString()
         {
             return $"{nameof(GoToItemSpawnLocation<C>)}({this.Criteria})";
         }
-
-        protected readonly FpcBotPlayer botPlayer;
     }
 }

@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- Close a recently crossed door when a human observes an SCP pursuing its retreat, while clearing
+  the doorway and avoiding nearby humans, door toggling and doors SCP-106 can phase through.
+- Use SCP-106 Stalk and Hunter's Atlas at medium chase distances while retaining native vigor costs.
+
+- Drive every non-combat bot through a utility brain (explore, objective, loot, heal, flee and SCP
+  corpse abilities) and route all movement through one locomotion layer. Every role and every
+  movement source now opens doors with a matching keycard and rides elevators, so bots cross zones
+  (Surface to Entrance through the Gate elevators, LCZ and HCZ through the checkpoint elevators).
+- Replace zone roaming with facility-wide exploration toward room interiors with visited-room memory.
+  Bots no longer turn back at doorways in corridors; SCPs roam the whole facility.
+- Stop treating walkable slopes and stair risers as walls in obstacle avoidance.
+- Use native SCP abilities: SCP-049 Doctor's Call, native attack reach and corpse revival; SCP-049-2
+  corpse consumption; SCP-096 charge and gate prying; SCP-106 stalk and Hunter's Atlas; SCP-939
+  focus, lunge and amnestic cloud; SCP-3114 disguise, reveal and strangle.
+- Swing SCP attacks at the native reach read from the role prefabs instead of fixed ranges, so
+  SCP-106, SCP-939, SCP-3114, SCP-049-2 and SCP-096 strike as soon as a hit can land.
+- Let SCP-106 walk through doors in a chase instead of stopping to open them.
+- Make SCP-939 lunge only from door ambushes: on entering a room it sometimes waits, focused, behind
+  a closed door and lunges at whoever opens it. In a chase it claws instead of focusing.
+- Restrict SCP-939 amnestic clouds to a 25% preparation chance before a door ambush; combat contact
+  interrupts preparation instead of starting or holding a cloud during a chase.
+- Prioritize civilian escape from SCPs even while armed, request native sprinting while fleeing, and
+  keep moving between bounded route retries instead of waiting at escape waypoints.
+- Human bots pick up useful items with the native search time, heal with medical items when safe,
+  flee when unarmed, and equip keycards for keycard lockers. Only Standard warmup issues a COM-15 to
+  unarmed humans.
+- Make the GOAP escape objective recover from failed actions and rejected pickups, target the nearest
+  untried position, replan periodically and route straight to the exit once every border is passable.
+- Add `bot_debug` and `bot_trace`, the `round_trace` setting and the `tools/round-map` renderer for
+  top-down round maps.
+
 - Replace the duel arena with the supplied updated model, including its wall text, additional
   lighting and viewing platform. Align viewing entry and opponent controls with the authored floor.
 

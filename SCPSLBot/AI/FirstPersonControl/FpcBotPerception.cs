@@ -83,8 +83,24 @@ namespace SCPSLBot.AI.FirstPersonControl
         }
 
         private readonly List<IEnumerator<JobHandle>> processSensesEnumerators = new(8);
+        private readonly List<ISense> activeSenses = new(8);
+        private readonly HashSet<Type> sharedSenseTypes = new() { typeof(RoomSightSense) };
 
-        public IEnumerator<JobHandle> Update()
+        /// <summary>
+        /// Keeps <typeparamref name="TSense"/> sensing for roles without the GOAP objective too.
+        /// By default those roles only sense their room: the other senses exist to feed objective
+        /// beliefs, whose upkeep (sight jobs, per-belief handlers at 10 Hz) is wasted on them.
+        /// </summary>
+        public void KeepSensingForAllRoles<TSense>() where TSense : ISense
+        {
+            sharedSenseTypes.Add(typeof(TSense));
+        }
+
+        /// <param name="maintainObjectiveBeliefs">
+        /// False for roles that never run the objective: only shared senses run, and the room
+        /// sense stops raising the events that maintain objective beliefs.
+        /// </param>
+        public IEnumerator<JobHandle> Update(bool maintainObjectiveBeliefs = true)
         {
             if (isDisposed)
             {
@@ -94,10 +110,24 @@ namespace SCPSLBot.AI.FirstPersonControl
             var jobHandlesCount = 0;
             try
             {
-                var sensesCount = Senses.Count;
+                activeSenses.Clear();
+                foreach (var sense in Senses)
+                {
+                    if (maintainObjectiveBeliefs || sharedSenseTypes.Contains(sense.GetType()))
+                    {
+                        activeSenses.Add(sense);
+                    }
+
+                    if (sense is RoomSightSense roomSense)
+                    {
+                        roomSense.RaiseEvents = maintainObjectiveBeliefs;
+                    }
+                }
+
+                var sensesCount = activeSenses.Count;
 
                 processSensesEnumerators.Clear();
-                foreach (var sense in Senses)
+                foreach (var sense in activeSenses)
                 {
                     processSensesEnumerators.Add(sense.ProcessSensibility());
                 }
@@ -132,7 +162,7 @@ namespace SCPSLBot.AI.FirstPersonControl
                 Profiler.BeginSample($"{nameof(FpcBotPerception)}.ProcessSensedItems");
                 try
                 {
-                    foreach (var sense in Senses)
+                    foreach (var sense in activeSenses)
                     {
                         sense.ProcessSensedItems();
                     }
@@ -170,6 +200,7 @@ namespace SCPSLBot.AI.FirstPersonControl
                 }
 
                 processSensesEnumerators.Clear();
+                activeSenses.Clear();
             }
         }
 

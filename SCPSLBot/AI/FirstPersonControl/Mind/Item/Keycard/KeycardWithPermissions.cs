@@ -18,13 +18,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Keycard
         public bool EvaluateItem(ItemPickupBase item)
         {
             return InventoryItemLoader.TryGetItem<KeycardItem>(item.Info.ItemId, out var keycard)
-                && keycard.GetPermissions(null).HasFlag(Permissions);
+                && (keycard.GetPermissions(null) & Permissions) == Permissions;
         }
 
         public bool EvaluateItem(ItemBase item)
         {
             return item is KeycardItem keycard
-                && keycard.GetPermissions(null).HasFlag(Permissions);
+                && (keycard.GetPermissions(null) & Permissions) == Permissions;
         }
 
         public bool Equals(IItemBeliefCriteria other)

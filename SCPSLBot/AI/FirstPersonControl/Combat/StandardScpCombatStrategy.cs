@@ -1,5 +1,10 @@
-using CustomPlayerEffects;
 using PlayerRoles;
+using PlayerRoles.PlayableScps.Scp049.Zombies;
+using PlayerRoles.PlayableScps.Scp096;
+using PlayerRoles.PlayableScps.Scp3114;
+using PlayerRoles.PlayableScps.Scp939;
+using PlayerRoles.Subroutines;
+using SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities;
 using System;
 using UnityEngine;
 
@@ -10,21 +15,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
     /// </summary>
     internal sealed class StandardScpCombatStrategy
     {
-        private const float AttackRange = 3.2f;
-        private const float Scp049AttackRange = 2.4f;
-        private const float Scp0492AttackRange = 2.4f;
-        private const float Scp106AttackRange = 4f;
-        private const float StrictAttackAimAngle = 14f;
-        private const float Scp049SenseCooldown = 4f;
+        // Used only when a role's native attack geometry cannot be read.
+        private const float FallbackAttackRange = 3.2f;
+        private const float FallbackAttackAimAngle = 35f;
+        private const float Scp106RetrySeconds = 0.2f;
 
         private static readonly string[] Scp939AttackActions =
         {
             "Scp939ClawAbility:Shoot->Click",
-        };
-
-        private static readonly string[] Scp106AttackActions =
-        {
-            "Scp106Attack:Shoot->Click",
         };
 
         private static readonly string[] Scp3114AttackActions =
@@ -37,16 +35,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             "Scp096AttackAbility:Shoot->Click",
         };
 
-        private static readonly string[] Scp049SenseActions =
-        {
-            "Scp049SenseAbility:ToggleFlashlight->Click",
-        };
-
-        private static readonly string[] Scp049AttackActions =
-        {
-            "Scp049AttackAbility:Shoot->Click",
-        };
-
         private static readonly string[] Scp0492AttackActions =
         {
             "ZombieAttackAbility:Shoot->Click",
@@ -55,58 +43,127 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
 
         private readonly FpcBotCombat combat;
         private readonly Scp096CombatStrategy scp096Strategy;
-        private float nextScp049SenseTime;
+        private readonly Scp049CombatAbilities scp049;
+        private readonly Scp106CombatAbilities scp106;
+        private readonly Scp939CombatAbilities scp939;
+        private readonly Scp3114CombatAbilities scp3114;
+
+        internal Scp939CombatAbilities Scp939 => scp939;
 
         public StandardScpCombatStrategy(FpcBotCombat combat, Scp096CombatStrategy scp096Strategy)
         {
             this.combat = combat;
             this.scp096Strategy = scp096Strategy;
+            scp049 = new Scp049CombatAbilities(combat);
+            scp106 = new Scp106CombatAbilities(combat);
+            scp939 = new Scp939CombatAbilities(combat);
+            scp3114 = new Scp3114CombatAbilities(combat);
         }
 
+        /// <summary>Camera-to-target distance at which the role's native attack connects.</summary>
         public float GetAttackRange(RoleTypeId role)
         {
-            return role switch
-            {
-                RoleTypeId.Scp049 => Scp049AttackRange,
-                RoleTypeId.Scp0492 => Scp0492AttackRange,
-                RoleTypeId.Scp106 => Scp106AttackRange,
-                _ => AttackRange,
-            };
+            return TryGetSphereAttack(role, out var attack) && ScpAttackReach.TryGetSphereReach(attack, out var reach)
+                ? reach
+                : FallbackAttackRange;
         }
 
-        public void TryUseChaseAbility(RoleTypeId role)
+        /// <summary>
+        /// Whether a swing from the current camera pose would connect: the native attack sphere
+        /// ahead of the camera contains the aim point. Long-reach roles swing as soon as the target
+        /// is inside their real reach instead of closing to a fixed short range.
+        /// </summary>
+        public bool CanHit(RoleTypeId role, CombatTarget target, Vector3 aimPoint)
         {
-            if (role != RoleTypeId.Scp049 || Time.time < nextScp049SenseTime)
+            var botPlayer = combat.BotPlayer;
+            if (TryGetSphereAttack(role, out var attack) && ScpAttackReach.TryGetSphereReach(attack, out _))
             {
-                return;
+                return ScpAttackReach.SphereContains(attack, botPlayer.CameraPosition, botPlayer.CameraForward, aimPoint);
             }
 
-            if (combat.TryClickFirstDummyAction(Scp049SenseActions))
+            return target.Distance <= FallbackAttackRange && combat.IsAimedAt(aimPoint, FallbackAttackAimAngle);
+        }
+
+        private bool TryGetSphereAttack(RoleTypeId role, out SubroutineBase attack)
+        {
+            var abilities = combat.Abilities;
+            attack = null;
+            switch (role)
             {
-                nextScp049SenseTime = Time.time + Scp049SenseCooldown;
+                case RoleTypeId.Scp939 when abilities.TryGet<Scp939ClawAbility>(out var claw):
+                    attack = claw;
+                    break;
+                case RoleTypeId.Scp3114 when abilities.TryGet<Scp3114Slap>(out var slap):
+                    attack = slap;
+                    break;
+                case RoleTypeId.Scp0492 when abilities.TryGet<ZombieAttackAbility>(out var zombie):
+                    attack = zombie;
+                    break;
+                case RoleTypeId.Scp096 when abilities.TryGet<Scp096AttackAbility>(out var slaps):
+                    attack = slaps;
+                    break;
+            }
+
+            return attack != null;
+        }
+
+        /// <summary>
+        /// Runs the role's chase abilities. Returns true when the role spent this tick (focusing,
+        /// disguised approach, strangling) and the regular attack step must be skipped.
+        /// </summary>
+        public bool TryUseChaseAbility(RoleTypeId role, CombatTarget target, ScpCombatStrategy coordinator)
+        {
+            switch (role)
+            {
+                case RoleTypeId.Scp049:
+                    scp049.TickChase(target);
+                    return false;
+                case RoleTypeId.Scp096:
+                    scp096Strategy.TryUseChargeAbility(target);
+                    return false;
+                case RoleTypeId.Scp106:
+                    scp106.TickChase(target);
+                    return false;
+                case RoleTypeId.Scp939:
+                    return scp939.Tick(target);
+                case RoleTypeId.Scp3114:
+                    return scp3114.Tick(target);
+                default:
+                    return false;
             }
         }
 
+        public void ResetHeldAbilities(RoleTypeId role)
+        {
+            scp939.ResetIfNotRole(role);
+        }
+
+        public void ReleaseHeldAbilities()
+        {
+            scp939.ReleaseHeld();
+        }
+
+        /// <summary>
+        /// Roles whose attack is a direct command with its own validation (SCP-049, SCP-106).
+        /// Returns true when the role was handled here and the shared swing step must be skipped.
+        /// </summary>
         public bool TryUseStrictAttack(RoleTypeId role, CombatTarget target, ScpCombatStrategy coordinator)
         {
-            if (role is not (RoleTypeId.Scp049 or RoleTypeId.Scp0492 or RoleTypeId.Scp106))
+            switch (role)
             {
-                return false;
-            }
+                case RoleTypeId.Scp049:
+                    return scp049.TryAttack(target);
+                case RoleTypeId.Scp106:
+                    if (Time.time >= coordinator.NextAttackTime && scp106.TryAttack(target.Hub))
+                    {
+                        // The native hit/miss cooldown paces real swings; this only spaces retries.
+                        coordinator.NextAttackTime = Time.time + Scp106RetrySeconds;
+                    }
 
-            if (target.Distance > GetAttackRange(role) || Time.time < coordinator.NextAttackTime)
-            {
-                return true;
+                    return true;
+                default:
+                    return false;
             }
-
-            if (!combat.IsAimedAt(ScpCombatStrategy.GetAimPoint(target), StrictAttackAimAngle))
-            {
-                return true;
-            }
-
-            coordinator.NextAttackTime = Time.time + coordinator.AttackInterval;
-            TryUseAttack(role, target.Hub);
-            return true;
         }
 
         public bool TryUseAttack(RoleTypeId role, ReferenceHub target = null)
@@ -116,42 +173,16 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return true;
             }
 
-            if (role == RoleTypeId.Scp106 && TryForceScp106PocketOnCorrodingTarget())
-            {
-                return true;
-            }
-
             var actions = role switch
             {
-                RoleTypeId.Scp049 => Scp049AttackActions,
                 RoleTypeId.Scp0492 => Scp0492AttackActions,
                 RoleTypeId.Scp096 => Scp096AttackActions,
-                RoleTypeId.Scp106 => Scp106AttackActions,
                 RoleTypeId.Scp3114 => Scp3114AttackActions,
                 RoleTypeId.Scp939 => Scp939AttackActions,
                 _ => Array.Empty<string>(),
             };
 
             return combat.TryClickFirstDummyAction(actions);
-        }
-
-        private bool TryForceScp106PocketOnCorrodingTarget()
-        {
-            if (combat.CurrentTarget == null)
-            {
-                return false;
-            }
-
-            var effects = combat.CurrentTarget.playerEffectsController;
-            var corroding = effects.GetEffect<Corroding>();
-            if (!corroding.IsEnabled)
-            {
-                return false;
-            }
-
-            corroding.AttackerHub = combat.BotPlayer.BotHub.PlayerHub;
-            effects.EnableEffect<PocketCorroding>();
-            return true;
         }
     }
 }

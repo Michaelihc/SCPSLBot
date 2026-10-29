@@ -22,7 +22,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 
         private ItemInIntakeChamber<ItemOfType> itemInIntakeChamber;
         private Scp914RunningOnSetting runningOnSetting;
-        private List<ItemsInOutakeChamber> itemInOutakeChamberBeliefs = new();
+        private readonly List<ItemsInOutakeChamber> itemInOutakeChamberBeliefs = new();
 
         public void SetEnabledByBeliefs(FpcMind fpcMind)
         {
@@ -41,6 +41,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 
         public float Cost => 15f;   // scp914 running total time
 
+        // The machine runs 10 s and the output settles shortly after.
+        public float TimeoutSeconds => 25f;
+
         private float? lastItemsTransformedTime;
 
         public void Reset()
@@ -48,24 +51,38 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
             this.lastItemsTransformedTime = this.runningOnSetting.ItemsTransformedTime;
         }
 
-        public void Tick()
+        public ActionStatus Tick()
         {
-            if (this.lastItemsTransformedTime != this.runningOnSetting.ItemsTransformedTime)
+            if (this.lastItemsTransformedTime == this.runningOnSetting.ItemsTransformedTime)
             {
-                if (!this.itemInIntakeChamber.PositionRelative.HasValue)
-                {
-                    if (BotLog.Verbose) Debug.Log($"{this.itemInIntakeChamber} has no position value.");
-                    return;
-                }
-
-                var itemRelativePosition = this.itemInIntakeChamber.PositionRelative.Value;
-                foreach (var itemsInOutakeChamberBelief in this.itemInOutakeChamberBeliefs)
-                {
-                    itemsInOutakeChamberBelief.AddRelativePosition(itemRelativePosition);
-                }
-
-                this.itemInIntakeChamber.Update(null);
+                return ActionStatus.Running;
             }
+
+            if (!this.itemInIntakeChamber.PositionRelative.HasValue)
+            {
+                if (BotLog.Verbose) Debug.Log($"{this.itemInIntakeChamber} has no position value.");
+                return ActionStatus.Failed;
+            }
+
+            var itemRelativePosition = this.itemInIntakeChamber.PositionRelative.Value;
+            foreach (var itemsInOutakeChamberBelief in this.itemInOutakeChamberBeliefs)
+            {
+                itemsInOutakeChamberBelief.AddRelativePosition(itemRelativePosition);
+            }
+
+            this.itemInIntakeChamber.Update(null);
+            return ActionStatus.Completed;
+        }
+
+        public void Stop()
+        {
+        }
+
+        public bool OnFailed()
+        {
+            // The dropped item is gone or never upgraded; forget it so the plan starts over.
+            this.itemInIntakeChamber.Update(null);
+            return false;
         }
 
         public override string ToString()

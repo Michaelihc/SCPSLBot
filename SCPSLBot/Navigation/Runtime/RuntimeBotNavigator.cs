@@ -20,6 +20,9 @@ namespace SCPSLBot.Navigation.Runtime
     {
         private const float CornerArrivalDistance = 0.35f;
         private const float CornerVerticalTolerance = 1.5f;
+        // A corner pair this far apart vertically can only be an elevator crossing.
+        private const float LinkVerticalJump = 4f;
+        private const float LinkFallbackMatchDistance = 3f;
         private const float StartSampleRadius = 2f;
         private const float StartRecoveryRadius = 6f;
         private const float GoalSampleRadius = 2f;
@@ -28,6 +31,11 @@ namespace SCPSLBot.Navigation.Runtime
         private const float LinkArrivalDistance = 2.5f;
         private const float CornerInsetMeters = 0.12f;
         private const int MaxCorners = 256;
+        private const int MaxElevatorDetours = 3;
+        // A partial plan that never leaves this radius started on furniture, not on the floor.
+        private const float IslandMeters = 2.5f;
+        // Only detour over an elevator whose far landing is much nearer the goal than the bot is.
+        private const float ElevatorDetourGain = 0.5f;
         private const int PlanSlots = 2;
 
         private static readonly Vector3[] cornerBuffer = new Vector3[MaxCorners];
@@ -46,9 +54,12 @@ namespace SCPSLBot.Navigation.Runtime
             public bool HasPath;
             public bool HasPartialPath;
             public bool GoalOffMesh;
+            /// <summary>The bot stands on a navmesh island (furniture it jumped onto): nothing but its own spot is reachable.</summary>
+            public bool Stranded;
             public bool HasGoal;
             public Vector3 Goal;
             public float LastUsedAt = float.NegativeInfinity;
+            public int Version;
 
             public void Reset()
             {
@@ -60,6 +71,7 @@ namespace SCPSLBot.Navigation.Runtime
                 HasPath = false;
                 HasPartialPath = false;
                 GoalOffMesh = false;
+                Stranded = false;
             }
         }
 
@@ -72,6 +84,7 @@ namespace SCPSLBot.Navigation.Runtime
         private float replanWindowStart;
         private readonly Vector3[] recentGoals = new Vector3[4];
         private int recentGoalIndex;
+        private int planVersionClock;
 
         public RuntimeBotNavigator(FpcBotPlayer botPlayer, RuntimeNavMeshService service)
         {
@@ -91,14 +104,17 @@ namespace SCPSLBot.Navigation.Runtime
         public Vector3 GoalPosition => current.Goal;
         public int ProgressStamp { get; private set; }
         public int PathNodeCount => current.Corners.Count;
+        public int PlanVersion => current.Version;
         public List<Vector3> PointsPath => current.Points;
 
+        // Points[i] mirrors Corners[i] (Points[0] is the bot position at plan time), so the leg
+        // the bot is walking starts at CornerIndex - 1; legs already behind it are skipped.
         public IEnumerable<(Vector3 point, Vector3 nextPoint)> PathSegments
         {
             get
             {
                 var points = current.Points;
-                for (var index = 0; index + 1 < points.Count; index++)
+                for (var index = Mathf.Max(0, current.CornerIndex - 1); index + 1 < points.Count; index++)
                 {
                     yield return (points[index], points[index + 1]);
                 }
@@ -137,6 +153,14 @@ namespace SCPSLBot.Navigation.Runtime
                 {
                     Replan(current, goalPosition);
                 }
+            }
+
+            if (current.Stranded)
+            {
+                // On a table or bunk the stuck ladder's jump landed on: step off toward the goal.
+                // Blocked that way, the ladder nudges, jumps and finally abandons the goal.
+                CurrentWaypoint = goalPosition;
+                return goalPosition;
             }
 
             if (!current.HasPath && !current.HasPartialPath)
@@ -227,6 +251,26 @@ namespace SCPSLBot.Navigation.Runtime
             return true;
         }
 
+        public bool ReportBlockedAt(Vector3 position)
+        {
+            if (!service.IsBuilt)
+            {
+                return false;
+            }
+
+            // Carving a doorway closes it; carving an elevator landing (a dead-end alcove in front
+            // of the elevator door) detaches the link start, so plans from this side stop using it.
+            service.BlockCrossing(position);
+            if (Time.time >= nextBlockedCrossingLogAt)
+            {
+                nextBlockedCrossingLogAt = Time.time + 5f;
+                LabLogger.Warn($"[BotNav] CROSSING_PENALIZED bot={BotName} spot={Format(position)} pos={Format(botPlayer.PlayerPosition)} obstacles={service.Obstacles.Count}");
+            }
+
+            ForceReplan();
+            return true;
+        }
+
         public bool IsOnMesh()
         {
             return service.IsBuilt && NavMesh.SamplePosition(botPlayer.PlayerPosition, out _, StartSampleRadius, NavMesh.AllAreas);
@@ -308,6 +352,7 @@ namespace SCPSLBot.Navigation.Runtime
             NoteReplan();
             var newGoal = !plan.HasGoal || Vector3.Distance(plan.Goal, goalPosition) > PathReplanPolicy.GoalMoveReplanMeters;
             plan.Reset();
+            plan.Version = ++planVersionClock;
             plan.HasGoal = true;
             plan.Goal = goalPosition;
 
@@ -343,32 +388,30 @@ namespace SCPSLBot.Navigation.Runtime
                 return;
             }
 
-            var count = path.GetCornersNonAlloc(cornerBuffer);
-            if (count >= MaxCorners)
+            var status = path.status;
+            if (status == NavMeshPathStatus.PathPartial && TryPlanViaElevator(start, goal, areaMask, plan.Corners))
             {
-                plan.Corners.AddRange(path.corners);
+                status = NavMeshPathStatus.PathComplete;
             }
             else
             {
-                for (var index = 0; index < count; index++)
-                {
-                    plan.Corners.Add(cornerBuffer[index]);
-                }
+                AppendCorners(plan.Corners);
             }
 
             if (plan.Corners.Count == 0)
             {
-                FailPlan(plan, "no-corners", position, goalPosition, permissions, path.status);
+                FailPlan(plan, "no-corners", position, goalPosition, permissions, status);
                 return;
             }
 
-            plan.HasPath = path.status == NavMeshPathStatus.PathComplete;
-            plan.HasPartialPath = path.status == NavMeshPathStatus.PathPartial;
-            if (plan.HasPartialPath && plan.Corners.Count == 1 && HorizontalDistance(plan.Corners[0], position) < CornerArrivalDistance)
+            plan.HasPath = status == NavMeshPathStatus.PathComplete;
+            plan.HasPartialPath = status == NavMeshPathStatus.PathPartial;
+            if (plan.HasPartialPath && IsIsland(plan.Corners, position) && HorizontalDistance(position, goal) > IslandMeters)
             {
-                // Nothing reachable beyond the bot's own feet.
+                // Nothing reachable beyond a few meters around the bot's own feet.
                 plan.HasPartialPath = false;
-                FailPlan(plan, "partial-at-feet", position, goalPosition, permissions, path.status);
+                plan.Stranded = true;
+                FailPlan(plan, "stranded", position, goalPosition, permissions, status);
                 return;
             }
 
@@ -393,13 +436,107 @@ namespace SCPSLBot.Navigation.Runtime
                 plan.Points.Add(goalPosition);
             }
 
-            // The first corner is the sampled start itself; skip it unless it is far (recovery).
-            plan.CornerIndex = plan.Corners.Count > 1 && HorizontalDistance(plan.Corners[0], position) <= CornerArrivalDistance ? 1 : 0;
+            // The first corner is the sampled start itself; skip it unless it is far (recovery). A
+            // replan while waiting at an elevator landing starts on the link itself: skipping that
+            // corner would drop the crossing and steer straight at the far landing.
+            plan.CornerIndex = plan.Corners.Count > 1
+                               && HorizontalDistance(plan.Corners[0], position) <= CornerArrivalDistance
+                               && !plan.LinkCornerIndices.Contains(0)
+                ? 1
+                : 0;
             plan.Policy.NotePlanned(Time.time, service.SurfaceGeneration, failed: false);
             if (newGoal)
             {
                 ProgressStamp++;
             }
+        }
+
+        private static bool IsIsland(List<Vector3> corners, Vector3 position)
+        {
+            foreach (var corner in corners)
+            {
+                if (HorizontalDistance(corner, position) > IslandMeters)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void AppendCorners(List<Vector3> corners)
+        {
+            var count = path.GetCornersNonAlloc(cornerBuffer);
+            if (count >= MaxCorners)
+            {
+                corners.AddRange(path.corners);
+                return;
+            }
+
+            for (var index = 0; index < count; index++)
+            {
+                corners.Add(cornerBuffer[index]);
+            }
+        }
+
+        /// <summary>
+        /// A route over a gate elevator (a ~400 m link to Surface) can run out of the path
+        /// search's node budget, which comes back partial and ends wherever is nearest the goal
+        /// (the LCZ 173 gallery for the Surface escape zone). Plan to the elevator whose far
+        /// landing is nearest the goal instead, when the goal is reachable from that landing; the
+        /// replan after the ride covers the rest. Only runs for partial plans.
+        /// </summary>
+        private bool TryPlanViaElevator(Vector3 start, Vector3 goal, int areaMask, List<Vector3> corners)
+        {
+            var links = service.Links.Links;
+            var startDistance = Vector3.Distance(start, goal);
+            var tried = 0;
+            var lastFarDistance = -1f;
+            while (tried < MaxElevatorDetours)
+            {
+                // Next link by far-landing distance to the goal (selection over a dozen links).
+                var bestIndex = -1;
+                var bestFromA = false;
+                var bestDistance = float.PositiveInfinity;
+                for (var index = 0; index < links.Count; index++)
+                {
+                    var link = links[index];
+                    var fromA = Vector3.Distance(link.LandingB, goal) <= Vector3.Distance(link.LandingA, goal);
+                    var distance = Vector3.Distance(fromA ? link.LandingB : link.LandingA, goal);
+                    if (distance > lastFarDistance && distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        bestIndex = index;
+                        bestFromA = fromA;
+                    }
+                }
+
+                if (bestIndex < 0 || bestDistance > startDistance * ElevatorDetourGain)
+                {
+                    return false;
+                }
+
+                tried++;
+                lastFarDistance = bestDistance;
+                var chosen = links[bestIndex];
+                var near = bestFromA ? chosen.LandingA : chosen.LandingB;
+                var far = bestFromA ? chosen.LandingB : chosen.LandingA;
+                if (!NavMesh.CalculatePath(far, goal, areaMask, path) || path.status != NavMeshPathStatus.PathComplete)
+                {
+                    continue;
+                }
+
+                if (!NavMesh.CalculatePath(start, near, areaMask, path) || path.status != NavMeshPathStatus.PathComplete)
+                {
+                    continue;
+                }
+
+                AppendCorners(corners);
+                corners.Add(far);
+                return true;
+            }
+
+            return false;
         }
 
         private void FailPlan(Plan plan, string reason, Vector3 position, Vector3 goalPosition, ushort permissions, NavMeshPathStatus status)
@@ -429,6 +566,26 @@ namespace SCPSLBot.Navigation.Runtime
                 {
                     plan.LinkCornerIndices.Add(index);
                     plan.LinkAtCorner.Add(link);
+                    index++;
+                    continue;
+                }
+
+                // Nothing but an elevator moves a path several meters up or down between two
+                // corners; an unmatched pair would otherwise be walked as a straight leg into the
+                // shaft wall. Pair it with the elevator whose landings are nearest.
+                if (Mathf.Abs(corners[index + 1].y - corners[index].y) > LinkVerticalJump)
+                {
+                    if (registry.TryGetLinkBetween(corners[index], corners[index + 1], LinkFallbackMatchDistance, out var nearest))
+                    {
+                        plan.LinkCornerIndices.Add(index);
+                        plan.LinkAtCorner.Add(nearest);
+                        index++;
+                    }
+                    else if (Time.time >= nextPlanFailureLogAt)
+                    {
+                        nextPlanFailureLogAt = Time.time + 5f;
+                        LabLogger.Warn($"[BotNav] PLAN_VERTICAL_JUMP_WITHOUT_LINK bot={BotName} from={Format(corners[index])} to={Format(corners[index + 1])}");
+                    }
                 }
             }
         }
@@ -558,12 +715,15 @@ namespace SCPSLBot.Navigation.Runtime
                 return 0;
             }
 
-            var permissions = DoorPermissionFlags.None;
+            // Native DoorPermissionsPolicy.CheckPermissions asks a role provider (every standard
+            // SCP: ScpOverride) exclusively; only role-less humans use the held item. Locomotion
+            // equips the matching keycard at the door, so every carried card counts for planning.
             if (hub.roleManager?.CurrentRole is IDoorPermissionProvider roleProvider)
             {
-                permissions |= roleProvider.GetPermissions(null);
+                return (ushort)roleProvider.GetPermissions(null);
             }
 
+            var permissions = DoorPermissionFlags.None;
             var items = hub.inventory?.UserInventory?.Items;
             if (items != null)
             {
@@ -579,10 +739,14 @@ namespace SCPSLBot.Navigation.Runtime
             return (ushort)permissions;
         }
 
+        // SCP-106 walks through every door that is IScp106Passable (nearly all of them); door
+        // areas only carry permission classes, so it plans like a bypassing player.
         private bool IsBypass()
         {
             var hub = botPlayer.BotHub?.PlayerHub;
-            return hub != null && hub.serverRoles != null && hub.serverRoles.BypassMode;
+            return hub != null
+                   && ((hub.serverRoles != null && hub.serverRoles.BypassMode)
+                       || hub.roleManager?.CurrentRole?.RoleTypeId == PlayerRoles.RoleTypeId.Scp106);
         }
 
         private void NoteReplan()

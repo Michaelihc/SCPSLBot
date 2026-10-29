@@ -67,6 +67,8 @@ namespace SCPSLBot.Navigation.Authored
         /// </summary>
         public int ProgressStamp { get; private set; }
 
+        public int PlanVersion { get; private set; }
+
         private int replansInWindow;
         private float replanWindowStart;
         private static float nextReplanStormLogAt;
@@ -335,6 +337,7 @@ namespace SCPSLBot.Navigation.Authored
             this.currentCell = withinCell.Value;
             this.goalCell = targetCell.Value;
             plannedTopologyVersion = NavigationMesh.TopologyVersion;
+            PlanVersion++;
 
             var outcome = NavigationMesh.FindShortestPath(withinCell.Value, targetCell.Value, this.CellsPath, allowPartial: true);
             this.currentPathIdx = 0;
@@ -587,6 +590,9 @@ namespace SCPSLBot.Navigation.Authored
             ForceReplan();
             return true;
         }
+
+        /// <summary>Cell links carry the penalty; penalize the crossing the bot is attempting.</summary>
+        public bool ReportBlockedAt(Vector3 position) => ReportBlockedCrossing();
 
         private static string Describe(TransformCell cell)
         {

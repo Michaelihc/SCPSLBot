@@ -1,26 +1,32 @@
 ﻿using Scp914;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
-using System;
 using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 {
+    /// <summary>Walks to the SCP-914 controls, turns the knob to <see cref="KnobSetting"/> and starts the machine.</summary>
     internal class GoToStartScp914OnSetting : GoTo<Scp914Location>
     {
+        private const float ControlsArrivalMeters = 1f;
+        private const float InteractRetrySeconds = 0.6f;
+
         public readonly Scp914KnobSetting KnobSetting;
-        public GoToStartScp914OnSetting(Scp914KnobSetting knobSetting, FpcBotPlayer botPlayer) : base(0, botPlayer)
+        public GoToStartScp914OnSetting(Scp914KnobSetting knobSetting, FpcBotPlayer botPlayer) : base(botPlayer)
         {
             this.KnobSetting = knobSetting;
-            this.botPlayer = botPlayer;
         }
 
         private Scp914Controls scp914Controls;
+        private Scp914RunningOnSetting runningOnSetting;
+        private float nextInteractAt;
+        private bool activated;
 
         public override void SetEnabledByBeliefs(FpcMind fpcMind)
         {
             scp914Controls = fpcMind.GetBelief<Scp914Controls>();
+            runningOnSetting = fpcMind.GetBelief<Scp914RunningOnSetting>();
 
-            base.SetEnabledByBeliefs(fpcMind, () => this.location.ControlsPosition!.Value);
+            base.SetEnabledByBeliefs(fpcMind);
         }
 
         public override void SetImpactsBeliefs(FpcMind fpcMind)
@@ -30,40 +36,76 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 
         public override float Weight { get; } = 1.5f;   // "average" effort to target knob setting
 
-        private readonly FpcBotPlayer botPlayer;
+        public override float Cost => (HasTarget() && location.ControlsPosition.HasValue
+            ? Vector3.Distance(location.ControlsPosition.Value, botPlayer.CameraPosition)
+            : UnknownDistanceMeters) * Weight;
 
-        public override void Tick()
+        public override void Reset()
         {
-            var playerPosition = this.botPlayer.BotHub.PlayerHub.transform.position;
-            var controlsPosition = this.location.ControlsPosition!.Value;
+            nextInteractAt = 0f;
+            activated = false;
+            base.Reset();
+        }
 
-            if (Vector3.Distance(playerPosition, controlsPosition) > 1f)
+        protected override ActionStatus TickTowardsTarget()
+        {
+            if (!location.ControlsPosition.HasValue)
+            {
+                return ActionStatus.Failed;
+            }
+
+            if (activated && runningOnSetting.RunningKnobSetting == KnobSetting)
+            {
+                return ActionStatus.Completed;
+            }
+
+            var playerPosition = this.botPlayer.PlayerPosition;
+            var controlsPosition = this.location.ControlsPosition.Value;
+
+            if (Vector3.Distance(playerPosition, controlsPosition) > ControlsArrivalMeters)
             {
                 this.botPlayer.MoveToPosition(controlsPosition);
             }
+            else
+            {
+                this.botPlayer.Locomotion.Stop();
+            }
 
-            var currentSetting = this.scp914Controls.KnobSetting;
+            if (Time.time < nextInteractAt)
+            {
+                return ActionStatus.Running;
+            }
+
+            var controller = Scp914Controller.Singleton;
+            var currentSetting = controller != null ? controller.KnobSetting : this.scp914Controls.KnobSetting;
             if (currentSetting != this.KnobSetting)
             {
-                var settingKnob = this.scp914Controls.SettingKnob;
-                if (!settingKnob || !this.botPlayer.Interact(settingKnob))
+                var settingKnob = this.location.SettingKnob ? this.location.SettingKnob : this.scp914Controls.SettingKnob;
+                if (settingKnob && this.botPlayer.Interact(settingKnob))
                 {
-                    var knobSettingPosition = this.location.SettingKnobPosition!.Value;
-                    this.botPlayer.LookToPosition(knobSettingPosition);
+                    nextInteractAt = Time.time + InteractRetrySeconds;
                 }
-                return;
+                else
+                {
+                    this.botPlayer.LookToPosition(this.location.SettingKnobPosition!.Value);
+                }
+
+                return ActionStatus.Running;
             }
 
-            var startKnob = this.scp914Controls.StartKnob;
-            if (!startKnob || !this.botPlayer.Interact(startKnob))
+            var startKnob = this.location.StartKnob ? this.location.StartKnob : this.scp914Controls.StartKnob;
+            if (startKnob && this.botPlayer.Interact(startKnob))
             {
-                var startKnobPosition = this.location.StartKnobPosition!.Value;
-                this.botPlayer.LookToPosition(startKnobPosition);
+                activated = true;
+                nextInteractAt = Time.time + InteractRetrySeconds;
             }
-        }
+            else
+            {
+                this.botPlayer.LookToPosition(this.location.StartKnobPosition!.Value);
+            }
 
-        public override void Reset()
-        { }
+            return ActionStatus.Running;
+        }
 
         public override string ToString()
         {

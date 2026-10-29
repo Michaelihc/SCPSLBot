@@ -1,0 +1,7 @@
+language: cn
+normal_round_bot_count: 5
+navigation:
+  backend: Runtime
+round_trace:
+  enabled: true
+  sample_interval_seconds: 1

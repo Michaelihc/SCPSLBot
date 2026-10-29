@@ -8,11 +8,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 {
     internal class GoToDropItemInIntakeChamber<C> : GoTo<Scp914Location> where C : IItemBeliefCriteria, IEquatable<C>
     {
+        private const float DropArrivalMeters = 0.4f;
+        // Long enough for the machine to run; the upgraded pickup gets a new serial.
+        private const float DroppedInputSeconds = 120f;
+
         public C Criteria { get; }
-        public GoToDropItemInIntakeChamber(C criteria, FpcBotPlayer botPlayer) : base(0, botPlayer)
+        public GoToDropItemInIntakeChamber(C criteria, FpcBotPlayer botPlayer) : base(botPlayer)
         {
             this.Criteria = criteria;
-            this.botPlayer = botPlayer;
         }
 
         private ItemInInventory<C> itemInInventoryBelief;
@@ -22,7 +25,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
         {
             this.itemInInventoryBelief = fpcMind.ActionEnabledBy<ItemInInventory<C>>(this, b => b.Criteria.Equals(this.Criteria), b => b.Item);
 
-            base.SetEnabledByBeliefs(fpcMind, () => this.location.IntakeChamberPosition!.Value);
+            base.SetEnabledByBeliefs(fpcMind);
         }
 
         public override void SetImpactsBeliefs(FpcMind fpcMind)
@@ -32,27 +35,39 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 
         public override float Weight { get; } = 1f;
 
-        private readonly FpcBotPlayer botPlayer;
+        public override float Cost => (HasTarget() && location.IntakeChamberPosition.HasValue
+            ? Vector3.Distance(location.IntakeChamberPosition.Value, botPlayer.CameraPosition)
+            : UnknownDistanceMeters) * Weight;
 
-        public override void Tick()
+        protected override ActionStatus TickTowardsTarget()
         {
-            var itemDropPosition = location.IntakeChamberPosition!.Value;
+            if (!location.IntakeChamberPosition.HasValue)
+            {
+                return ActionStatus.Failed;
+            }
+
+            var itemDropPosition = location.IntakeChamberPosition.Value;
             var playerPosition = botPlayer.PlayerPosition with { y = itemDropPosition.y };
 
-
-            if (Vector3.Distance(playerPosition, itemDropPosition) > 0.4f)
+            if (Vector3.Distance(playerPosition, itemDropPosition) > DropArrivalMeters)
             {
                 botPlayer.MoveToPosition(itemDropPosition);
-                return;
+                return ActionStatus.Running;
             }
 
             var itemToDrop = itemInInventoryBelief.Item;
+            if (itemToDrop == null)
+            {
+                return ActionStatus.Failed;
+            }
+
+            botPlayer.Locomotion.Stop();
+            // Neither this mind nor the loot behavior may take the input back out of the chamber.
+            BotPickupMemory.For(botPlayer).Block(itemToDrop.ItemSerial, DroppedInputSeconds);
             itemToDrop.ServerDropItem(true);
             itemInIntakeChamber.Update(playerPosition - itemDropPosition);
+            return ActionStatus.Completed;
         }
-
-        public override void Reset()
-        { }
 
         public override string ToString()
         {

@@ -15,7 +15,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
         public List<RoomIdentifier> ForeignRooms => foreignRooms;
         public RoomIdentifier RoomWithin { get; private set; }
 
+        /// <summary>When false the room and its entries are still tracked, but no belief-feeding events are raised.</summary>
+        public bool RaiseEvents { get; set; } = true;
+
+        protected override bool RaiseSightSensingEvent => RaiseEvents;
+
+        /// <summary>Raised once per entry when the room or the topology changed (not every pass).</summary>
         public event Action<RoomEntry> OnSensedForeignRoomEntry;
+        /// <summary>Raised after the entries when the room or the topology changed (not every pass).</summary>
         public event Action OnAfterSensedForeignRooms;
 
         public event Action<RoomIdentifier> OnSensedRoomWithin;
@@ -26,6 +33,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
         private RoomIdentifier cachedTopologyRoom;
         private INavigationBackend cachedBackend;
         private int cachedTopologyVersion = -1;
+        // Bumped whenever ForeignRoomEntries is rebuilt or cleared; the room events fire only
+        // for a version their subscribers have not seen.
+        private int entriesVersion;
+        private int raisedEntriesVersion = -1;
 
         public RoomSightSense(FpcBotPlayer botPlayer) : base(botPlayer)
         {
@@ -36,7 +47,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
         {
             UpdateRoomWithin();
             UpdateForeignRoomEntries();
+            if (!RaiseEvents)
+            {
+                // Re-enabling (a role with an objective again) must refresh the beliefs.
+                raisedEntriesVersion = -1;
+                return;
+            }
 
+            if (raisedEntriesVersion == entriesVersion)
+            {
+                return;
+            }
+
+            raisedEntriesVersion = entriesVersion;
             foreach (var entry in ForeignRoomEntries)
             {
                 OnSensedForeignRoomEntry?.Invoke(entry);
@@ -54,7 +77,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
                 return;
             }
 
-            OnSensedRoomWithin?.Invoke(newRoomWithin);
+            if (RaiseEvents)
+            {
+                OnSensedRoomWithin?.Invoke(newRoomWithin);
+            }
+
             RoomWithin = newRoomWithin;
         }
 
@@ -63,6 +90,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
             var backend = NavigationSystem.Instance.Backend;
             if (!RoomWithin || backend == null || !backend.RoomHasNavigation(RoomWithin))
             {
+                if (cachedTopologyRoom != null || ForeignRoomEntries.Count > 0)
+                {
+                    entriesVersion++;
+                }
+
                 ForeignRoomEntries.Clear();
                 foreignRooms.Clear();
                 foreignRoomsSet.Clear();
@@ -96,6 +128,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Perception.Senses
             cachedTopologyRoom = RoomWithin;
             cachedBackend = backend;
             cachedTopologyVersion = backend.TopologyVersion;
+            entriesVersion++;
         }
 
         public void ProcessEnter(Collider other)

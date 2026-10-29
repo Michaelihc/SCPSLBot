@@ -27,7 +27,10 @@ namespace SCPSLBot.Navigation.Runtime
         private const float EventReconcileDelaySeconds = 0.75f;
         private const float RoomBoundsPadding = 6f;
         private const int TileSizeVoxels = 128;
-        private const float AgentRadiusClearance = 0.05f;
+        // Recast erodes by whole voxels, rounding the agent radius up. The capsule radius plus a
+        // skin clearance rounded up to 0.45 m and cut the ~1 m flights of the LCZ 173 spiral
+        // stairs off the mesh; the navigator insets corners on its own (CornerInsetMeters).
+        private const float VoxelRoundingTolerance = 0.1f;
         private const float AgentHeightTolerance = 0.25f;
 
         private readonly List<NavMeshBuildSource> sources = new();
@@ -229,15 +232,20 @@ namespace SCPSLBot.Navigation.Runtime
                    + $"custom_region={(customBounds.HasValue ? customBounds.Value.ToString() : "none")} custom_sources={collector.CustomSources} error={(string.IsNullOrEmpty(LastError) ? "none" : LastError)}";
         }
 
+        /// <summary>The capsule radius, rounded to the voxel count Recast will erode by (not one voxel beyond it).</summary>
+        internal static float ErosionRadius(float capsuleRadius, float voxelSize)
+        {
+            var voxels = Mathf.Max(1, Mathf.CeilToInt(capsuleRadius / voxelSize - VoxelRoundingTolerance));
+            return voxels * voxelSize - voxelSize * 0.01f;
+        }
+
         private bool TryPrepare()
         {
             try
             {
                 NavigationAgentProfile.Invalidate();
                 settings = NavMesh.GetSettingsByID(0);
-                // A little more than the capsule radius so string-pulled corners clear the
-                // controller's skin instead of scraping walls along long straight segments.
-                settings.agentRadius = NavigationAgentProfile.Radius + AgentRadiusClearance;
+                settings.agentRadius = ErosionRadius(NavigationAgentProfile.Radius, config.VoxelSize);
                 settings.agentHeight = NavigationAgentProfile.Height - AgentHeightTolerance;
                 settings.agentClimb = Mathf.Max(0.3f, NavigationAgentProfile.StepOffset + 0.08f);
                 settings.agentSlope = 45f;

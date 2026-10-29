@@ -4,6 +4,7 @@ using LabApi.Features.Console;
 using LabApi.Loader.Features.Plugins;
 using LabApi.Loader.Features.Plugins.Enums;
 using SCPSLBot.AI;
+using SCPSLBot.Diagnostics;
 using SCPSLBot.Api;
 using SCPSLBot.Health;
 using SCPSLBot.Navigation;
@@ -33,6 +34,7 @@ namespace SCPSLBot
         private bool navigationEditorStarted;
         private bool botManagerStarted;
         private bool normalRoundBotsStarted;
+        private bool roundTraceStarted;
         private readonly NormalRoundBotSpawner normalRoundBots = new();
         private bool presentationStarted;
         private bool isEnabled;
@@ -97,6 +99,8 @@ namespace SCPSLBot
                 BotManager.Instance.Init();
                 normalRoundBotsStarted = true;
                 normalRoundBots.Init(Config);
+                roundTraceStarted = true;
+                RoundTraceRecorder.Instance.Init(Config.RoundTrace);
 
                 isEnabled = true;
                 Logger.Info("Enabled plugin.");
@@ -125,6 +129,7 @@ namespace SCPSLBot
             NetworkHealth?.Disable();
             NetworkHealth = null;
 
+            ShutdownComponent(ref roundTraceStarted, RoundTraceRecorder.Instance.Terminate, nameof(RoundTraceRecorder));
             ShutdownComponent(ref normalRoundBotsStarted, normalRoundBots.Terminate, nameof(NormalRoundBotSpawner));
             ShutdownComponent(ref botManagerStarted, BotManager.Instance.Terminate, nameof(BotManager));
             ShutdownComponent(ref navigationEditorStarted, NavigationMeshEditor.Instance.Terminate, nameof(NavigationMeshEditor));

@@ -1,3 +1,4 @@
+using Interactables.Interobjects.DoorUtils;
 using PlayerRoles;
 using UnityEngine;
 
@@ -18,6 +19,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
 
         private float damageStrafeUntil;
 
+        public bool IsUnderFire => Time.time < damageStrafeUntil;
+
         public ScpCombatStrategy(FpcBotCombat combat, CombatTargetSelector targetSelector)
         {
             this.combat = combat;
@@ -25,6 +28,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             scp173Strategy = new Scp173CombatStrategy(combat, this);
             standardStrategy = new StandardScpCombatStrategy(combat, scp096Strategy);
         }
+
+        internal ScpAbilities.Scp939CombatAbilities Scp939 => standardStrategy.Scp939;
 
         internal float NextAttackTime
         {
@@ -43,6 +48,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         {
             scp096Strategy.EndRageIfExpired(role);
             scp173Strategy.ReleaseHeldBlinkIfNeeded(role);
+            standardStrategy.ResetHeldAbilities(role);
+        }
+
+        /// <summary>Called when the bot has no combat target any more.</summary>
+        public void OnCombatEnded()
+        {
+            standardStrategy.ReleaseHeldAbilities();
+        }
+
+        /// <summary>Lets an enraged SCP-096 pry a closed gate on its chase path instead of opening it.</summary>
+        public bool TryPryGate(DoorVariant door, Vector3 hitPoint)
+        {
+            return scp096Strategy.TryPryGate(door, hitPoint);
         }
 
         public bool TrySelectPriorityTarget(RoleTypeId role, out CombatTarget target)
@@ -76,14 +94,17 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return;
             }
 
-            standardStrategy.TryUseChaseAbility(role);
+            if (standardStrategy.TryUseChaseAbility(role, target, this))
+            {
+                return;
+            }
+
             if (standardStrategy.TryUseStrictAttack(role, target, this))
             {
                 return;
             }
 
-            var attackRange = standardStrategy.GetAttackRange(role);
-            var closeScp096Target = role == RoleTypeId.Scp096 && target.Distance <= attackRange;
+            var closeScp096Target = role == RoleTypeId.Scp096 && target.Distance <= standardStrategy.GetAttackRange(role);
             if (!target.HasLineOfSight && !closeScp096Target)
             {
                 return;
@@ -94,10 +115,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 return;
             }
 
-            var maxAttackAimAngle = closeScp096Target ? 180f : 35f;
-            if (target.Distance > attackRange
-                || Time.time < NextAttackTime
-                || !combat.IsAimedAt(aimPoint, maxAttackAimAngle))
+            if (Time.time < NextAttackTime
+                || (!closeScp096Target && !standardStrategy.CanHit(role, target, aimPoint)))
             {
                 return;
             }

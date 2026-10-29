@@ -1,4 +1,4 @@
-﻿using MapGeneration.Distributors;
+using MapGeneration.Distributors;
 using SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
 using System;
@@ -6,16 +6,18 @@ using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
 {
+    /// <summary>Walks to a spot where a locker may have spawned and looks at it, so its chambers become known.</summary>
     internal class GoToLockerSpawnLocation<C> : GoTo<LockerSpawnsLocation> where C : IItemBeliefCriteria, IEquatable<C>
     {
+        private const float ArrivalMeters = 1.75f;
+        private const float CheckedSpotSeconds = 600f;
+
         public C Criteria { get; }
         public StructureType StructureType { get; }
-        public GoToLockerSpawnLocation(C criteria, StructureType structureType, FpcBotPlayer botPlayer) : base(0, botPlayer)
+        public GoToLockerSpawnLocation(C criteria, StructureType structureType, FpcBotPlayer botPlayer) : base(botPlayer)
         {
             this.Criteria = criteria;
             this.StructureType = structureType;
-
-            this.botPlayer = botPlayer;
         }
 
         public override void SetImpactsBeliefs(FpcMind fpcMind)
@@ -25,32 +27,21 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
 
         public override float Weight { get; } = 1f / ((1f / 4f) * 3f - Mathf.Pow(1f / 4f, 3f));
 
-        protected readonly FpcBotPlayer botPlayer;
-
-        public override void Tick()
+        protected override ActionStatus TickTowardsTarget()
         {
-            var spawnPosition = location.Positions[Idx];
-            var cameraPosition = botPlayer.BotHub.PlayerHub.PlayerCameraReference.position;
-
-            var dist = Vector3.Distance(spawnPosition, cameraPosition);
-
-            if (dist > 1.75f)
+            if (!MoveToTarget(ArrivalMeters))
             {
-                botPlayer.MoveToPosition(spawnPosition);
-                return;
+                return ActionStatus.Running;
             }
 
-            var cameraDirection = botPlayer.BotHub.PlayerHub.PlayerCameraReference.forward;
-
-            if (Vector3.Dot((spawnPosition - cameraPosition).normalized, cameraDirection) <= 1f - .0001f)
+            if (!LookAt(Target))
             {
-                botPlayer.LookToPosition(spawnPosition);
-                return;
+                return ActionStatus.Running;
             }
+
+            MarkTargetDone(CheckedSpotSeconds);
+            return ActionStatus.Completed;
         }
-
-        public override void Reset()
-        { }
 
         public override string ToString()
         {

@@ -3,6 +3,9 @@ using Interactables.Interobjects;
 using Interactables.Interobjects.DoorUtils;
 using NetworkManagerUtils.Dummies;
 using PlayerRoles;
+using SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities;
+using SCPSLBot.AI.FirstPersonControl.Movement;
+using SCPSLBot.AI.FirstPersonControl.Brain.Human;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,14 +25,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         private readonly CombatTargetSelector targetSelector;
         private readonly HumanWeaponCombatStrategy humanStrategy;
         private readonly ScpCombatStrategy scpStrategy;
-        private readonly List<DummyAction> dummyActions = new();
+        private readonly Dictionary<(string Category, string Name), DummyAction> resolvedDummyActions = new();
         private readonly System.Random random = new();
 
-        private int dummyActionsFrame = -1;
+        private List<DummyAction> dummyActions = new();
         private float nextStrafeFlipTime;
         private float nextShotTime;
         private float nextSurfaceDoorDebugLogTime;
         private int strafeDirection = 1;
+        private FleeBehavior civilianFlee;
 
         public static BotCombatDifficulty Difficulty { get; set; } = BotCombatDifficulty.Hardest;
 
@@ -40,6 +44,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         public string DiagnosticState { get; private set; } = "idle";
 
         internal FpcBotPlayer BotPlayer => botPlayer;
+        internal ScpAbilitySet Abilities { get; }
+        internal Scp939CombatAbilities Scp939 => scpStrategy.Scp939;
         internal ReferenceHub CurrentTarget => targetSelector.CurrentTarget;
         internal int StrafeDirection => strafeDirection;
         internal float NextShotTime
@@ -53,6 +59,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         public FpcBotCombat(FpcBotPlayer botPlayer)
         {
             this.botPlayer = botPlayer;
+            Abilities = new ScpAbilitySet(botPlayer);
             targetSelector = new CombatTargetSelector(botPlayer);
             humanStrategy = new HumanWeaponCombatStrategy(this);
             scpStrategy = new ScpCombatStrategy(this, targetSelector);
@@ -74,6 +81,23 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             var settings = CurrentSettings;
             var botHub = botPlayer.BotHub.PlayerHub;
             var role = botHub.roleManager.CurrentRole.RoleTypeId;
+            var civilianEvading = false;
+            if (HumanInventory.IsCivilian(role))
+            {
+                civilianFlee ??= botPlayer.Brain.Get<FleeBehavior>();
+                civilianEvading = civilianFlee?.ShouldPreemptCombat == true;
+            }
+
+            if (botHub.roleManager.CurrentRole.Team != Team.SCPs && (!humanStrategy.CanEngage() || civilianEvading))
+            {
+                // Nothing to fight with (normal round, no usable firearm): the brain's survival
+                // behaviors keep this human away from threats instead.
+                targetSelector.Clear();
+                DiagnosticHasLineOfSight = false;
+                DiagnosticState = civilianEvading ? "evading" : "unarmed";
+                return false;
+            }
+
             scpStrategy.PrepareForTick(role);
 
             CombatTarget target;
@@ -98,6 +122,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 DiagnosticHasLineOfSight = false;
                 DiagnosticState = "idle";
                 scpStrategy.ClearPriorityTarget();
+                scpStrategy.OnCombatEnded();
                 return false;
             }
             else if (target != null && targetSelector.CurrentTarget != target.Hub)
@@ -165,6 +190,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                     continue;
                 }
 
+                if (scpStrategy.TryPryGate(door, hit.point))
+                {
+                    return;
+                }
+
                 var doorPlane = new Plane(door.transform.forward, door.transform.position);
                 var distance = Mathf.Abs(doorPlane.GetDistanceToPoint(botPlayer.PlayerPosition));
 
@@ -184,9 +214,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             }
         }
 
-        private static bool CanOpenCombatDoor(DoorVariant door)
+        // Never interact with a door that is already opening (TargetState): locomotion may have
+        // just opened it, and a second interaction once the animation cooldown ends closes it.
+        // SCP-106 keeps walking at a door it phases through instead of stopping to open it.
+        private bool CanOpenCombatDoor(DoorVariant door)
         {
             return door
+                   && !DoorAccess.IsPhasedThrough(botPlayer.BotHub.PlayerHub, door)
+                   && !door.TargetState
                    && !door.IsConsideredOpen()
                    && door is not DummyDoor
                    && door is not ElevatorDoor
@@ -312,17 +347,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
                 : TryClickDummyAction(actionName);
         }
 
+        // The native collector already caches the role and inventory actions of a dummy and rebuilds
+        // them only when a provider reports a change, so the list is read directly instead of being
+        // copied (and the inventory re-enumerated) on every click. Resolved actions are cached by name
+        // and dropped whenever the native list is rebuilt; the delegates stay valid between rebuilds.
         private void EnsureDummyActions()
         {
-            if (dummyActionsFrame == Time.frameCount)
+            var hub = botPlayer.BotHub.PlayerHub;
+            if (DummyActionCollector.IsDirty(hub))
             {
-                return;
+                resolvedDummyActions.Clear();
             }
 
-            dummyActionsFrame = Time.frameCount;
-            dummyActions.Clear();
-            dummyActions.AddRange(DummyActionCollector.ServerGetActions(botPlayer.BotHub.PlayerHub));
-            botPlayer.BotHub.PlayerHub.inventory.PopulateDummyActions(dummyActions.Add, _ => { });
+            dummyActions = DummyActionCollector.ServerGetActions(hub);
         }
 
         internal bool TryClickDummyAction(string actionName)
@@ -333,14 +370,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             }
 
             EnsureDummyActions();
-            var dummyAction = FindDummyAction(actionName);
+            var key = (string.Empty, actionName);
+            if (!resolvedDummyActions.TryGetValue(key, out var dummyAction))
+            {
+                dummyAction = FindDummyAction(actionName);
+                resolvedDummyActions[key] = dummyAction;
+            }
+
             if (dummyAction.Action == null)
             {
                 return false;
             }
 
             dummyAction.Action.Invoke();
-            dummyActionsFrame = -1;
             return true;
         }
 
@@ -352,14 +394,19 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
             }
 
             EnsureDummyActions();
-            var dummyAction = FindDummyAction(categoryName, actionName);
+            var key = (categoryName, actionName);
+            if (!resolvedDummyActions.TryGetValue(key, out var dummyAction))
+            {
+                dummyAction = FindDummyAction(categoryName, actionName);
+                resolvedDummyActions[key] = dummyAction;
+            }
+
             if (dummyAction.Action == null)
             {
                 return false;
             }
 
             dummyAction.Action.Invoke();
-            dummyActionsFrame = -1;
             return true;
         }
 

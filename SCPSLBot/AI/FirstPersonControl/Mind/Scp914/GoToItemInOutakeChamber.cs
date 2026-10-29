@@ -2,14 +2,18 @@
 using SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions;
 using SCPSLBot.AI.FirstPersonControl.Mind.Item.Beliefs;
 using System;
+using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 {
+    /// <summary>Walks to the output chamber and looks at the upgraded item so the sighting beliefs pick it up.</summary>
     internal class GoToItemInOutakeChamber<C> : GoTo<ItemsInOutakeChamber, IItemBeliefCriteria> where C : IItemBeliefCriteria, IEquatable<C>
     {
-        public GoToItemInOutakeChamber(C criteria, FpcBotPlayer botPlayer) : base(criteria, 0, botPlayer)
-        { 
-            this.botPlayer = botPlayer;
+        private const float ArrivalMeters = 1.5f;
+        private const float LookedSeconds = 10f;
+
+        public GoToItemInOutakeChamber(C criteria, FpcBotPlayer botPlayer) : base(criteria, botPlayer)
+        {
         }
 
         private Scp914Location scp914Location;
@@ -18,7 +22,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
         {
             this.scp914Location = fpcMind.GetBelief<Scp914Location>();
 
-            base.SetEnabledByBeliefs(fpcMind, () => scp914Location.OutakeChamberPosition!.Value);
+            base.SetEnabledByBeliefs(fpcMind);
         }
 
         public override void SetImpactsBeliefs(FpcMind fpcMind)
@@ -28,21 +32,32 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
 
         public override float Weight { get; } = 1f;
 
-        private readonly FpcBotPlayer botPlayer;
-
-        public override void Tick()
+        protected override ActionStatus TickTowardsTarget()
         {
-            var outakeChamberPosition = scp914Location.OutakeChamberPosition!.Value;
-            var playerPosition = botPlayer.PlayerPosition with { y = outakeChamberPosition.y };
+            if (!scp914Location.OutakeChamberPosition.HasValue)
+            {
+                return ActionStatus.Failed;
+            }
 
-            botPlayer.MoveToPosition(outakeChamberPosition);
+            var outakeChamberPosition = scp914Location.OutakeChamberPosition.Value;
+            var arrived = Vector3.Distance(outakeChamberPosition, botPlayer.CameraPosition) <= ArrivalMeters;
+            if (arrived)
+            {
+                botPlayer.Locomotion.Stop();
+            }
+            else
+            {
+                botPlayer.MoveToPosition(outakeChamberPosition);
+            }
 
-            var transformedItemPosition = location.Positions[Idx];
-            botPlayer.LookToPosition(transformedItemPosition);
+            if (!LookAt(Target, 5f) || !arrived)
+            {
+                return ActionStatus.Running;
+            }
+
+            MarkTargetDone(LookedSeconds);
+            return ActionStatus.Completed;
         }
-
-        public override void Reset()
-        { }
 
         public override string ToString()
         {

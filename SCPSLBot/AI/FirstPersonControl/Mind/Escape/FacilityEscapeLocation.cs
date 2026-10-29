@@ -1,42 +1,45 @@
-﻿using MapGeneration;
+using MapGeneration;
 using SCPSLBot.AI.FirstPersonControl.Mind.Spacial;
 using SCPSLBot.AI.FirstPersonControl.Perception.Senses;
-using System.Linq;
 using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Mind.Escape
 {
+    /// <summary>
+    /// A standing point inside the native escape zone on Surface. Surface is the same every round
+    /// and every player knows where the escape is, so the point is resolved as soon as the
+    /// surface geometry exists instead of after the bot first sees Surface.
+    /// </summary>
     internal class FacilityEscapeLocation : Location
     {
-        public FacilityEscapeLocation(RoomSightSense roomSightSense) 
+        private const float RetrySeconds = 2f;
+
+        private static readonly int GroundMask = LayerMask.GetMask("Default");
+        private static readonly Vector3 roughEscapePosition = global::Escape.DefaultEscapeZone.center + new Vector3(0f, 0f, -10f);
+
+        private float nextAttemptAt;
+
+        public FacilityEscapeLocation(RoomSightSense roomSightSense)
         {
             roomSightSense.OnSensedRoomWithin += OnSensedRoomWithin;
         }
 
         private void OnSensedRoomWithin(RoomIdentifier roomWithin)
         {
-            if (Positions.Any())
+            if (Positions.Count > 0 || Time.time < nextAttemptAt)
             {
                 return;
             }
 
-            if (roomWithin.Name != RoomName.Outside)
+            nextAttemptAt = Time.time + RetrySeconds;
+            if (!Physics.Raycast(roughEscapePosition, Vector3.down, out var hit, 10f, GroundMask))
             {
+                if (BotLog.Verbose) Debug.LogWarning($"Raycast down from rough escape position produced no hits.");
                 return;
             }
 
-            if (!Physics.Raycast(roughEscapePosition, Vector3.down, out var hit, 10f, LayerMask.GetMask("Default")))
-            {
-                Debug.LogWarning($"Raycast down from rough escape position produced no hits.");
-                return;
-            }
-
-            var escapePosition = hit.point + Vector3.up * 1f;
-
-            AddPosition(escapePosition);
+            AddPosition(hit.point + Vector3.up * 1f);
         }
-
-        private static readonly Vector3 roughEscapePosition = global::Escape.DefaultEscapeZone.center + new Vector3(0f, 0f, -10f);
 
         public override string ToString()
         {
