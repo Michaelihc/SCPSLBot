@@ -11,7 +11,7 @@ function DuelPoint([double]$X,[double]$Y,[double]$Z) { @{x=$duelOrigin.x+$X;y=$d
 function DuelCommand([int]$Index,[string]$Command) { $null = Invoke-LabSetup $Command -ClientId $duelClients[$Index] }
 function AssertDuelViewer([int]$Index) {
     $actor = DuelActor $Index
-    if ($actor.role -ne 'NtfPrivate' -or [Math]::Abs($actor.position.z-($duelOrigin.z+18)) -gt 3 -or [Math]::Abs($actor.position.y-($duelOrigin.y+3.5)) -gt 2 -or @($actor.items).Count -ne 0) {
+    if ($actor.role -ne 'NtfPrivate' -or [Math]::Abs($actor.position.z-$duelViewing.z) -gt 3 -or [Math]::Abs($actor.position.y-$duelViewing.y) -gt 2 -or @($actor.items).Count -ne 0) {
         throw "Player $($duelIds[$Index]) is not an unarmed viewer: $($actor | ConvertTo-Json -Depth 8 -Compress)"
     }
 }
@@ -27,7 +27,7 @@ function AssertDuelMatch([int]$Left,[int]$Right) {
     if ((DuelActor $Right).role -ne 'ChaosConscript') { throw 'Opponent did not enter the native Chaos role' }
 }
 function DuelBoard([double]$X,[double]$Y,[string]$Name,[int]$Index=0) {
-    $null = Set-LabAim -Target (DuelPoint $X $Y 16.5) -ClientId $duelClients[$Index] -ActorId $duelIds[$Index]
+    $null = Set-LabAim -Target @{x=$duelViewing.x+$X;y=$duelViewing.y+$Y;z=$duelViewing.z-1.5} -ClientId $duelClients[$Index] -ActorId $duelIds[$Index]
     Invoke-LabInput @{id=$Name;frames=60;inputFrames=2;keys=@(101);capture=$true;audio=$true} -ClientId $duelClients[$Index]
 }
 $null = Invoke-LabServer '/forcestart'
@@ -37,6 +37,8 @@ Start-Sleep -Seconds 2
 $status = DuelStatus
 if ($status -notmatch 'origin=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing arena origin: $status" }
 $duelOrigin = @{x=[double]$Matches[1];y=[double]$Matches[2];z=[double]$Matches[3]}
+if ($status -notmatch 'viewing=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing viewing platform: $status" }
+$duelViewing = @{x=[double]$Matches[1];y=[double]$Matches[2];z=[double]$Matches[3]}
 $settings = Get-LabSettings -ClientId $duelClients[0]
 if (-not ($settings.settings | Where-Object { $_.type -eq 'SSDropdownSetting' -and ($_.options -join ' ') -match '1v1' })) {
     throw 'Authenticated client did not receive the duel zone option'
@@ -55,9 +57,9 @@ $beforeRepeat = DuelActor 0
 DuelCommand 0 '.duel'
 if ((DuelActor 0).life -ne $beforeRepeat.life) { throw 'Repeated entry reset the viewer' }
 $duelChecks.Add('all authenticated players enter viewing; repeated entry preserves life')
-$null = DuelBoard -1.15 3.2 'duel-select-everyone'
+$null = DuelBoard -1.15 -0.3 'duel-select-everyone'
 $board = Invoke-LabScreenshot -Name duel-viewer-selection -ClientId $duelClients[0]
-$null = DuelBoard 1.15 3.2 'duel-invite-everyone'
+$null = DuelBoard 1.15 -0.3 'duel-invite-everyone'
 if ((DuelStatus) -notmatch 'invited=3') { throw 'Native E board did not invite the three other eligible players' }
 $invitation = Invoke-LabScreenshot -Name duel-invitation -ClientId $duelClients[1]
 DuelCommand 1 ".accept $($duelIds[2])"

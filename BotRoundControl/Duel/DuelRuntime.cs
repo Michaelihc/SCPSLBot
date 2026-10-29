@@ -43,7 +43,7 @@ internal sealed partial class DuelRuntime
     { this.config = config; this.display = display; }
     private static float Now => Time.realtimeSinceStartup;
     private float InvitationLifetime => Mathf.Clamp(config.InvitationSeconds, 5f, 120f);
-    private Vector3 ViewingPosition => arena.Origin + new Vector3(0, 3.5f, 18);
+    private Vector3 ViewingPosition => arena.ViewingPosition;
     private static readonly Vector3[] ViewingOffsets =
     {
         Vector3.zero, new(2, 0, 0), new(-2, 0, 0), new(4, 0, 0), new(-4, 0, 0),
@@ -60,7 +60,7 @@ internal sealed partial class DuelRuntime
         + $"requests={requests.Count}; queued={queue.Count}; resident={residentWinner?.PlayerId ?? 0}; "
         + $"queue={string.Join(",", queue.Select(pair => pair.Left.PlayerId + "+" + pair.Right.PlayerId))}; "
         + $"king={config.KeepWinnerInArena}; challengers={challengeQueue.Count}; "
-        + $"challenge_queue={string.Join(",", challengeQueue.Select(p => p.PlayerId))}; origin={Origin}";
+        + $"challenge_queue={string.Join(",", challengeQueue.Select(p => p.PlayerId))}; origin={Origin}; viewing={ViewingPosition}";
 
     private static bool Current(Player player, string userId) => player != null && !player.IsDestroyed
         && player.ReferenceHub != null && player.IsReady && player.IsPlayer && !player.IsDummy && !player.IsHost
@@ -110,22 +110,19 @@ internal sealed partial class DuelRuntime
         PlayerEvents.ChangedRole -= OnChangedRole;
         PlayerEvents.Left -= OnLeft;
         Reset(true);
-        DestroyExtras();
         arena.Destroy();
         display?.Disable();
     }
     private void OnMapGenerated()
     {
         Reset(true);
-        DestroyExtras();
         Room? surface = Room.List.FirstOrDefault(r => r.Zone == MapGeneration.FacilityZone.Surface);
         if (surface == null) return;
         arena.Spawn(surface.Position + Vector3.up * Mathf.Clamp(config.SurfaceHeightOffset, 100f, 400f));
-        AddPrimitive(arena.Origin + new Vector3(0, 2.5f, 18f), new Vector3(12, 0.2f, 5), Color.gray);
         RefreshBoard();
-        Logger.Info($"[DuelArena] Model spawned: {arena.PrimitiveCount} primitives, {arena.LightCount} lights; {Status}");
+        Logger.Info($"[DuelArena] Model spawned: {arena.PrimitiveCount} primitives, {arena.LightCount} lights, {arena.TextCount} texts; {Status}");
     }
-    private void OnRestart() { Reset(false); DestroyExtras(); arena.Destroy(); }
+    private void OnRestart() { Reset(false); arena.Destroy(); }
     private void OnMapGenerated(MapGeneratedEventArgs ev) => OnMapGenerated();
 
     internal bool Enter(Player player, string userId)
@@ -178,7 +175,7 @@ internal sealed partial class DuelRuntime
     }
     private Participant Capture(Player player)
     {
-        // Authored poses on the 12 x 5 m deck; keep capsules away from its edges.
+        // Keep capsules in the central viewing area, away from the platform edges.
         // Reserve a pose through combat so returning fighters do not stack on viewers.
         int slot = Enumerable.Range(0, participants.Count + 1).First(index => participants.Values.All(p => p.ViewingSlot != index));
         var participant = new Participant(player, slot);

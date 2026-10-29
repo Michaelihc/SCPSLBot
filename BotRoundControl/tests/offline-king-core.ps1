@@ -1,4 +1,4 @@
-param($Context)
+param($Context,[switch]$ModelViews)
 $ErrorActionPreference = 'Stop'
 if ($Context.ClientIds.Count -ne 2) { throw 'This walkthrough needs two authenticated clients and keep_winner_in_arena: true' }
 $coreClients = @($Context.ClientIds)
@@ -29,6 +29,35 @@ foreach ($index in 0..1) { CoreCommand $index '.duel' }
 $status = CoreStatus
 if ($status -notmatch 'king=True;.*origin=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing king arena origin/config: $status" }
 $coreOrigin = @{x=[double]$Matches[1];y=[double]$Matches[2];z=[double]$Matches[3]}
+if ($status -notmatch 'viewing=\(([-\d.]+), ([-\d.]+), ([-\d.]+)\)') { throw "Missing viewing platform: $status" }
+$coreViewing = @{x=[double]$Matches[1];y=[double]$Matches[2];z=[double]$Matches[3]}
+if ($ModelViews) {
+    $viewer = CoreActor 0
+    if ([Math]::Abs($viewer.position.y-($coreOrigin.y+5.544851)) -gt 0.25 -or @($viewer.items).Count -ne 0) { throw 'Viewer is not standing unarmed on the supplied raised platform' }
+    $life = $viewer.life
+    CoreCommand 0 '.duel'
+    if ((CoreActor 0).life -ne $life) { throw 'Repeated entry reset the viewer' }
+    $null = Set-LabLook -Yaw 180 -Pitch 0 -ClientId $coreClients[0] -ActorId $coreIds[0]
+    $null = Invoke-LabScreenshot -Name duel-model-board -ClientId $coreClients[0]
+    # Framebuffer capture can lower FPS enough for a frame-counted walk to cross the viewing boundary.
+    # Measure this short walk without framebuffer capture, then inspect its resulting native pose.
+    $walk = Invoke-LabInput @{id='model-platform-walk';frames=60;inputFrames=12;keys=@(119);audio=$true} -ClientId $coreClients[0]
+    $walked = CoreActor 0
+    @{before=$viewer;after=$walked;input=$walk} | ConvertTo-Json -Depth 12 | Set-Content "$($Context.Evidence)/duel-platform-walk.json" -Encoding utf8
+    if ([Math]::Abs($walked.position.z-$viewer.position.z) -lt 0.25 -or [Math]::Abs($walked.position.y-$viewer.position.y) -gt 0.25) { throw 'Native walking did not stay on the supplied platform' }
+    $null = Invoke-LabScreenshot -Name duel-model-platform-walked -ClientId $coreClients[0]
+    $null = Invoke-LabInput @{id='model-platform-return';frames=60;inputFrames=12;keys=@(115);audio=$true} -ClientId $coreClients[0]
+    foreach ($view in @(@{name='duel-model-1v1';x=-9.900002;y=1.52485085;z=0.67},@{name='duel-model-motto';x=9.849998;y=1.52485085;z=0.67},@{name='duel-model-overview';x=0;y=0;z=0})) {
+        $null = Set-LabAim -Target @{x=$coreOrigin.x+$view.x;y=$coreOrigin.y+$view.y;z=$coreOrigin.z+$view.z} -ClientId $coreClients[0] -ActorId $coreIds[0]
+        $null = Invoke-LabScreenshot -Name $view.name -ClientId $coreClients[0]
+    }
+    foreach ($button in @(@{id='model-select-all';x=-1.15},@{id='model-invite';x=1.15})) {
+        $null = Set-LabAim -Target @{x=$coreViewing.x+$button.x;y=$coreViewing.y-0.3;z=$coreViewing.z-1.5} -ClientId $coreClients[0] -ActorId $coreIds[0]
+        $null = Invoke-LabInput @{id=$button.id;frames=60;inputFrames=2;keys=@(101);capture=$true;audio=$true} -ClientId $coreClients[0]
+    }
+    if ((CoreStatus) -notmatch 'invited=1') { throw 'Native E board did not send an invitation from the raised platform' }
+    $coreChecks.Add('supplied platform supports native walking and repeated entry; repositioned native E controls send invitations')
+}
 CoreCommand 0 '.challenge'
 if ((CoreStatus) -notmatch "state=idle;.*challenge_queue=$($coreIds[0]);") { throw 'First individual did not wait for an opening opponent' }
 CoreCommand 0 '.challenge'
@@ -63,7 +92,7 @@ for ($burst = 0; $burst -lt 12; $burst++) {
 Start-Sleep -Seconds 2
 AssertCoreResident 1
 $defeated = CoreActor 0
-if (@($defeated.items).Count -ne 0 -or $defeated.role -ne 'NtfPrivate' -or [Math]::Abs($defeated.position.z-($coreOrigin.z+18)) -gt 3) { throw 'Defeated king did not respawn unarmed on viewing deck' }
+if (@($defeated.items).Count -ne 0 -or $defeated.role -ne 'NtfPrivate' -or [Math]::Abs($defeated.position.z-$coreViewing.z) -gt 3 -or [Math]::Abs($defeated.position.y-$coreViewing.y) -gt 0.25) { throw 'Defeated king did not respawn unarmed on viewing deck' }
 $transfer = Invoke-LabScreenshot -Name duel-core-king-transferred -ClientId $coreClients[0]
 $coreChecks.Add('native depletion/reload and lethal fight transfer championship; defeated king respawns unarmed; new king gets fresh health')
 CoreCommand 1 ".duel $($coreIds[0])"

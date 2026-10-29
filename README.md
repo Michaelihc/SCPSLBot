@@ -145,7 +145,7 @@ Install exactly one `ServerKeybinds.dll` per port, never under `dependencies/glo
 plugins' Server-Specific Settings and only touches the menu while the warmup controls or StatsBots are
 active. `HsmAdapter` and `ServerKeybinds` are open source at
 [sl-plugins-cement/HsmAdapter](https://github.com/sl-plugins-cement/HsmAdapter) and
-[Michaelihc/serverkeybinds](https://github.com/Michaelihc/serverkeybinds).
+[sl-plugins-cement/serverkeybinds](https://github.com/sl-plugins-cement/serverkeybinds).
 
 ## Quick start
 
