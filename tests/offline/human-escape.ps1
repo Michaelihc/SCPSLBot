@@ -35,10 +35,20 @@ function WaitRecording([string]$phase) {
     throw "Recording never reached $phase"
 }
 function Distance($a, $b) { [Math]::Sqrt([Math]::Pow($a.x-$b.x,2)+[Math]::Pow($a.z-$b.z,2)) }
-function Spectate([string]$nick) {
-    $entry = @(Get-LabUi | Where-Object { $_.type -eq 'Button' -and "$($_.text)" -match ([regex]::Escape($nick)+'(\D|$)') })[0]
-    if (!$entry) { throw "Missing spectator entry: $nick" }
-    $null = Invoke-LabInput @{frames=30;inputFrames=4;keys=@(323);cursorX=($entry.rect.x0+$entry.rect.x1)/2;cursorY=($entry.rect.y0+$entry.rect.y1)/2}
+function Spectate([string]$nick, [int]$targetId) {
+    if ((Command "pursuitspectator $($client.id) $targetId") -match 'selected=True') { return }
+    for ($attempt = 0; $attempt -lt 3; $attempt++) {
+        $entry = @(Get-LabUi | Where-Object { $_.type -eq 'Button' -and "$($_.text)" -match ([regex]::Escape($nick)+'(\D|$)') })[0]
+        if (!$entry) { throw "Missing spectator entry: $nick" }
+        $x = ($entry.rect.x0+$entry.rect.x1)/2
+        $y = ($entry.rect.y0+$entry.rect.y1)/2
+        Note "Spectator pointer target=$targetId x=$x y=$y"
+        # Let the native pointer hover settle before the Mouse0 down edge.
+        $null = Invoke-LabInput @{frames=15;cursorX=$x;cursorY=$y}
+        $null = Invoke-LabInput @{frames=30;inputFrames=4;keys=@(323);cursorX=$x;cursorY=$y}
+        if ((Command "pursuitspectator $($client.id) $targetId") -match 'selected=True') { return }
+    }
+    throw "Native spectator selection failed for $nick"
 }
 
 $actors = @(Snapshot)
@@ -101,7 +111,7 @@ try {
         }
         if ($case.locked) { $null = Command "/close $($case.locked)"; $null = Command "/lock $($case.locked)" }
         if ((Command "/doortp $humanId $($case.anchor)") -notmatch 'affected 1 player') { throw 'Human door placement failed' }
-        Spectate $nick
+        Spectate $nick $humanId
         # Capture before spawning the pursuer so early native ability activations count.
         $eventOffset = if ($nativeLog) { (Get-Item -LiteralPath $nativeLog).Length } else { 0 }
         $scpRole = if ($case.scpRole) { $case.scpRole } else { 'Scp0492' }
@@ -114,7 +124,7 @@ try {
             if ((Command "/effect Ensnared 1 60 $scpId") -notmatch 'affected 1 player') { throw 'Stationary SCP fixture failed' }
             $eventOffset = (Get-Item -LiteralPath $nativeLog).Length
         }
-        if ($Context.Options.followScp) { Spectate $scpNick }
+        if ($Context.Options.followScp) { Spectate $scpNick $scpId }
         $first = @(Snapshot | Where-Object id -eq $humanId)[0]
         if ($first.role -ne $case.role) { throw 'Fixture role mismatch' }
         if ($case.armed -and !(@($first.items) -contains 'GunCOM15')) { throw 'Fixture firearm missing' }
