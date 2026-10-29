@@ -1,5 +1,5 @@
 param($Context)
-$Context.Options.takeName = 'pursuit-review'
+if (!$Context.Options.takeName) { $Context.Options.takeName = 'pursuit-review' }
 $Context.Options.pursuitCases = @(
     @{name='nearby-stationary';role='ClassD';seconds=15;anchor='GR18';scpRole='Scp0492';stationary=$true;closures='forbidden'},
     @{name='keycard-pursuit';role='ClassD';seconds=40;anchor='GR18';scpRole='Scp0492';keycard=$true;closures='required'},

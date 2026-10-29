@@ -45,7 +45,7 @@ function Spectate([string]$nick, [int]$targetId) {
         Note "Spectator pointer target=$targetId x=$x y=$y"
         # Let the native pointer hover settle before the Mouse0 down edge.
         $null = Invoke-LabInput @{frames=15;cursorX=$x;cursorY=$y}
-        $null = Invoke-LabInput @{frames=30;inputFrames=4;keys=@(323);cursorX=$x;cursorY=$y}
+        $null = Invoke-LabInput @{frames=15;inputFrames=2;keys=@(323);cursorX=$x;cursorY=$y}
         if ((Command "pursuitspectator $($client.id) $targetId") -match 'selected=True') { return }
     }
     throw "Native spectator selection failed for $nick"
