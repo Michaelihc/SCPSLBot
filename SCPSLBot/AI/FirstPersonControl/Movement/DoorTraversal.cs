@@ -244,7 +244,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         public bool TryCloseNow(DoorVariant door, float range)
         {
             var hub = botPlayer.BotHub.PlayerHub;
-            if (door == null || !door.TargetState || DoorAccess.Evaluate(hub, door, out _) != DoorAccessKind.Open)
+            if (door == null || !door.TargetState)
+                return false;
+            var access = DoorAccess.Evaluate(hub, door, out var keycard);
+            if (access is not (DoorAccessKind.Open or DoorAccessKind.NeedsKeycard))
                 return false;
             var target = GetInteractionPoint(door, door.transform.position, out var colliderId);
             // Use the same reachable interaction surface as an ordinary door interaction.
@@ -254,9 +257,22 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             var collider = interactable.GetComponent<Collider>();
             if (collider == null || (collider.ClosestPoint(botPlayer.CameraPosition) - botPlayer.CameraPosition).sqrMagnitude > range * range
                 || !door.AllowInteracting(hub, colliderId)) return false;
-            botPlayer.LookToPosition(target);
-            door.ServerInteract(hub, colliderId);
-            return !door.TargetState;
+            // Traversal restores the held item before we are far enough through to close safely.
+            // Borrow the card only for this interaction, without replacing an active crossing lease.
+            var borrowedCard = access == DoorAccessKind.NeedsKeycard;
+            if (borrowedCard && (keycardDoor != null || !EquipKeycard(door, keycard)))
+                return false;
+            try
+            {
+                botPlayer.LookToPosition(target);
+                door.ServerInteract(hub, colliderId);
+                return !door.TargetState;
+            }
+            finally
+            {
+                if (borrowedCard)
+                    RestoreItem();
+            }
         }
 
         private DoorTraversalResult HandleDoor(DoorVariant door, Vector3 crossingPoint, float distance)

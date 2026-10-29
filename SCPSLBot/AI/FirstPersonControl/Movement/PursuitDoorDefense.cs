@@ -112,8 +112,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             if (clearance < ClearDoorMeters || Vector3.Dot(threats.ThreatPosition - doorPosition, exitNormal) > -0.5f
                 || Vector3.ProjectOnPlane(position - doorPosition, Vector3.up).sqrMagnitude > CloseRange * CloseRange
                 || (candidate == lastClosedDoor && now < nextCloseAt)
-                || DoorAccess.IsPhasedThrough(observedScp, candidate) || !DoorAccess.IsPassable(candidate)
-                || DoorAccess.Evaluate(hub, candidate, out _) != DoorAccessKind.Open) return;
+                || DoorAccess.IsPhasedThrough(observedScp, candidate) || !DoorAccess.IsPassable(candidate)) return;
 
             // Do not slam a door on another human using this crossing, including someone still behind us.
             foreach (var player in CombatWorldSnapshot.Get(now))

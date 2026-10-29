@@ -27,7 +27,10 @@ internal static class ScpAbilityEventLog
         Add<LabApi.Events.Arguments.Scp096Events.Scp096EnragedEventArgs>(h => Scp096Events.Enraged += h, h => Scp096Events.Enraged -= h, "096.Enraged");
         Add<LabApi.Events.Arguments.Scp096Events.Scp096ChargedEventArgs>(h => Scp096Events.Charged += h, h => Scp096Events.Charged -= h, "096.Charged");
         Add<LabApi.Events.Arguments.Scp096Events.Scp096PriedGateEventArgs>(h => Scp096Events.PriedGate += h, h => Scp096Events.PriedGate -= h, "096.PriedGate");
-        Add<LabApi.Events.Arguments.Scp106Events.Scp106ChangedStalkModeEventArgs>(h => Scp106Events.ChangedStalkMode += h, h => Scp106Events.ChangedStalkMode -= h, "106.StalkMode");
+        LabEventHandler<LabApi.Events.Arguments.Scp106Events.Scp106ChangedStalkModeEventArgs> stalk = ev =>
+            Log("106.StalkMode", ev, $" active={ev.IsStalkActive}");
+        Scp106Events.ChangedStalkMode += stalk;
+        Unsubscribe.Add(() => Scp106Events.ChangedStalkMode -= stalk);
         Add<LabApi.Events.Arguments.Scp106Events.Scp106UsedHunterAtlasEventArgs>(h => Scp106Events.UsedHunterAtlas += h, h => Scp106Events.UsedHunterAtlas -= h, "106.HunterAtlas");
         Add<LabApi.Events.Arguments.Scp106Events.Scp106TeleportedPlayerEvent>(h => Scp106Events.TeleportedPlayer += h, h => Scp106Events.TeleportedPlayer -= h, "106.PocketTeleport");
         Add<LabApi.Events.Arguments.Scp939Events.Scp939FocusedEventArgs>(h => Scp939Events.Focused += h, h => Scp939Events.Focused -= h, "939.Focused");
@@ -46,7 +49,9 @@ internal static class ScpAbilityEventLog
         {
             if (ev.Player != null)
             {
-                Log("door.Interacted", ev, $" door={ev.Door?.Base?.name ?? "none"} canOpen={ev.CanOpen} targetOpen={ev.Door?.Base?.TargetState}");
+                Log("door.Interacted", ev, $" door={ev.Door?.Base?.name ?? "none"} canOpen={ev.CanOpen} targetOpen={ev.Door?.Base?.TargetState}"
+                    + $" keycardRequired={ev.Door?.Base?.RequiredPermissions.RequiredPermissions != Interactables.Interobjects.DoorUtils.DoorPermissionFlags.None}"
+                    + $" item={ev.Player.ReferenceHub.inventory.CurInstance?.ItemTypeId.ToString() ?? "None"}");
             }
         };
         PlayerEvents.InteractedDoor += door;
@@ -91,7 +96,7 @@ internal static class ScpAbilityEventLog
             var target = (ev as ITargetEvent)?.Target;
             var position = player?.Position ?? default;
             var distance = target != null && player != null ? $" distance={UnityEngine.Vector3.Distance(position, target.Position):F2}" : string.Empty;
-            Logger.Info($"[ScpAbilityEvent] event={name} player={player?.Nickname ?? "none"} role={player?.Role.ToString() ?? "none"}"
+            Logger.Info($"[ScpAbilityEvent] event={name} id={player?.PlayerId} player={player?.Nickname ?? "none"} role={player?.Role.ToString() ?? "none"}"
                 + $" target={target?.Nickname ?? "none"}{distance} pos=({position.x:F1},{position.y:F1},{position.z:F1}){extra}");
         }
         catch (Exception exception)

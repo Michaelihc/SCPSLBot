@@ -33,6 +33,7 @@ public sealed class ScpslBotPlaytestScenariosPlugin : Plugin<ScenarioLibraryConf
 
     public override void Disable()
     {
+        PursuitKeycardFixture.Restore();
         ScpAbilityEventLog.Disable();
         if (originalTeamQueue != null)
             GameCore.ConfigFile.ServerConfig.SetString("team_respawn_queue", originalTeamQueue);
