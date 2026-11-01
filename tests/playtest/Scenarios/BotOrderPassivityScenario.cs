@@ -1,7 +1,6 @@
 using LabApi.Events.Arguments.PlayerEvents;
 using LabApi.Events.Handlers;
 using LabApi.Features.Wrappers;
-using MapGeneration;
 using PlayerRoles;
 using PlaytestHarness.Core;
 using SCPSLBot.PlaytestScenarios.Harness;
@@ -14,11 +13,12 @@ namespace SCPSLBot.PlaytestScenarios.Scenarios;
 
 /// <summary>
 /// Proves an ordered bot does not attack. An armed autonomous spike first has to land a real hit on a
-/// hostile bot, so a spike that never fights cannot pass. It then gets an order for a room without
-/// navigation, and a reachable one, with the hostile kept in its line of sight throughout.
+/// hostile bot, so a spike that never fights cannot pass. It then gets an order with no possible
+/// route, and a reachable one, with the hostile kept in its line of sight throughout.
 /// </summary>
 public sealed class BotOrderPassivityScenario : Scenario
 {
+    private const string RejectedRoom = "Pocket";
     private const string ReachableRoom = "LczToilets";
     internal const float HoldIntervalSeconds = 1f;
     private const float TargetDistance = 3f;
@@ -84,11 +84,8 @@ public sealed class BotOrderPassivityScenario : Scenario
             ctx.Require(hits > 0, "armed autonomous spike is hostile: it landed a hit on the visible Scientist");
             ctx.Info($"ORDER_PASSIVITY baseline hits={hits}");
 
-            // A rejected order: a room this seed lacks takes the same path as one without navigation.
-            RoomName absentRoom = Enum.GetValues(typeof(RoomName)).Cast<RoomName>().First(name => name != RoomName.Unnamed
-                && RoomIdentifier.AllRoomIdentifiers.All(room => room == null || room.Name != name));
-            ctx.Info($"ORDER_PASSIVITY ordering absent room {absentRoom}");
-            Issue2World.Command(ctx, $"botspike walk {absentRoom}");
+            // A rejected order: no walking route leads into the pocket dimension.
+            Issue2World.Command(ctx, $"botspike walk {RejectedRoom}");
             yield return ctx.WaitUntil(RouteStopped, 10f, "the rejected order reached a terminal result");
             string rejected = Status(ctx);
             ctx.Info($"ORDER_PASSIVITY rejected status: {rejected}");
