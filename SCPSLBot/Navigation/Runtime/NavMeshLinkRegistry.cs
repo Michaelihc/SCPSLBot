@@ -20,6 +20,7 @@ namespace SCPSLBot.Navigation.Runtime
     {
         private const float LandingDistance = 1.6f;
         private const float LinkWidth = 1.2f;
+        private const float MinimumConnectorLinkWidth = 0.6f;
         // A path crosses a link anywhere along its width, so the corner sits up to half the link
         // width from the landing point (plus snapping noise).
         private const float EndpointMatchDistance = LinkWidth * 0.5f + 0.4f;
@@ -81,10 +82,11 @@ namespace SCPSLBot.Navigation.Runtime
         }
 
         /// <summary>
-        /// The builder cannot climb clutter a bot can jump (pipes, low crates). For every door-less
-        /// connector without a complete path between its two sides, probe the passage with the
-        /// capsule (walk tier, then jumpable tier) and bridge it with a Jump-area link through the
-        /// probed band; the stuck ladder's native jump carries the bot over.
+        /// The builder cannot climb clutter a bot can jump (pipes, low crates) and erodes away a slit
+        /// the capsule only just fits (the leaves of a <see cref="DummyDoor"/>). For every door-less
+        /// connector and fixed door without a complete path between its two sides, probe the passage
+        /// with the capsule (walk tier, then jumpable tier) and bridge it with a Jump-area link
+        /// through the probed band; the stuck ladder's native jump carries the bot over.
         /// </summary>
         public void RebuildPassages(int agentTypeId)
         {
@@ -107,65 +109,99 @@ namespace SCPSLBot.Navigation.Runtime
                 }
 
                 var transform = connector.transform;
-                var center = transform.position + Vector3.up;
                 var forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
-                if (forward.sqrMagnitude < 0.5f)
+                if (forward.sqrMagnitude >= 0.5f)
                 {
-                    continue;
+                    BridgeIfSealed(connector.SpawnData.ConnectorType.ToString(), transform.position + Vector3.up, forward, MinimumConnectorLinkWidth, agentTypeId, path);
                 }
-
-                var right = Vector3.Cross(Vector3.up, forward).normalized;
-                if (!NavMesh.SamplePosition(center + forward * 3.5f, out var a, 3f, NavMesh.AllAreas)
-                    || !NavMesh.SamplePosition(center - forward * 3.5f, out var b, 3f, NavMesh.AllAreas))
-                {
-                    continue;
-                }
-
-                if (NavMesh.CalculatePath(a.position, b.position, NavMesh.AllAreas, path)
-                    && path.status == NavMeshPathStatus.PathComplete
-                    && PathLength(path) <= Vector3.Distance(a.position, b.position) * 1.5f + 2f)
-                {
-                    continue;
-                }
-
-                var type = connector.SpawnData.ConnectorType;
-                var passage = ConnectorPassageProbe.Probe(center, forward, right);
-                if (passage.Gap is not { } gap)
-                {
-                    SealedConnectors++;
-                    LabLogger.Warn($"[SCPSLBot] NAV_CONNECTOR_SEALED type={type} pos={Format(transform.position)} portalGaps={passage.GapCount} floor={passage.FloorFound}");
-                    continue;
-                }
-
-                var lateral = right * gap.Center;
-                var floor = new Vector3(center.x, passage.FloorY, center.z);
-                if (!NavMesh.SamplePosition(floor + lateral + forward * 1.4f, out var start, 2f, NavMesh.AllAreas)
-                    || !NavMesh.SamplePosition(floor + lateral - forward * 1.4f, out var end, 2f, NavMesh.AllAreas))
-                {
-                    SealedConnectors++;
-                    LabLogger.Warn($"[SCPSLBot] NAV_CONNECTOR_SEALED type={type} pos={Format(transform.position)} reason=link-endpoint-off-mesh tier={passage.Tier}");
-                    continue;
-                }
-
-                var instance = NavMesh.AddLink(new NavMeshLinkData
-                {
-                    startPosition = start.position,
-                    endPosition = end.position,
-                    width = Mathf.Max(0.6f, gap.Width),
-                    costModifier = -1f,
-                    bidirectional = true,
-                    area = DoorAreaRegistry.JumpArea,
-                    agentTypeID = agentTypeId,
-                });
-                if (!NavMesh.IsLinkValid(instance))
-                {
-                    SealedConnectors++;
-                    continue;
-                }
-
-                passageLinks.Add(instance);
-                LabLogger.Info($"[SCPSLBot] NAV_CONNECTOR_LINK type={type} pos={Format(transform.position)} tier={passage.Tier} band={gap} start={Format(start.position)} end={Format(end.position)}");
             }
+
+            foreach (var door in DoorVariant.AllDoors)
+            {
+                if (door is DummyDoor && TryGetLeafGap(door, out var center, out var forward))
+                {
+                    BridgeIfSealed(door.name, center, forward, 0f, agentTypeId, path);
+                }
+            }
+        }
+
+        private void BridgeIfSealed(string type, Vector3 center, Vector3 forward, float minimumLinkWidth, int agentTypeId, NavMeshPath path)
+        {
+            var right = Vector3.Cross(Vector3.up, forward).normalized;
+            if (!NavMesh.SamplePosition(center + forward * 3.5f, out var a, 3f, NavMesh.AllAreas)
+                || !NavMesh.SamplePosition(center - forward * 3.5f, out var b, 3f, NavMesh.AllAreas))
+            {
+                return;
+            }
+
+            if (NavMesh.CalculatePath(a.position, b.position, NavMesh.AllAreas, path)
+                && path.status == NavMeshPathStatus.PathComplete
+                && PathLength(path) <= Vector3.Distance(a.position, b.position) * 1.5f + 2f)
+            {
+                return;
+            }
+
+            var passage = ConnectorPassageProbe.Probe(center, forward, right);
+            if (passage.Gap is not { } gap)
+            {
+                SealedConnectors++;
+                LabLogger.Warn($"[SCPSLBot] NAV_CONNECTOR_SEALED type={type} pos={Format(center)} portalGaps={passage.GapCount} floor={passage.FloorFound}");
+                return;
+            }
+
+            var lateral = right * gap.Center;
+            var floor = new Vector3(center.x, passage.FloorY, center.z);
+            if (!NavMesh.SamplePosition(floor + lateral + forward * 1.4f, out var start, 2f, NavMesh.AllAreas)
+                || !NavMesh.SamplePosition(floor + lateral - forward * 1.4f, out var end, 2f, NavMesh.AllAreas))
+            {
+                SealedConnectors++;
+                LabLogger.Warn($"[SCPSLBot] NAV_CONNECTOR_SEALED type={type} pos={Format(center)} reason=link-endpoint-off-mesh tier={passage.Tier}");
+                return;
+            }
+
+            var instance = NavMesh.AddLink(new NavMeshLinkData
+            {
+                startPosition = start.position,
+                endPosition = end.position,
+                width = minimumLinkWidth > 0f ? Mathf.Max(minimumLinkWidth, gap.Width) : 0f,
+                costModifier = -1f,
+                bidirectional = true,
+                area = DoorAreaRegistry.JumpArea,
+                agentTypeID = agentTypeId,
+            });
+            if (!NavMesh.IsLinkValid(instance))
+            {
+                SealedConnectors++;
+                return;
+            }
+
+            passageLinks.Add(instance);
+            LabLogger.Info($"[SCPSLBot] NAV_CONNECTOR_LINK type={type} pos={Format(center)} tier={passage.Tier} band={gap} start={Format(start.position)} end={Format(end.position)}");
+        }
+
+        // The opening between a fixed door's two leaves, which need not sit on the door's pivot.
+        private static bool TryGetLeafGap(DoorVariant door, out Vector3 center, out Vector3 forward)
+        {
+            center = default;
+            forward = default;
+            var leaves = door.AllColliders;
+            if (leaves == null || leaves.Length != 2 || leaves[0] == null || leaves[1] == null)
+            {
+                return false;
+            }
+
+            var first = leaves[0].bounds.center;
+            var second = leaves[1].bounds.center;
+            var across = Vector3.ProjectOnPlane(second - first, Vector3.up);
+            if (across.sqrMagnitude < 0.01f)
+            {
+                return false;
+            }
+
+            forward = Vector3.Cross(across, Vector3.up).normalized;
+            var middle = (first + second) * 0.5f;
+            center = new Vector3(middle.x, door.transform.position.y + 1f, middle.z);
+            return true;
         }
 
         public void Rebuild(int agentTypeId)

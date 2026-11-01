@@ -349,10 +349,11 @@ namespace SCPSLBot.Navigation.Runtime
             // Door leaves are not geometry (bots open them): ignore the door's own toggling
             // colliders and its glass panes, which move with the leaf. Everything else in the
             // prefab stays: several room doors carry the floor sill that joins the two rooms, and
-            // dropping it leaves a gap in the surface exactly at the door plane.
+            // dropping it leaves a gap in the surface exactly at the door plane. A DummyDoor is
+            // never opened by a bot, so its leaves bound the walkable space like any wall.
             foreach (var door in DoorVariant.AllDoors)
             {
-                if (door == null || door is ElevatorDoor)
+                if (door == null || door is ElevatorDoor || door is DummyDoor)
                 {
                     continue;
                 }
