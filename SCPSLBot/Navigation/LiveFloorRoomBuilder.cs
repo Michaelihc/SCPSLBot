@@ -119,7 +119,7 @@ namespace SCPSLBot.Navigation
             mesh.ClearCells();
             BuildCells(mesh, walk);
             mesh.IsGenerated = true;
-            LabLogger.Info($"[SCPSLBot] NAV_ROOM_REBUILT form={form} name={room.Name} cells={walk.Nodes.Count} islands={DescribeIslands(walk)}");
+            LabLogger.Info($"[SCPSLBot] NAV_ROOM_REBUILT form={form} name={room.Name} cells={walk.Nodes.Count}");
             return true;
         }
 
@@ -149,40 +149,6 @@ namespace SCPSLBot.Navigation
                     }
                 }
             }
-        }
-
-        private static string DescribeIslands(Walk walk)
-        {
-            var parents = new int[walk.Nodes.Count];
-            for (var index = 0; index < parents.Length; index++)
-            {
-                parents[index] = index;
-            }
-
-            foreach (var (from, to) in walk.Links)
-            {
-                Union(parents, from.Index, to.Index);
-            }
-
-            var islands = new Dictionary<int, (int Count, float MinY, float MaxY, Vector3 Sample)>();
-            foreach (var node in walk.Nodes)
-            {
-                var root = Find(parents, node.Index);
-                if (!islands.TryGetValue(root, out var island))
-                {
-                    island = (0, node.Y, node.Y, walk.Room.transform.TransformPoint(new Vector3(node.I * GridStep, node.Y, node.J * GridStep)));
-                }
-
-                islands[root] = (island.Count + 1, Mathf.Min(island.MinY, node.Y), Mathf.Max(island.MaxY, node.Y), island.Sample);
-            }
-
-            var parts = new List<string>();
-            foreach (var island in islands.Values)
-            {
-                parts.Add($"{island.Count}@({island.Sample.x:F1},{island.Sample.y:F1},{island.Sample.z:F1})y{island.MinY:F1}..{island.MaxY:F1}");
-            }
-
-            return string.Join(" ", parts);
         }
 
         private static void TrySeed(Walk walk, Vector3 local)
