@@ -9,6 +9,12 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
     <AssemblySearchPaths>$(SL_REFERENCES);$(AssemblySearchPaths)</AssemblySearchPaths>
     <ServerKeybindsProject Condition="'$(ServerKeybindsProject)' == ''">$(MSBuildThisFileDirectory)..\..\ServerKeybinds\ServerKeybinds.csproj</ServerKeybindsProject>
+    <!-- CustomItems is compiled from source. Default: the sibling metarepo checkout; a task worktree under
+         .worktrees/<task>/<repo> resolves three levels up; anything else passes -p:CustomItemsSource=<path>. -->
+    <CustomItemsSource Condition="'$(CustomItemsSource)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\CustomItems\src')">$(MSBuildThisFileDirectory)..\..\CustomItems\src</CustomItemsSource>
+    <CustomItemsSource Condition="'$(CustomItemsSource)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\..\CustomItems\src')">$(MSBuildThisFileDirectory)..\..\..\CustomItems\src</CustomItemsSource>
+    <!-- The shared CustomItems sources carry nullable annotations; this project compiles with warnings-only nullability. -->
+    <NoWarn>$(NoWarn);CS8632</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\SCPSLBot\SCPSLBot.csproj" />
@@ -31,6 +37,11 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <EmbeddedResource Include="Duel\Assets\arena.json" LogicalName="DuelArena.arena.json" />
+    <EmbeddedResource Include="Warmup\SpecialWeapons\Assets\*.mer.json" LogicalName="SpecialWeapons.%(Filename)%(Extension)" />
     <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
+    <Compile Include="$(CustomItemsSource)\**\*.cs" Link="CustomItems\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
+  <Target Name="RequireCustomItemsSource" BeforeTargets="BeforeBuild" Condition="!Exists('$(CustomItemsSource)')">
+    <Error Text="CustomItems sources not found. Pass -p:CustomItemsSource=&lt;path to CustomItems\src&gt;." />
+  </Target>
 </Project>

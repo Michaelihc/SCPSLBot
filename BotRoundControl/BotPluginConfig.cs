@@ -29,6 +29,8 @@ namespace SCPSLBot
         [Description("Personalized Server-Specific Settings presentation. / 个性化服务器专属设置界面。")]
         public WarmupPanelConfig Panel { get; set; } = WarmupPanelConfig.CreateDefault();
 
+        [Description("Special warmup weapons requested through the item panel. / 通过物品面板请求的热身特殊武器。")]
+        public SCPSLBot.Warmup.SpecialWeapons.SpecialWeaponsConfig SpecialWeapons { get; set; } = new();
 
         [Description("Fallback used only when WarmupMode contains an invalid value; WarmupMode itself is persisted across reloads.")]
         public WarmupMode DefaultWarmupMode { get; set; } = WarmupMode.Standard;
@@ -92,6 +94,8 @@ namespace SCPSLBot
             HintDisplay ??= new HintDisplayConfig();
             Controls ??= WarmupControlsConfig.CreateDefault();
             Panel ??= WarmupPanelConfig.CreateDefault();
+            SpecialWeapons ??= new SCPSLBot.Warmup.SpecialWeapons.SpecialWeaponsConfig();
+            SpecialWeapons.Normalize();
             Controls.Language = Language ?? string.Empty;
             foreach (string restoredOption in Controls.RestoreClassicPlayerOptions())
             {

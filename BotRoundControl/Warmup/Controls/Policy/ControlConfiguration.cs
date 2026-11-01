@@ -112,7 +112,28 @@ public sealed class WarmupControlsConfig
             changes.Add($"restored native spawn anchors for arena '{preset.Id}'");
         }
 
+        AllowSpecialWeaponsInPresets(changes);
         return changes;
+    }
+
+    /// <summary>
+    /// A preset's non-empty allowlist predates any weapon added later, which would reject it as not
+    /// allowed by the arena. Weapons are withdrawn through their own enabled setting instead.
+    /// </summary>
+    private void AllowSpecialWeaponsInPresets(ICollection<string> changes)
+    {
+        foreach (ArenaPresetConfig preset in Presets.Where(preset => preset?.AllowedItemIds is { Count: > 0 }))
+        {
+            foreach (ItemCatalogEntryConfig weapon in Items.Where(
+                         item => SpecialWeaponCatalogDefaults.TryGetWeaponId(item.ItemId, out _)))
+            {
+                if (!preset.AllowedItemIds.Contains(weapon.Id, StringComparer.OrdinalIgnoreCase))
+                {
+                    preset.AllowedItemIds.Add(weapon.Id);
+                    changes.Add($"allowed special weapon '{weapon.Id}' in arena '{preset.Id}'");
+                }
+            }
+        }
     }
 }
 
@@ -176,7 +197,7 @@ public static class WarmupPlayerCatalogDefaults
 
     public static List<ItemCatalogEntryConfig> CreateItems()
     {
-        var entries = new List<ItemCatalogEntryConfig>(NativeItems.Length);
+        var entries = new List<ItemCatalogEntryConfig>(NativeItems.Length + SpecialWeaponCatalogDefaults.Weapons.Count);
         foreach (string itemId in NativeItems)
         {
             bool highImpact = itemId is "GrenadeHE" or "GrenadeFlash" or "MicroHID" or "ParticleDisruptor" or "Jailbird" or "SCP018";
@@ -187,23 +208,36 @@ public static class WarmupPlayerCatalogDefaults
                 "MicroHID" => "high-impact.micro-hid",
                 _ => "native." + itemId.ToLowerInvariant(),
             };
-            entries.Add(new ItemCatalogEntryConfig
-            {
-                Id = stableId,
-                EnglishLabel = itemId,
-                ChineseLabel = ChineseItemLabel(itemId),
-                ItemId = itemId,
-                CooldownSeconds = highImpact ? 60 : 0,
-                SharedCooldownGroup = highImpact ? "high-impact" : string.Empty,
-                SharedCooldownSeconds = highImpact ? 60 : 0,
-                PerLifeLimit = highImpact ? 1 : 0,
-                PerRoundLimit = highImpact ? 999 : 0,
-                AllowedRoleIds = new List<string>(RegularRoles),
-                AllowedZoneIds = new List<string>(RequestZones),
-            });
+            entries.Add(CreateEntry(stableId, itemId, itemId, ChineseItemLabel(itemId), highImpact));
         }
+
+        foreach (SpecialWeaponCatalogRow weapon in SpecialWeaponCatalogDefaults.Weapons)
+        {
+            entries.Add(CreateEntry(weapon.CatalogId, weapon.ItemId, weapon.EnglishLabel, weapon.ChineseLabel, highImpact: true));
+        }
+
         return entries;
     }
+
+    private static ItemCatalogEntryConfig CreateEntry(
+        string stableId,
+        string itemId,
+        string englishLabel,
+        string chineseLabel,
+        bool highImpact) => new()
+    {
+        Id = stableId,
+        EnglishLabel = englishLabel,
+        ChineseLabel = chineseLabel,
+        ItemId = itemId,
+        CooldownSeconds = highImpact ? 60 : 0,
+        SharedCooldownGroup = highImpact ? "high-impact" : string.Empty,
+        SharedCooldownSeconds = highImpact ? 60 : 0,
+        PerLifeLimit = highImpact ? 1 : 0,
+        PerRoundLimit = highImpact ? 999 : 0,
+        AllowedRoleIds = new List<string>(RegularRoles),
+        AllowedZoneIds = new List<string>(RequestZones),
+    };
 
     public static List<ArenaPresetConfig> CreateArenaPresets(IEnumerable<ItemCatalogEntryConfig> items)
     {
@@ -277,7 +311,10 @@ public sealed class ItemCatalogEntryConfig
     /// <summary>Player-facing Chinese label. Empty falls back to the stable Id.</summary>
     public string ChineseLabel { get; set; } = string.Empty;
 
-    /// <summary>Exact native ItemType name. One request invokes AddItem exactly once.</summary>
+    /// <summary>
+    /// Exact native ItemType name, or special:&lt;weapon id&gt; for a special weapon. One request
+    /// performs exactly one grant.
+    /// </summary>
     public string ItemId { get; set; } = string.Empty;
 
     public double CooldownSeconds { get; set; }

@@ -1,0 +1,366 @@
+{
+  "RootObjectId": 0,
+  "Blocks": [
+    {
+      "Name": "nu7-rpg-projectile",
+      "ObjectId": 0,
+      "ParentId": -1,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "BlockType": 0,
+      "Properties": {
+        "Static": true
+      }
+    },
+    {
+      "Name": "rocket_body",
+      "ObjectId": 1,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": -0.0140000004
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.057,
+        "y": 0.104000002,
+        "z": 0.057
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rocket_forward_collar",
+      "ObjectId": 2,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": 0.0769999996
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.063000001,
+        "y": 0.0140000004,
+        "z": 0.063000001
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rocket_ogive",
+      "ObjectId": 3,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": 0.111000001
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0599999987,
+        "y": 0.0599999987,
+        "z": 0.0860000029
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 0,
+        "Color": "#D3D4C7FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rocket_guidance_band",
+      "ObjectId": 4,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": 0.0839999989
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.064000003,
+        "y": 0.00499999989,
+        "z": 0.064000003
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#D9A64BFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rocket_tail_collar",
+      "ObjectId": 5,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": -0.114
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0649999976,
+        "y": 0.0130000003,
+        "z": 0.0649999976
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rocket_tail_throat",
+      "ObjectId": 6,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": -0.128999993
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0359999985,
+        "y": 0.00300000003,
+        "z": 0.0359999985
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "fin_0",
+      "ObjectId": 7,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0340000018,
+        "y": 0,
+        "z": -0.0860000029
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0309999995,
+        "y": 0.00499999989,
+        "z": 0.057
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "fin_1",
+      "ObjectId": 8,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.0340000018,
+        "z": -0.0860000029
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 90
+      },
+      "Scale": {
+        "x": 0.0309999995,
+        "y": 0.00499999989,
+        "z": 0.057
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "fin_2",
+      "ObjectId": 9,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0340000018,
+        "y": 0,
+        "z": -0.0860000029
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 180
+      },
+      "Scale": {
+        "x": 0.0309999995,
+        "y": 0.00499999989,
+        "z": 0.057
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "fin_3",
+      "ObjectId": 10,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": -0.0340000018,
+        "z": -0.0860000029
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 270
+      },
+      "Scale": {
+        "x": 0.0309999995,
+        "y": 0.00499999989,
+        "z": 0.057
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rocket_identification_plate",
+      "ObjectId": 11,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0289999992,
+        "y": 0,
+        "z": -0.0149999997
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00300000003,
+        "y": 0.0179999992,
+        "z": 0.0340000018
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#D3D4C7FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "marker_exhaust",
+      "ObjectId": 12,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": -0.131999999
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00100000005,
+        "y": 0.00100000005,
+        "z": 0.00100000005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 0,
+        "Static": true
+      }
+    }
+  ]
+}

@@ -1,9 +1,11 @@
 #nullable enable
 
 using System;
+using System.Linq;
 using LabApi.Events.Handlers;
 using LabApi.Features.Console;
 using SCPSLBot.Presentation;
+using SCPSLBot.Warmup.SpecialWeapons;
 
 namespace SCPSLBot.Warmup.Controls.Panel;
 
@@ -18,6 +20,8 @@ internal sealed class WarmupControlsRuntime
     private string roundId = string.Empty;
     private int roundGeneration;
     private bool initialized;
+
+    public SpecialWeaponsRuntime? SpecialWeapons { get; private set; }
 
     public void Init(BotPluginConfig pluginConfig, BotPresentationService presentation)
     {
@@ -55,13 +59,17 @@ internal sealed class WarmupControlsRuntime
             guard,
             currentRoundId: () => roundId);
         var roles = new LabApiRoleControlService(pluginConfig.Controls.Roles, actions, guard);
+        var weapons = new SpecialWeaponsRuntime(pluginConfig.SpecialWeapons, pluginConfig.HintDisplay, pluginConfig.Language);
+        SpecialWeapons = weapons;
 
+        // A withdrawn weapon leaves the panel entirely rather than failing at every Grant.
         if (!LabApiItemGrantService.TryCreate(
-                pluginConfig.Controls.Items,
+                pluginConfig.Controls.Items.Where(item => IsOffered(item, weapons)),
                 actions,
                 out items,
                 out var errors,
-                sharedRequestGuard: guard))
+                sharedRequestGuard: guard,
+                grantSpecialWeapon: weapons.TryGrant))
         {
             foreach (string error in errors)
             {
@@ -85,6 +93,7 @@ internal sealed class WarmupControlsRuntime
             // untouched otherwise.
             if (WarmupManager.Instance.IsStandardWarmup)
             {
+                weapons.Enable();
                 controller.Enable();
             }
             else
@@ -100,9 +109,21 @@ internal sealed class WarmupControlsRuntime
         {
             controller.Disable();
             controller = null;
+            weapons.Disable();
+            SpecialWeapons = null;
             items = null;
             throw;
         }
+    }
+
+    private static bool IsOffered(ItemCatalogEntryConfig item, SpecialWeaponsRuntime weapons)
+    {
+        if (!SpecialWeaponCatalogDefaults.TryGetWeaponId(item?.ItemId, out string weaponId))
+        {
+            return true;
+        }
+
+        return weapons.IsAvailable(weaponId);
     }
 
     public void Terminate()
@@ -117,6 +138,8 @@ internal sealed class WarmupControlsRuntime
         WarmupManager.Instance.ModeChanged -= OnModeChanged;
         controller?.Disable();
         controller = null;
+        SpecialWeapons?.Disable();
+        SpecialWeapons = null;
         items = null;
         roundId = string.Empty;
     }
@@ -127,12 +150,14 @@ internal sealed class WarmupControlsRuntime
         {
             if (mode == WarmupMode.Standard)
             {
+                SpecialWeapons?.Enable();
                 controller?.Enable();
                 controller?.NotifyArenaPresetChanged("warmup-mode-changed");
             }
             else
             {
                 controller?.Disable();
+                SpecialWeapons?.Disable();
             }
         }
         catch (Exception exception)

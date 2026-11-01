@@ -1,0 +1,2018 @@
+{
+  "RootObjectId": 0,
+  "Blocks": [
+    {
+      "Name": "nu7-rpg",
+      "ObjectId": 0,
+      "ParentId": -1,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "BlockType": 0,
+      "Properties": {
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_main_tube",
+      "ObjectId": 1,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": -0.0299999993
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.119000003,
+        "y": 0.351000011,
+        "z": 0.119000003
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_rear_tube",
+      "ObjectId": 2,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": -0.398999989
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.135000005,
+        "y": 0.0359999985,
+        "z": 0.135000005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_flange",
+      "ObjectId": 3,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": -0.449999988
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.164000005,
+        "y": 0.0179999992,
+        "z": 0.164000005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_throat",
+      "ObjectId": 4,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": -0.469999999
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.129999995,
+        "y": 0.00200000009,
+        "z": 0.129999995
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_00",
+      "ObjectId": 5,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0681099296,
+        "y": 0.128250003,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 285,
+        "y": 270,
+        "z": -1.319491E-05
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875715
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_01",
+      "ObjectId": 6,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0498599261,
+        "y": 0.159859926,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 315,
+        "y": 270,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875939
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_02",
+      "ObjectId": 7,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.018249996,
+        "y": 0.178109929,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 345,
+        "y": 270,
+        "z": 8.83891403E-07
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.037787579
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_03",
+      "ObjectId": 8,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0182500035,
+        "y": 0.178109929,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 14.9999886,
+        "y": 270,
+        "z": -8.83891403E-07
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.037787579
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_04",
+      "ObjectId": 9,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0498599261,
+        "y": 0.159859926,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 45.0000038,
+        "y": 270,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875753
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_05",
+      "ObjectId": 10,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0681099296,
+        "y": 0.128250003,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 75.0000153,
+        "y": 270,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875939
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_06",
+      "ObjectId": 11,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0681099221,
+        "y": 0.0917499885,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 74.9999847,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875902
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_07",
+      "ObjectId": 12,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0498599187,
+        "y": 0.0601400621,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 44.9999924,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875753
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_08",
+      "ObjectId": 13,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.018249996,
+        "y": 0.0418900698,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 14.9999933,
+        "y": 90,
+        "z": 8.83891516E-07
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875715
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_09",
+      "ObjectId": 14,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.018249996,
+        "y": 0.0418900698,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 345,
+        "y": 90,
+        "z": -8.83891516E-07
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875715
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_10",
+      "ObjectId": 15,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0498599298,
+        "y": 0.0601400807,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 315,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377876163
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_exhaust_lip_11",
+      "ObjectId": 16,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0681099296,
+        "y": 0.0917500183,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 284.999969,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00999999978,
+        "y": 0.00999999978,
+        "z": 0.0377875678
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_sleeve",
+      "ObjectId": 17,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": 0.340000004
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.144999996,
+        "y": 0.0260000005,
+        "z": 0.144999996
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_throat",
+      "ObjectId": 18,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": 0.367000014
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.119000003,
+        "y": 0.00200000009,
+        "z": 0.119000003
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_00",
+      "ObjectId": 19,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0606458224,
+        "y": 0.126249999,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 284.999969,
+        "y": 270,
+        "z": -1.31949037E-05
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464755
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_01",
+      "ObjectId": 20,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0443958193,
+        "y": 0.154395819,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 315,
+        "y": 270,
+        "z": 2.41483667E-06
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464792
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_02",
+      "ObjectId": 21,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0162499957,
+        "y": 0.170645833,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 345,
+        "y": 270,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464718
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_03",
+      "ObjectId": 22,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0162500031,
+        "y": 0.170645833,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 14.9999886,
+        "y": 270,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464755
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_04",
+      "ObjectId": 23,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0443958268,
+        "y": 0.154395819,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 45.0000191,
+        "y": 270,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464755
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_05",
+      "ObjectId": 24,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0606458224,
+        "y": 0.126249999,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 75.0000305,
+        "y": 270,
+        "z": 1.31949037E-05
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.033646483
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_06",
+      "ObjectId": 25,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0606458187,
+        "y": 0.0937499851,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 75,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.033646483
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_07",
+      "ObjectId": 26,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0443958156,
+        "y": 0.0656041652,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 44.9999847,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464643
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_08",
+      "ObjectId": 27,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0162499957,
+        "y": 0.0493541732,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 15.000001,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464681
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_09",
+      "ObjectId": 28,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0162499957,
+        "y": 0.0493541732,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 345,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464681
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_10",
+      "ObjectId": 29,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0443958268,
+        "y": 0.0656041801,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 315,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464979
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_muzzle_lip_11",
+      "ObjectId": 30,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0606458262,
+        "y": 0.0937500149,
+        "z": 0.372000009
+      },
+      "Rotation": {
+        "x": 284.999969,
+        "y": 90,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0109999999,
+        "y": 0.0109999999,
+        "z": 0.0336464718
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_heat_shield",
+      "ObjectId": 31,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.165999994,
+        "z": -0.0500000007
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.112000003,
+        "y": 0.0270000007,
+        "z": 0.314999998
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_shoulder_saddle",
+      "ObjectId": 32,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.0270000007,
+        "z": -0.238999993
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.116999999,
+        "y": 0.0610000007,
+        "z": 0.230000004
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_shoulder_pad",
+      "ObjectId": 33,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": -0.00400000019,
+        "z": -0.25
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.120999999,
+        "y": 0.0189999994,
+        "z": 0.188999996
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_fire_control_housing",
+      "ObjectId": 34,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.0299999993,
+        "z": 0.023
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0670000017,
+        "y": 0.0439999998,
+        "z": 0.131999999
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_pistol_grip",
+      "ObjectId": 35,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": -0.0430000015,
+        "z": -0.00499999989
+      },
+      "Rotation": {
+        "x": 346,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0430000015,
+        "y": 0.115999997,
+        "z": 0.0599999987
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_grip_heel",
+      "ObjectId": 36,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": -0.103,
+        "z": 0.00899999961
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.050999999,
+        "y": 0.023,
+        "z": 0.0649999976
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_foregrip_mount",
+      "ObjectId": 37,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.0430000015,
+        "z": 0.223000005
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0579999983,
+        "y": 0.0390000008,
+        "z": 0.0810000002
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_foregrip",
+      "ObjectId": 38,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": -0.0240000002,
+        "z": 0.218999997
+      },
+      "Rotation": {
+        "x": 5.00000048,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0439999998,
+        "y": 0.112999998,
+        "z": 0.0520000011
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_trigger_guard_bottom",
+      "ObjectId": 39,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": -0.0399999991,
+        "z": 0.057500001
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0120000001,
+        "y": 0.0120000001,
+        "z": 0.060999997
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_trigger_guard_front",
+      "ObjectId": 40,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": -0.0064999992,
+        "z": 0.0914999992
+      },
+      "Rotation": {
+        "x": 275.964478,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0120000001,
+        "y": 0.0120000001,
+        "z": 0.0673646778
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_trigger",
+      "ObjectId": 41,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": -0.00200000009,
+        "z": 0.0500000007
+      },
+      "Rotation": {
+        "x": 346,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0120000001,
+        "y": 0.0320000015,
+        "z": 0.0149999997
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_sight_riser",
+      "ObjectId": 42,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0610000007,
+        "y": 0.181999996,
+        "z": 0.0529999994
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0399999991,
+        "y": 0.0649999976,
+        "z": 0.0890000015
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_guidance_optic",
+      "ObjectId": 43,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0610000007,
+        "y": 0.221000001,
+        "z": 0.0649999976
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0560000017,
+        "y": 0.0680000037,
+        "z": 0.0560000017
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_optic_front_rim",
+      "ObjectId": 44,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0610000007,
+        "y": 0.221000001,
+        "z": 0.136000007
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0610000007,
+        "y": 0.00899999961,
+        "z": 0.0610000007
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_optic_front_glass",
+      "ObjectId": 45,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0610000007,
+        "y": 0.221000001,
+        "z": 0.145999998
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0430000015,
+        "y": 0.00200000009,
+        "z": 0.0430000015
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#183B43FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_optic_rear_boot",
+      "ObjectId": 46,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0610000007,
+        "y": 0.221000001,
+        "z": -0.00999999978
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.064000003,
+        "y": 0.0140000004,
+        "z": 0.064000003
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_optic_rear_glass",
+      "ObjectId": 47,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0610000007,
+        "y": 0.221000001,
+        "z": -0.0250000004
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0410000011,
+        "y": 0.00200000009,
+        "z": 0.0410000011
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#183B43FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_rangefinder",
+      "ObjectId": 48,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0549999997,
+        "y": 0.119999997,
+        "z": 0.112999998
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0489999987,
+        "y": 0.050999999,
+        "z": 0.116999999
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_rangefinder_lens",
+      "ObjectId": 49,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0549999997,
+        "y": 0.119999997,
+        "z": 0.173999995
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.0240000002,
+        "y": 0.00400000019,
+        "z": 0.0240000002
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#63C2CAFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_status_panel",
+      "ObjectId": 50,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0370000005,
+        "y": 0.0370000005,
+        "z": 0.0160000008
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00700000022,
+        "y": 0.0309999995,
+        "z": 0.0659999996
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_status_bar",
+      "ObjectId": 51,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0419999994,
+        "y": 0.0399999991,
+        "z": 0.0149999997
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00300000003,
+        "y": 0.00800000038,
+        "z": 0.0299999993
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#D9A64BFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_tube_band_0",
+      "ObjectId": 52,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": -0.319000006
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.127000004,
+        "y": 0.0109999999,
+        "z": 0.127000004
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_heat_vent_0",
+      "ObjectId": 53,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.181999996,
+        "z": -0.144999996
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.075000003,
+        "y": 0.00400000019,
+        "z": 0.0160000008
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_tube_band_1",
+      "ObjectId": 54,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": -0.0300000012
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.127000004,
+        "y": 0.0109999999,
+        "z": 0.127000004
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_heat_vent_1",
+      "ObjectId": 55,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.181999996,
+        "z": -0.0839999914
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.075000003,
+        "y": 0.00400000019,
+        "z": 0.0160000008
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_tube_band_2",
+      "ObjectId": 56,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": 0.259000003
+      },
+      "Rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.127000004,
+        "y": 0.0109999999,
+        "z": 0.127000004
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 2,
+        "Color": "#899497FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_heat_vent_2",
+      "ObjectId": 57,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.181999996,
+        "z": -0.0229999945
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.075000003,
+        "y": 0.00400000019,
+        "z": 0.0160000008
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_service_panel_-1",
+      "ObjectId": 58,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0610000007,
+        "y": 0.100000001,
+        "z": -0.119000003
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00899999961,
+        "y": 0.0540000014,
+        "z": 0.144999996
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_identification_plate_-1",
+      "ObjectId": 59,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0670000017,
+        "y": 0.107000001,
+        "z": -0.103
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00300000003,
+        "y": 0.0250000004,
+        "z": 0.0590000004
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#D3D4C7FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_warning_band_-1",
+      "ObjectId": 60,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0670000017,
+        "y": 0.108999997,
+        "z": -0.319999993
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00400000019,
+        "y": 0.0410000011,
+        "z": 0.0320000015
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#D9A64BFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_grip_rib_-1_0",
+      "ObjectId": 61,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0240000002,
+        "y": -0.0280000009,
+        "z": 0.00100000005
+      },
+      "Rotation": {
+        "x": 346,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00400000019,
+        "y": 0.00600000005,
+        "z": 0.0419999994
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_grip_rib_-1_1",
+      "ObjectId": 62,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0240000002,
+        "y": -0.050999999,
+        "z": 0.00100000005
+      },
+      "Rotation": {
+        "x": 346,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00400000019,
+        "y": 0.00600000005,
+        "z": 0.0419999994
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_grip_rib_-1_2",
+      "ObjectId": 63,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": -0.0240000002,
+        "y": -0.074000001,
+        "z": 0.00100000005
+      },
+      "Rotation": {
+        "x": 346,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00400000019,
+        "y": 0.00600000005,
+        "z": 0.0419999994
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_service_panel_1",
+      "ObjectId": 64,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0610000007,
+        "y": 0.100000001,
+        "z": -0.119000003
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00899999961,
+        "y": 0.0540000014,
+        "z": 0.144999996
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#242C30FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_identification_plate_1",
+      "ObjectId": 65,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0670000017,
+        "y": 0.107000001,
+        "z": -0.103
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00300000003,
+        "y": 0.0250000004,
+        "z": 0.0590000004
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#D3D4C7FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_warning_band_1",
+      "ObjectId": 66,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0670000017,
+        "y": 0.108999997,
+        "z": -0.319999993
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00400000019,
+        "y": 0.0410000011,
+        "z": 0.0320000015
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#D9A64BFF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_grip_rib_1_0",
+      "ObjectId": 67,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0240000002,
+        "y": -0.0280000009,
+        "z": 0.00100000005
+      },
+      "Rotation": {
+        "x": 346,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00400000019,
+        "y": 0.00600000005,
+        "z": 0.0419999994
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_grip_rib_1_1",
+      "ObjectId": 68,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0240000002,
+        "y": -0.050999999,
+        "z": 0.00100000005
+      },
+      "Rotation": {
+        "x": 346,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00400000019,
+        "y": 0.00600000005,
+        "z": 0.0419999994
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "rpg_grip_rib_1_2",
+      "ObjectId": 69,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0.0240000002,
+        "y": -0.074000001,
+        "z": 0.00100000005
+      },
+      "Rotation": {
+        "x": 346,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00400000019,
+        "y": 0.00600000005,
+        "z": 0.0419999994
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#505F65FF",
+        "PrimitiveFlags": 2,
+        "Static": true
+      }
+    },
+    {
+      "Name": "marker_breech",
+      "ObjectId": 70,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": -0.474999994
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00100000005,
+        "y": 0.00100000005,
+        "z": 0.00100000005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 0,
+        "Static": true
+      }
+    },
+    {
+      "Name": "marker_bore",
+      "ObjectId": 71,
+      "ParentId": 0,
+      "AnimatorName": "",
+      "Position": {
+        "x": 0,
+        "y": 0.109999999,
+        "z": 0.00999999978
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.00100000005,
+        "y": 0.00100000005,
+        "z": 0.00100000005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "#12191CFF",
+        "PrimitiveFlags": 0,
+        "Static": true
+      }
+    }
+  ]
+}

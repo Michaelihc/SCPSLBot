@@ -22,6 +22,7 @@ public sealed class BotRoundControlPlugin : Plugin<BotPluginConfig>
     public static BotRoundControlPlugin? Instance { get; private set; }
     internal static DuelRuntime? Runtime { get; private set; }
     internal BotPresentationService? Presentation { get; private set; }
+    internal SCPSLBot.Warmup.SpecialWeapons.SpecialWeaponsRuntime? SpecialWeapons => controls?.SpecialWeapons;
     private WarmupControlsRuntime? controls;
     private HumanPlayerCountService? humanCount;
     private Harmony? harmony;
