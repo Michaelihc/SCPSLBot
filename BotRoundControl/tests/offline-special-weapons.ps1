@@ -126,14 +126,20 @@ $shockwaveShot = Invoke-LabScreenshot -Name graviton-after-shockwave
 $checks.Add('a floor shot damages a nearby enemy through the shockwave')
 
 # Sustained native fire through depletion: the carrier ending must end tracking.
-for ($burst = 0; $burst -lt 12 -and (Me).items -contains 'ParticleDisruptor'; $burst++) {
-    $null = Tap "graviton-depletion-$burst" $fire 120
+$ammoTrace = [Collections.Generic.List[string]]::new()
+for ($burst = 0; $burst -lt 10 -and (Me).items -contains 'ParticleDisruptor'; $burst++) {
+    $null = Invoke-LabInput @{id="graviton-depletion-$burst";frames=240;keys=@($fire);capture=$true;audio=$true}
+    $ammoTrace.Add((Me | Select-Object items, held, firearm | ConvertTo-Json -Depth 5 -Compress))
+    if ((Me).firearm.ammo -eq 0) { break }
 }
 Start-Sleep -Seconds 1
-$depleted = (Me).items -notcontains 'ParticleDisruptor'
-"depleted=$depleted status=$(Status) items=$((Me).items -join ',')" | Set-Content "$($Context.Evidence)/special-weapons-depletion.txt" -Encoding utf8
-if ($depleted -and (Status) -notmatch 'tracked=0') { throw "A consumed disruptor stayed tracked: $(Status)" }
-$checks.Add("sustained fire through depletion (consumed=$depleted)")
+$consumed = (Me).items -notcontains 'ParticleDisruptor'
+$empty = $consumed -or (Me).firearm.ammo -eq 0
+"consumed=$consumed empty=$empty status=$(Status)`n$($ammoTrace -join "`n")" |
+    Set-Content "$($Context.Evidence)/special-weapons-depletion.txt" -Encoding utf8
+if (!$empty) { throw "Sustained fire did not deplete the disruptor: $($ammoTrace -join ' ')" }
+if ($consumed -and (Status) -notmatch 'tracked=0') { throw "A consumed disruptor stayed tracked: $(Status)" }
+$checks.Add("sustained fire through depletion (consumed=$consumed)")
 
 # Lifecycle: a weapon ends with the life and with Standard warmup.
 $null = Reply "/strip $actorId"
