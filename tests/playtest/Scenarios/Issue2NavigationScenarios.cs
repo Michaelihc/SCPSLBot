@@ -301,9 +301,7 @@ internal sealed class Issue2BotPair : IDisposable
         this.ctx = ctx;
         Issue2World.Command(ctx, "botspike cleanup");
         Issue2World.Command(ctx, "botspike start");
-        var result = Issue2World.Command(ctx, "bot_add");
-        var fields = CommandFields.ParseWhitespace(result.Response);
-        ctx.Require(fields.TryGetValue("player_id", out var id) && int.TryParse(id, out botId), "bot_add reports the independent dummy's player_id");
+        botId = Issue2World.AddBot(ctx);
     }
     public bool CanBind() => WarmupBotWorld.FindById(botId) is { IsReady: true, IsAlive: true }
         && WarmupBotWorld.FindSpike() is { IsReady: true, IsAlive: true };
@@ -387,6 +385,13 @@ internal static class Issue2World
         var nav = Command(ctx, "nav status");
         ctx.Require(nav.Response.Contains("active_backend=authored"), $"Authored backend is active: {nav.Response}");
         ctx.Info($"ISSUE2 BASELINE {status} nav={nav.Response}");
+    }
+    public static int AddBot(ScenarioContext ctx)
+    {
+        NativeCommandResult result = Command(ctx, "bot_add");
+        var match = System.Text.RegularExpressions.Regex.Match(result.Response, @"player_id=(\d+)");
+        ctx.Require(match.Success, $"bot_add reports the new bot's player_id: {result.Response}");
+        return int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
     }
     // Standalone AI reports no management fields, so this reads only what SCPSLBot itself owns.
     public static string RequireReady(ScenarioContext ctx)

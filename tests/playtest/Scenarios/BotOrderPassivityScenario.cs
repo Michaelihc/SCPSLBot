@@ -62,10 +62,7 @@ public sealed class BotOrderPassivityScenario : Scenario
             spike = WarmupBotWorld.FindSpike();
             ctx.Require(spike is { Role: RoleTypeId.ClassD }, "spike kept its keycard-less ClassD role");
 
-            Dictionary<string, string> added = CommandFields.ParseWhitespace(Issue2World.Command(ctx, "bot_add").Response);
-            ctx.Require(added.TryGetValue("player_id", out string id) && int.TryParse(id, out int targetId),
-                "bot_add reports the hostile bot's player_id");
-            targetId = int.Parse(added["player_id"]);
+            int targetId = Issue2World.AddBot(ctx);
             Issue2World.Command(ctx, $"forcerole {targetId} Scientist");
             yield return ctx.WaitUntil(() => WarmupBotWorld.FindById(targetId)?.Role == RoleTypeId.Scientist, 5f,
                 "hostile bot reached its Scientist role");

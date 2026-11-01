@@ -47,10 +47,7 @@ public sealed class AutonomousRoamScenario : Scenario
         List<string> failures = new();
         foreach (RoleTypeId role in Roles)
         {
-            Dictionary<string, string> added = CommandFields.ParseWhitespace(Issue2World.Command(ctx, "bot_add").Response);
-            ctx.Require(added.TryGetValue("player_id", out string id) && int.TryParse(id, out _),
-                "bot_add reports the player_id");
-            int botId = int.Parse(added["player_id"]);
+            int botId = Issue2World.AddBot(ctx);
             Issue2World.Command(ctx, $"forcerole {botId} {role}");
             yield return ctx.WaitUntil(() => WarmupBotWorld.FindById(botId)?.Role == role, 5f, $"bot reached {role}");
             yield return ctx.Wait(1f);
