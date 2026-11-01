@@ -65,6 +65,10 @@ How bots move and recover:
   orders share the same crossing logic.
 - Bots follow string-pulled corners nudged into each turn and slide around whatever collider is
   directly ahead. Walkable slopes and stair risers are not treated as walls.
+- A standing goal within 6 m in the same room that the navigator cannot deliver the bot to, because
+  it lies off the authored cells or on a low support the bake leaves unconnected, is approached in
+  a straight line validated against live collision for the role's capsule. A step on that line, up
+  to the role's jump apex plus its step offset, is taken with the native jump (`[BotNav] LOCAL_HOP`).
 - Closed doors on the path are opened when the role or a carried keycard satisfies the native door
   policy; the bot briefly equips the card and then restores its previous item. A door it cannot
   open, or one that stops opening short of open, is reported as a blocked crossing and the route is
@@ -102,8 +106,8 @@ authored cells from live floor probes, and keeps the `nav` cell editor.
 
 - Server logs record `NAV_BAKE_START`, `NAV_BAKED`, `NAV_RECONCILE_START`, `NAV_RECONCILED`,
   `NAV_UNREADABLE_MESH`, `NAV_LINK`, `NAV_BAKE_FAILED`, `NAV_LOAD_RETRY` and `NAV_LOAD_RECOVERED`.
-- Bot movement logs record `[BotNav] STUCK`, `CROSSING_PENALIZED`, `PLAN_FAILED`, `PLAN_PARTIAL` and
-  `REPLAN_STORM`.
+- Bot movement logs record `[BotNav] STUCK`, `CROSSING_PENALIZED`, `PLAN_FAILED`, `PLAN_PARTIAL`,
+  `LOCAL_HOP` and `REPLAN_STORM`.
 - `bot_status` exposes `nav_ready`, `nav_error`, `nav_backend` and the bake, link and reconcile counters.
   `nav status`, `nav probe` and `nav path` give the details.
 

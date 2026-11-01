@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Let bots reach a nearby target the navigator cannot deliver them to: SCPs now jump onto low
+  platforms such as the LCZ Greenhouse planters and walk floor the authored navmesh does not cover,
+  over a route checked against live collision for the role's capsule.
 - Keep a bot passive when `BotOrders.MoveToRoom` is rejected. It used to stay on its normal AI and
   attack, with nothing recorded; it now holds position with `FailedNoPath` and a `FailureReason`.
 - Resolve `MoveToRoom` when the bot spawns, so an order issued right after `SpawnBot` walks on
