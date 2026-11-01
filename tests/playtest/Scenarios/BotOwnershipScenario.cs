@@ -45,7 +45,7 @@ public sealed class BotOwnershipScenario : Scenario
             WarmupPopulationRecoveryScenario.RequireCommand(ctx, add, "spawn an independent bot");
             Dictionary<string, string> addFields = CommandFields.ParseWhitespace(add.Response);
             ctx.Require(addFields.TryGetValue("player_id", out string playerIdText)
-                        && int.TryParse(playerIdText, out manualPlayerId),
+                        && int.TryParse(playerIdText.TrimEnd('.'), out manualPlayerId),
                 $"bot_add returned a parseable player_id: {add.Response}");
 
             ThrottledCondition independentReady = new(() =>

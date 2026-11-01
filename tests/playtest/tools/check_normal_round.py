@@ -14,6 +14,14 @@ parser.add_argument("--scenario", help="run one named scenario on a bots-only fi
 parser.add_argument("--backend", choices=["Runtime", "Authored"], default="Runtime")
 parser.add_argument("--level", default="standard")
 parser.add_argument("--limit", type=int, default=900, help="seconds the named scenario may run")
+parser.add_argument("--management", action="store_true",
+    help="load BotRoundControl (bots_only: false, Standard warmup) for --scenario runs that need bot_warmup")
+parser.add_argument("--companions", action="store_true", help="with --management, also load WarmupSafezone and StatsBots")
+parser.add_argument("--management-config", metavar="FILE",
+    help="with --management, replace BotRoundControl's config with this fixture (e.g. halloween-moon-management.yml)")
+parser.add_argument("--harness-config", metavar="FILE", help="replace the generated PlaytestHarness config with this fixture")
+parser.add_argument("--extensions", action="store_true",
+    help="also load the test-only SCPSLPluginExtensions.dll (plugin_direload) for reload scenarios")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
 # A worktree outside the metarepo names it explicitly.
@@ -45,6 +53,25 @@ plugins = [repo / "SCPSLBot/bin/x64/Release/net48/SCPSLBot.dll",
     workspace / ".tests/Playtest/bin/Release/PlaytestHarness.dll",
     workspace / "HsmAdapter/bin/x64/Release/net48/HsmAdapter.dll",
     workspace / "ServerKeybinds/bin/x64/Release/net48/ServerKeybinds.dll"]
+if args.management:
+    if not args.scenario:
+        parser.error("--management needs --scenario")
+    # BotRoundControl builds AnyCPU; the x64 folder is checked first in case that changes.
+    management = next((repo / "BotRoundControl/bin" / folder / "BotRoundControl.dll" for folder in ("x64/Release/net48", "Release/net48")
+        if (repo / "BotRoundControl/bin" / folder / "BotRoundControl.dll").is_file()), None)
+    if management is None:
+        raise RuntimeError("Build BotRoundControl before using --management")
+    plugins.append(management)
+    if args.companions:
+        plugins += [repo / "WarmupSafezone/bin/x64/Release/net48/WarmupSafezone.dll", repo / "StatsBots/bin/x64/Release/net48/StatsBots.dll"]
+elif args.companions or args.management_config:
+    parser.error("--companions and --management-config need --management")
+if args.extensions:
+    extensions = next((repo / "SCPSLPluginExtensions/bin" / folder / "SCPSLPluginExtensions.dll"
+        for folder in ("x64/Release/net48", "Release/net48") if (repo / "SCPSLPluginExtensions/bin" / folder / "SCPSLPluginExtensions.dll").is_file()), None)
+    if extensions is None:
+        raise RuntimeError("Build SCPSLPluginExtensions before using --extensions")
+    plugins.append(extensions)
 keep = {"plugins/8910/HintServiceMeow.dll", *("plugins/8910/" + path.name for path in plugins)}
 keep.update(name for name in baseline if Path(name).name.startswith(("System.", "Microsoft.")))
 # Only SCPSLBot's subjects and dependencies load; gameplay-altering production plugins are absent.
@@ -57,7 +84,15 @@ if args.scenario:
     harness_fixture = artifacts / "harness.yml"
     harness_fixture.write_text(chr(10).join([f"auto_run_scenario: {scenario}", f"auto_run_level: {args.level}",
         "auto_run_delay_seconds: 20", ""]), encoding="utf-8")
+    if args.harness_config:
+        harness_fixture = Path(args.harness_config).resolve()
     files = [f"configs/8910/SCPSLBot/config.yml={bot_fixture}", f"configs/8910/PlaytestHarness/config.yml={harness_fixture}"]
+    if args.management:
+        management_fixture = artifacts / "management.yml"
+        management_fixture.write_text(chr(10).join(["language: cn", "bots_only: false", "warmup_mode: Standard", ""]), encoding="utf-8")
+        if args.management_config:
+            management_fixture = Path(args.management_config).resolve()
+        files.append(f"configs/8910/BotRoundControl/config.yml={management_fixture}")
 else:
     files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",
         f"configs/8910/PlaytestHarness/config.yml=tests/playtest/fixtures/{fixture}-harness.yml",
