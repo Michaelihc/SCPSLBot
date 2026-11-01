@@ -17,7 +17,7 @@ Verification:
 
 - The navigation gates run on a disposable offline-host slot against the patched server assets, and the
   driver verifies the asset patch first:
-  - `python tests/playtest/tools/check_normal_round.py --scenario scpslbot-runtime-navmesh-gate`
+  - `python tests/playtest/tools/check_normal_round.py --scenario scpslbot-runtime-navmesh-gate --management`
   - `--scenario scpslbot-keycard-routing-survey --management`
   - `--scenario scpslbot-door-survey --management`
 
