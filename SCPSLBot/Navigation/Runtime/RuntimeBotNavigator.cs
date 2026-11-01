@@ -100,6 +100,7 @@ namespace SCPSLBot.Navigation.Runtime
 
         public bool HasPath => current.HasPath;
         public bool HasPartialPath => current.HasPartialPath;
+        public bool ReachesGoal => current.HasPath;
         public Vector3 CurrentWaypoint { get; private set; }
         public Vector3 GoalPosition => current.Goal;
         public int ProgressStamp { get; private set; }

@@ -14,7 +14,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
     /// combat chase, orders, behaviors and GOAP actions only name a goal. Per call it follows the
     /// navigator's path with the steering/avoidance layers, opens the doors on the path (keycard
     /// swaps included, see <see cref="DoorTraversal"/>) and takes over completely while the path
-    /// crosses an elevator (<see cref="ElevatorTraversal"/>). Crossings it cannot use are reported
+    /// crosses an elevator (<see cref="ElevatorTraversal"/>). A nearby goal the navigator cannot
+    /// deliver the bot to is reached over a collision-validated local route, jumping low steps
+    /// (<see cref="LocalRouteTraversal"/>). Crossings it cannot use are reported
     /// to the navigator and replanned; when that keeps failing, or the stuck ladder gives up, the
     /// owner of the goal is told through <see cref="ConsumeAbandonRequest"/>.
     /// <para>
@@ -38,6 +40,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private readonly FpcBotPlayer botPlayer;
         private readonly DoorTraversal doors;
         private readonly ElevatorTraversal elevator;
+        private readonly LocalRouteTraversal localRoute;
 
         private bool movedSinceEndFrame;
         private Vector3 lastWaypoint;
@@ -73,6 +76,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             this.botPlayer = botPlayer;
             doors = new DoorTraversal(botPlayer);
             elevator = new ElevatorTraversal(botPlayer, this);
+            localRoute = new LocalRouteTraversal(botPlayer);
             StuckRecovery = new FpcStuckRecovery(botPlayer);
             ObstacleAvoidance = new FpcObstacleAvoidance(botPlayer);
         }
@@ -155,6 +159,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 }
             }
 
+            if (localRoute.TryUpdate(goal, navigator.ReachesGoal))
+            {
+                waypoint = goal;
+                lastWaypoint = goal;
+                FollowLocalRoute(goal);
+                return;
+            }
+
             lastWaypoint = waypoint;
             SteerAlongPath(waypoint);
             HandleDoors(navigator);
@@ -209,6 +221,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         {
             elevator.Cancel();
             doors.Reset();
+            localRoute.Reset();
             StuckRecovery.Reset();
             abandonRequested = false;
             movedSinceEndFrame = false;
@@ -241,6 +254,20 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             SteerToPosition(waypoint);
             SteerAwayFromStructures();
             SteerAroundAhead(waypoint);
+        }
+
+        private void FollowLocalRoute(Vector3 goal)
+        {
+            if (!localRoute.NeedsHop)
+            {
+                SteerAlongPath(goal);
+                return;
+            }
+
+            // Avoidance would slide along the face of the step the jump has to clear.
+            SteerToPosition(goal);
+            localRoute.JumpIfDue();
+            LogCrossing($"LOCAL_HOP goal={Format(goal)}");
         }
 
         private void SteerToPosition(Vector3 positionTowardsGoal)

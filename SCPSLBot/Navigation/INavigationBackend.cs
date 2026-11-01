@@ -50,6 +50,9 @@ namespace SCPSLBot.Navigation
         /// <summary>True when only a partial path (toward the reachable point nearest the goal) exists.</summary>
         bool HasPartialPath { get; }
 
+        /// <summary>True when the current plan ends at the goal itself, not at the navigable point nearest it.</summary>
+        bool ReachesGoal { get; }
+
         /// <summary>The steering point returned by the last <see cref="GetPositionTowards"/> call.</summary>
         Vector3 CurrentWaypoint { get; }
 
