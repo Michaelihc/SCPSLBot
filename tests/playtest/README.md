@@ -5,56 +5,90 @@ no compile-time reference to SCPSLBot and never reflects into the plugin. Bot be
 through the native RA/game-console processors and observed through `bot_status`, LabAPI events,
 native player/dummy state, network registration, positions, and physics raycasts.
 
-From the `scpsl-bot-plugin` directory, build the shared harness first, then this scenario assembly:
+## Build
+
+Set `SL_REFERENCES` to the dedicated server's `SCPSL_Data\Managed` folder and `SCPSL_METAREPO` to the
+metarepo checkout, then build everything with deployment disabled. A missing `SL_REFERENCES` fails
+`SCPSLBot.Components` and leaves a stale DLL that the driver would still package.
 
 ```powershell
-dotnet build ..\.tests\Playtest\PlaytestHarness.csproj -c Release
-dotnet build .\tests\playtest\SCPSLBot.PlaytestScenarios.csproj -c Release
+$M = $env:SCPSL_METAREPO
+dotnet build SCPSLBotAddon.sln -c Release -p:Platform=x64 -p:DeployToLocalServer=false "-p:HsmAdapterProject=$M\HsmAdapter\HsmAdapter.csproj" "-p:ServerKeybindsProject=$M\ServerKeybinds\ServerKeybinds.csproj"
+dotnet build tests/playtest/SCPSLBot.PlaytestScenarios.csproj -c Release -p:DeployToLocalServer=false "-p:PlaytestHarnessAssembly=$M\.tests\Playtest\bin\Release\PlaytestHarness.dll"
 ```
 
-Deploy `PlaytestHarness.dll`, `SCPSLBot.PlaytestScenarios.dll`, SCPSLBot and its runtime dependencies
-to one isolated test port. Restart the server, then run:
+## Driver
 
-```text
-ptest reload
-ptest run scpslbot-lifecycle standard
+`tests/playtest/tools/check_normal_round.py` is the one driver. It requires a clean `git status`,
+packages the committed candidate, verifies the navmesh asset patch on every prepared slot, and runs
+on a fresh disposable offline-host slot (it waits for a free one). Gameplay plugins in the baseline
+overlay are removed. Evidence lands in `scpsl-bot-plugin/tests/playtest/artifacts/normal-round-<scenario>-<timestamp>/`
+under the metarepo (`*.summary.json`, `*.jsonl`, `host.log`); the server log is under the slot's
+`runs/<run>/server-logs/`. The exit code is zero only when exactly the named scenario passed with
+nothing failed or skipped.
+
+| Option | Effect |
+| --- | --- |
+| *(none)* | Standard population case (`scpslbot-normal-round`) |
+| `--escape` | Autonomous escape (`scpslbot-autonomous-escape`), up to ten minutes |
+| `--scenario <name>` | Runs one scenario on an empty `bots_only` SCPSLBot fixture |
+| `--backend Runtime\|Authored` | Navigation backend (default `Runtime`) |
+| `--level quick\|standard\|e2e` | Fidelity tier (default `standard`); must be one the scenario supports |
+| `--limit <seconds>` | How long the scenario may run (default 900) |
+| `--management` | With `--scenario`: also loads `BotRoundControl.dll` with `bots_only: false` and `warmup_mode: Standard` |
+| `--companions` | With `--management`: also loads WarmupSafezone and StatsBots |
+| `--management-config <file>` | With `--management`: replaces BotRoundControl's generated config |
+| `--harness-config <file>` | Replaces the generated PlaytestHarness config |
+| `--extensions` | Also loads the test-only `SCPSLPluginExtensions.dll` (`plugin_direload`) |
+
+The bundle uses the fixed `plugins/8910/` and `configs/8910/` names and exactly one
+`ServerKeybinds.dll`. Scenarios never write `Round.IsLocked` and the Standard population and escape
+cases never inject SCPSLBot orders.
+
+## Scenarios that need BotRoundControl
+
+`bot_warmup`, the `mode` field of `bot_status` and the maintained warmup population exist only with
+`BotRoundControl.dll` loaded, so these run with `--management`:
+
+```powershell
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-population-recovery --management --limit 150
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-role-death-recovery --management --limit 150
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-native-walk-grounding --management --limit 360
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-destroyed-bot-recovery --management --limit 170
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-surface-managed-chaos-spawn --management --limit 150
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-bot-ownership --management --limit 190
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-warmup-warhead --management --level quick --limit 150 --harness-config tests/playtest/fixtures/warmup-warhead-harness.yml
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-halloween-moon --management --level quick --limit 400 --management-config tests/playtest/fixtures/halloween-moon-management.yml --harness-config tests/playtest/fixtures/halloween-moon-harness.yml
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-connector-survey --management --limit 1650
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-door-survey --management --limit 1650
 ```
 
-Disruptive/by-name acceptances:
+The first five are members of the `scpslbot-lifecycle` suite (with `scpslbot-surface-native-role-routing`).
+They cover exact desired/live population within 12 seconds, diagnostics permission and readiness
+text, off/on churn, canceled role repair, native death/respawn, dense grounding raycasts, dummy
+settle checks, and a real multi-room bot walk. `scpslbot-bot-ownership` is excluded from `run all`;
+it keeps an independent `bot_add` bot separate from maintained population. The warhead and Halloween
+moon cases are `quick` only. Construction-stage fault injection, 100-cycle native-memory/handle
+baselines, 20 cold boots/restarts remain separate live/manual gates.
 
-- `ptest run scpslbot-bot-add-cap standard` persists `warmup_bot_count: 10` because the production
-  `bot_add` surface intentionally has no decrement command. Run only on an isolated port and reset
-  the config afterward.
-- `ptest run scpslbot-midround-reload-recovery standard` requires the test-only
-  `SCPSLPluginExtensions.dll`. Production and release packages intentionally exclude that driver.
+`scpslbot-connector-survey` (excluded from `run all`) disables warmup population, spawns the
+`botspike` bot, runs `botspike survey clutter both`, and requires zero failed cases and zero rooms
+without navigation cells. The survey teleports the bot only for setup; every traversal is native
+FPC walking through `BotOrders`, logged per case as `[BotSurvey] CASE ... verdict=...` with the
+connector type, rooms, blocker and order telemetry. `scpslbot-door-survey` does the same over plain
+non-keycard doors (forward direction). Each run uses a fresh map seed, which the summary records.
 
-The lifecycle suite covers exact desired/live population within 12 seconds, diagnostics permission
-and readiness text, off/on churn, one canceled role repair, native death/respawn, dense grounding
-raycasts, dummy settle checks, and a real multi-room bot walk. Construction-stage fault injection,
-100-cycle native-memory/handle baselines, 20 cold boots/restarts, and production-free reload driving
-remain separate live/manual gates.
+`scpslbot-midround-reload-recovery` additionally needs `--extensions` and the built
+`SCPSLPluginExtensions.dll`. Production and release packages intentionally exclude that driver.
 
-## Normal rounds and autonomous escape
+## Bots-only scenarios
 
-Build the plugin, shared harness and scenario assembly with deployment disabled, then run:
+These run without management on an empty `bots_only` fixture; add `--backend Authored` to
+exercise the embedded navmesh:
 
 ```powershell
 python tests/playtest/tools/check_normal_round.py
 python tests/playtest/tools/check_normal_round.py --escape
-```
-
-The driver packages the committed candidate, verifies prepared server assets, and uses the offline
-host runner's fresh isolated slot. The Standard population case uses the native team queue to assign
-three independent spectators, then checks that an admin-selected spectator remains unmanaged. The
-E2E escape case uses a single native Scientist spawn and observes autonomous travel, actual item
-pickups and the native escape event for up to ten minutes. Neither case injects SCPSLBot orders or
-reflects into SCPSLBot. Other gameplay plugins are removed from the disposable overlay.
-
-## Orders, roaming and checkpoints
-
-The same driver runs any named scenario on an empty bots-only fixture:
-
-```powershell
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-order-passivity --limit 420
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-order-immediate --limit 200
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-autonomous-roam --limit 1020
@@ -62,16 +96,18 @@ python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-che
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-greenhouse --limit 600
 ```
 
-Add `--backend Authored` to exercise the embedded navmesh. The order
-cases first prove the armed bot lands a real hit without an order, so a bot that never fights cannot
-pass. The roam case soaks one uncontested bot per role and fails on a long stop, on alternating
-between two rooms, or on a Surface spawn that never enters the facility.
+The Standard population case uses the native team queue to assign three independent spectators,
+then checks that an admin-selected spectator remains unmanaged. The escape case uses a single
+native Scientist spawn and observes autonomous travel, actual item pickups and the native escape
+event. The order cases first prove the armed bot lands a real hit without an order, so a bot that
+never fights cannot pass. The roam case soaks one uncontested bot per role and fails on a long stop,
+on alternating between two rooms, or on a Surface spawn that never enters the facility.
 
 ## Runtime navmesh gates
 
-All 8891 drivers verify the dedicated-server asset patch (`tools/NavMeshAssetPatcher verify`) before
-booting. `scpslbot-runtime-navmesh-gate` reads `bot_status`, `nav status`, `nav probe` and `nav path`
-and requires the runtime backend with zero unreadable meshes, zero uncovered rooms, elevator links,
+The driver's asset check (`tools/NavMeshAssetPatcher verify`) must pass before the server boots.
+`scpslbot-runtime-navmesh-gate` reads `bot_status`, `nav status`, `nav probe` and `nav path` and
+requires the runtime backend with zero unreadable meshes, zero uncovered rooms, elevator links,
 keycard door classes, a bake under 5 s, a room index under 1.5 s, and complete paths for
 LczClassDSpawn -> HczWarhead, LczClassDSpawn -> Lcz914, Hcz049 -> EzGateA and EzGateA -> Outside.
 `scpslbot-keycard-routing-survey` drives `botspike survey keycard`: for every keycard door a path
@@ -79,59 +115,8 @@ across the doorway must be blocked (or clearly longer) without the card and comp
 `scpslbot-unity-navmesh-probe` remains the research probe (sources, build time, coverage detail).
 
 ```powershell
-python tests/playtest/tools/check_connector_survey.py --scenario scpslbot-runtime-navmesh-gate --label navmesh-gate
-python tests/playtest/tools/check_connector_survey.py --scenario scpslbot-keycard-routing-survey --label keycard
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-runtime-navmesh-gate --limit 300
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-keycard-routing-survey --limit 900
 ```
 
-## Navigation load recovery
-
-On the provisioned, stopped Windows test port 8891, run
-`python tests/playtest/tools/check_navigation_recovery.py` from the plugin root. The driver
-temporarily deploys the Release plugin and scenario DLL, forces `navigation.backend: Authored` for the run (the runtime backend never reads the file), locks the existing navigation file,
-and waits for six load failures to prove capped backoff before releasing it. The startup scenario
-asserts `nav_ready=False`/`nav_error` while blocked, recovery in the same map generation, exact live
-population, ground raycasts/settling, canceled-role repair and native death/respawn. Evidence is
-written to `tests/playtest/artifacts/navigation-recovery-<timestamp>/`. The driver stops its exact
-LocalAdmin and child, then restores the port's plugin/config files. It does not touch production.
-
-## Destroyed bot recovery
-
-On the provisioned, stopped port 8891, build Release SCPSLBot and this scenario assembly, then run
-`python tests/playtest/tools/check_destroyed_bot_recovery.py`. The driver uses the maintained local
-LocalAdmin fork, restricts loading to port 8891, verifies/captures the tested DLL, and restores the
-port's plugin/config files after stopping its exact processes. Evidence lives under
-`tests/playtest/artifacts/destroyed-bot-<timestamp>/`.
-
-`scpslbot-destroyed-bot-recovery` destroys one maintained dummy three times and then the entire
-maintained population using native RA. It verifies actual Unity destruction/network removal,
-automatic world replacement before diagnostic queries, exact live count in the same map,
-working `bot_status`, dense ground raycasts and settling. It needs a Standard Surface profile and
-no independent bots or real clients. `--expect-reproduction` is only for the old DLL: it requires
-the scenario to fail with the production `PruneMissingEntries` / `GetHashCode` signature.
-`--scenario <name>` runs an existing Standard regression with the same isolated driver.
-
-## Connector traversal survey
-
-`scpslbot-connector-survey` (Standard only, excluded from `run all`) disables warmup population,
-spawns the `botspike` bot, runs `botspike survey clutter both`, and requires zero failed cases and
-zero rooms without navigation cells. The survey teleports the bot only for setup; every traversal
-is native FPC walking through `BotOrders`, logged per case as `[BotSurvey] CASE ... verdict=...`
-with the connector type, rooms, blocker and order telemetry. `scpslbot-door-survey` does the same
-over plain non-keycard doors (forward direction).
-
-Run it on the provisioned, stopped port 8891 from the plugin root after building Release SCPSLBot
-and this scenario assembly:
-
-```powershell
-python tests/playtest/tools/check_connector_survey.py --rounds 2
-python tests/playtest/tools/check_connector_survey.py --rounds 2 --expect-reproduction --label baseline
-python tests/playtest/tools/check_connector_survey.py --scenario scpslbot-door-survey --label door-survey
-python tests/playtest/tools/check_connector_survey.py --scenario scpslbot-lifecycle --label lifecycle
-```
-
-Each round boots a fresh headless server (new map seed), copies the summary, the JSONL event
-stream, the full LocalAdmin log and a `survey-round<n>.log` extract (`[BotSurvey]`, `[BotNav]`,
-`NAV_*`, order stalls) into `tests/playtest/artifacts/<label>-<timestamp>/`, then stops its exact
-process pair and restores the port's plugin/config files. `--expect-reproduction` is the baseline
-mode that requires at least one failed traversal.
-
+A successful `nav path` query proves planning only; connector acceptance requires native walks.
