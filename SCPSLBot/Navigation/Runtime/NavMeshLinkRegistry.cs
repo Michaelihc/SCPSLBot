@@ -112,20 +112,20 @@ namespace SCPSLBot.Navigation.Runtime
                 var forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
                 if (forward.sqrMagnitude >= 0.5f)
                 {
-                    BridgeIfSealed(connector.SpawnData.ConnectorType.ToString(), transform.position + Vector3.up, forward, MinimumConnectorLinkWidth, agentTypeId, path);
+                    BridgeIfSealed(connector.SpawnData.ConnectorType.ToString(), transform.position + Vector3.up, forward, ConnectorPassageProbe.LateralHalfSpan, MinimumConnectorLinkWidth, agentTypeId, path);
                 }
             }
 
             foreach (var door in DoorVariant.AllDoors)
             {
-                if (door is DummyDoor && TryGetLeafGap(door, out var center, out var forward))
+                if (door is DummyDoor && TryGetLeafGap(door, out var center, out var forward, out var halfSpan))
                 {
-                    BridgeIfSealed(door.name, center, forward, 0f, agentTypeId, path);
+                    BridgeIfSealed(door.name, center, forward, halfSpan, 0f, agentTypeId, path);
                 }
             }
         }
 
-        private void BridgeIfSealed(string type, Vector3 center, Vector3 forward, float minimumLinkWidth, int agentTypeId, NavMeshPath path)
+        private void BridgeIfSealed(string type, Vector3 center, Vector3 forward, float lateralHalfSpan, float minimumLinkWidth, int agentTypeId, NavMeshPath path)
         {
             var right = Vector3.Cross(Vector3.up, forward).normalized;
             if (!NavMesh.SamplePosition(center + forward * 3.5f, out var a, 3f, NavMesh.AllAreas)
@@ -141,7 +141,7 @@ namespace SCPSLBot.Navigation.Runtime
                 return;
             }
 
-            var passage = ConnectorPassageProbe.Probe(center, forward, right);
+            var passage = ConnectorPassageProbe.Probe(center, forward, right, lateralHalfSpan);
             if (passage.Gap is not { } gap)
             {
                 SealedConnectors++;
@@ -180,10 +180,12 @@ namespace SCPSLBot.Navigation.Runtime
         }
 
         // The opening between a fixed door's two leaves, which need not sit on the door's pivot.
-        private static bool TryGetLeafGap(DoorVariant door, out Vector3 center, out Vector3 forward)
+        // The half span stops at the leaves: beside them the probe would find the space behind the wall.
+        private static bool TryGetLeafGap(DoorVariant door, out Vector3 center, out Vector3 forward, out float halfSpan)
         {
             center = default;
             forward = default;
+            halfSpan = 0f;
             var leaves = door.AllColliders;
             if (leaves == null || leaves.Length != 2 || leaves[0] == null || leaves[1] == null)
             {
@@ -199,6 +201,7 @@ namespace SCPSLBot.Navigation.Runtime
             }
 
             forward = Vector3.Cross(across, Vector3.up).normalized;
+            halfSpan = across.magnitude * 0.5f;
             var middle = (first + second) * 0.5f;
             center = new Vector3(middle.x, door.transform.position.y + 1f, middle.z);
             return true;
