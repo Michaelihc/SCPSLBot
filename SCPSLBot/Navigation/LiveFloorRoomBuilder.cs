@@ -1,4 +1,5 @@
 using Interactables.Interobjects;
+using Interactables.Interobjects.DoorUtils;
 using MapGeneration;
 using PlayerRoles.FirstPersonControl;
 using SCPSLBot.Navigation.Mesh;
@@ -20,9 +21,10 @@ namespace SCPSLBot.Navigation
     {
         private const float GridStep = 1f;
         private const float MinWalkableNormalY = 0.7f;
-        private const float ProbeStart = 1.1f;
-        private const float ProbeDepth = 2.2f;
-        private const float MaxStepHeight = 0.8f;
+        private const float ProbeStart = 1.4f;
+        private const float ProbeDepth = 2.8f;
+        // One grid square of a steep stair flight; the midpoint capsule rejects real ledges.
+        private const float MaxStepHeight = 1.1f;
         private const float SameFloorTolerance = 0.3f;
         private const int SeedSearchRadius = 1;
         private const int MaxNodes = 6000;
@@ -32,6 +34,7 @@ namespace SCPSLBot.Navigation
         private const float ShaftVerticalReach = 3f;
 
         private static readonly (int I, int J)[] Neighbours = { (1, 0), (-1, 0), (0, 1), (0, -1) };
+        private static readonly Collider[] Overlaps = new Collider[32];
 
         // Doors open at runtime, so a closed leaf must not cut the walk off.
         public static int ProbeMask => FpcStateProcessor.Mask & ~LayerMask.GetMask("Player", "Hitbox", "Door");
@@ -50,6 +53,7 @@ namespace SCPSLBot.Navigation
             public RoomIdentifier Room;
             public int Mask;
             public List<ElevatorDoor> ElevatorDoors = new();
+            public HashSet<Collider> DoorLeaves = new();
             public Dictionary<(int, int), List<Node>> Columns = new();
             public List<Node> Nodes = new();
             public Queue<Node> Open = new();
@@ -66,6 +70,14 @@ namespace SCPSLBot.Navigation
             foreach (ElevatorGroup group in Enum.GetValues(typeof(ElevatorGroup)))
             {
                 walk.ElevatorDoors.AddRange(ElevatorDoor.GetDoorsForGroup(group));
+            }
+
+            foreach (var door in DoorVariant.AllDoors)
+            {
+                if (door != null && door is not ElevatorDoor && door.AllColliders != null)
+                {
+                    walk.DoorLeaves.UnionWith(door.AllColliders);
+                }
             }
 
             foreach (var landing in landings)
@@ -198,7 +210,7 @@ namespace SCPSLBot.Navigation
             floorY = transform.InverseTransformPoint(hit.point).y;
             return Mathf.Abs(floorY - fromY) <= MaxStepHeight
                    && !IsInElevatorShaft(hit.point, walk.ElevatorDoors)
-                   && !IsCapsuleBlocked(hit.point, walk.Mask)
+                   && !IsCapsuleBlocked(walk, hit.point)
                    && RoomUtils.TryGetRoom(hit.point + Vector3.up * NavigationAgentProfile.RootHeight, out var hitRoom)
                    && hitRoom == walk.Room;
         }
@@ -235,15 +247,26 @@ namespace SCPSLBot.Navigation
                 (from.I + toI) * 0.5f * GridStep,
                 (from.Y + toY) * 0.5f,
                 (from.J + toJ) * 0.5f * GridStep));
-            return !IsCapsuleBlocked(middle, walk.Mask);
+            return !IsCapsuleBlocked(walk, middle);
         }
 
-        private static bool IsCapsuleBlocked(Vector3 floor, int mask)
+        // Door leaves move, and bots open them, so a closed one does not block the walk whatever
+        // layer it is on.
+        private static bool IsCapsuleBlocked(Walk walk, Vector3 floor)
         {
             var radius = NavigationAgentProfile.Radius;
             var bottomOffset = NavigationAgentProfile.StepClearance + radius;
             var topOffset = Mathf.Max(bottomOffset + 0.05f, NavigationAgentProfile.Height - radius - 0.05f);
-            return Physics.CheckCapsule(floor + Vector3.up * bottomOffset, floor + Vector3.up * topOffset, radius, mask, QueryTriggerInteraction.Ignore);
+            var count = Physics.OverlapCapsuleNonAlloc(floor + Vector3.up * bottomOffset, floor + Vector3.up * topOffset, radius, Overlaps, walk.Mask, QueryTriggerInteraction.Ignore);
+            for (var index = 0; index < count; index++)
+            {
+                if (!walk.DoorLeaves.Contains(Overlaps[index]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // One square per node, corners clockwise from above: (-,-), (-,+), (+,+), (+,-). Corners of

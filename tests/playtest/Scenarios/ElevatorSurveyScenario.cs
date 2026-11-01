@@ -10,6 +10,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace SCPSLBot.PlaytestScenarios.Scenarios;
 
@@ -60,17 +61,18 @@ public sealed class ElevatorSurveyScenario : Scenario
             yield return ctx.Wait(0.1f);
         }
 
-        foreach (string query in new[]
+        foreach (var (from, to) in new[]
         {
-            "nav path 196.4 -97.1 24.0 195.0 -100.0 40.0",
-            "nav path 205.4 -100.0 116.2 210.0 -100.0 95.0",
-            "nav path 214.6 -96.0 116.2 210.0 -100.0 95.0",
-            "nav path 104.3 -100.0 85.1 105.0 -100.0 100.0",
-            "nav path 85.3 -10.9 85.4 115.0 -10.9 85.0",
-            "nav path 123.8 287.9 18.4 63.7 294.7 -34.0",
+            (new Vector3(196.4f, -97.1f, 24f), new Vector3(195f, -100f, 40f)),
+            (new Vector3(205.4f, -100f, 116.2f), new Vector3(210f, -100f, 95f)),
+            (new Vector3(214.6f, -96f, 116.2f), new Vector3(210f, -100f, 95f)),
         })
         {
-            ctx.Info($"SURVEY_PATH {query}: {NativeCommandAdapter.RemoteAdmin(query).Response}");
+            NavMeshPath path = new();
+            bool computed = NavMesh.SamplePosition(from, out NavMeshHit a, 3f, NavMesh.AllAreas)
+                && NavMesh.SamplePosition(to, out NavMeshHit b, 3f, NavMesh.AllAreas)
+                && NavMesh.CalculatePath(a.position, b.position, NavMesh.AllAreas, path);
+            ctx.Info($"SURVEY_PATH {PlacementProbes.Format(from)} to {PlacementProbes.Format(to)} computed={computed} status={path.status} corners={string.Join(" ", path.corners.Select(PlacementProbes.Format))}");
         }
 
         foreach (RoomIdentifier room in RoomIdentifier.AllRoomIdentifiers)

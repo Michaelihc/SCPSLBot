@@ -101,7 +101,13 @@ namespace SCPSLBot.Navigation.Authored
             return NavigationMesh.FindShortestPath(within.Value, target.Value, reachScratch, allowPartial: false) == NavigationMesh.PathOutcome.Complete;
         }
 
-        public bool IsOnMesh() => GetCellWithin() != null;
+        public bool IsOnMesh()
+        {
+            return GetCellWithin() != null
+                   || (RoomUtils.TryGetRoom(botPlayer.PlayerPosition, out var room)
+                       && room != null
+                       && NavigationMesh.TryGetNearestCell(botPlayer.PlayerPosition, room, OffMeshRecoveryRadius, out _));
+        }
 
         public bool HasReached(Vector3 point)
         {
