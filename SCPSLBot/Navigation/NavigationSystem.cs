@@ -347,6 +347,7 @@ namespace SCPSLBot.Navigation
                 var cellAt0InShaft = ResolveElevatorShaftCell(elevatorDoors[0]);
                 var cellAt1InShaft = ResolveElevatorShaftCell(elevatorDoors[1]);
 
+                LabLogger.Info($"[SCPSLBot] NAV_LINK_SURVEY group={group} a={Format(elevatorDoors[0].transform.position)} cellA={(cellAt0InShaft.HasValue ? Format(cellAt0InShaft.Value.CenterPosition) : "none")} b={Format(elevatorDoors[1].transform.position)} cellB={(cellAt1InShaft.HasValue ? Format(cellAt1InShaft.Value.CenterPosition) : "none")}");
                 if (cellAt0InShaft != null && cellAt1InShaft != null)
                 {
                     // Connect
