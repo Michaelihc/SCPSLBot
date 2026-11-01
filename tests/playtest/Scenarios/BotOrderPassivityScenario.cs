@@ -1,6 +1,7 @@
 using LabApi.Events.Arguments.PlayerEvents;
 using LabApi.Events.Handlers;
 using LabApi.Features.Wrappers;
+using MapGeneration;
 using PlayerRoles;
 using PlaytestHarness.Core;
 using SCPSLBot.PlaytestScenarios.Harness;
@@ -13,12 +14,11 @@ namespace SCPSLBot.PlaytestScenarios.Scenarios;
 
 /// <summary>
 /// Proves an ordered bot does not attack. An armed autonomous spike first has to land a real hit on a
-/// hostile bot, so a spike that never fights cannot pass. It then gets an order a keycard-less bot
-/// cannot route, and a reachable one, with the hostile kept in its line of sight throughout.
+/// hostile bot, so a spike that never fights cannot pass. It then gets an order for a room without
+/// navigation, and a reachable one, with the hostile kept in its line of sight throughout.
 /// </summary>
 public sealed class BotOrderPassivityScenario : Scenario
 {
-    private const string UnreachableRoom = "LczArmory";
     private const string ReachableRoom = "LczToilets";
     internal const float HoldIntervalSeconds = 1f;
     private const float TargetDistance = 3f;
@@ -84,9 +84,12 @@ public sealed class BotOrderPassivityScenario : Scenario
             ctx.Require(hits > 0, "armed autonomous spike is hostile: it landed a hit on the visible Scientist");
             ctx.Info($"ORDER_PASSIVITY baseline hits={hits}");
 
-            // A rejected order.
-            Issue2World.Command(ctx, $"botspike walk {UnreachableRoom}");
-            yield return ctx.WaitUntil(RouteStopped, 10f, "the unreachable order reached a terminal result");
+            // A rejected order: a room this seed lacks takes the same path as one without navigation.
+            RoomName absentRoom = Enum.GetValues(typeof(RoomName)).Cast<RoomName>().First(name => name != RoomName.Unnamed
+                && RoomIdentifier.AllRoomIdentifiers.All(room => room == null || room.Name != name));
+            ctx.Info($"ORDER_PASSIVITY ordering absent room {absentRoom}");
+            Issue2World.Command(ctx, $"botspike walk {absentRoom}");
+            yield return ctx.WaitUntil(RouteStopped, 10f, "the rejected order reached a terminal result");
             string rejected = Status(ctx);
             ctx.Info($"ORDER_PASSIVITY rejected status: {rejected}");
             yield return ctx.Wait(0.5f); // A shot already resolved is not caused by the order.
@@ -109,7 +112,7 @@ public sealed class BotOrderPassivityScenario : Scenario
             ctx.Require(Vector3.Distance(heldAt, spike.Position) < 1.5f, $"spike holds position after the rejected order: {rejected}");
             ctx.Require(Fields(rejected).TryGetValue("order", out string rejectedOrder) && rejectedOrder == "FailedNoPath",
                 $"the rejected order is visible to the caller: {rejected}");
-            ctx.Require(rejected.Contains("keycard"), $"the failure names the keycard cause: {rejected}");
+            ctx.Require(rejected.Contains("navigation"), $"the failure names its cause: {rejected}");
 
             // An accepted order, walked past the same hostile.
             Vector3 start = spike.Position;
