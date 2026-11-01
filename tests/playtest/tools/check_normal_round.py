@@ -1,6 +1,7 @@
 """Run normal-round integration or autonomous escape on an isolated offline host slot."""
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -15,7 +16,9 @@ parser.add_argument("--level", default="standard")
 parser.add_argument("--limit", type=int, default=900, help="seconds the named scenario may run")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
-workspace = next(parent for parent in repo.parents if (parent / ".tests/offline-clients/tools/host.py").is_file())
+# A worktree outside the metarepo names it explicitly.
+workspace = Path(os.environ["SCPSL_METAREPO"]) if "SCPSL_METAREPO" in os.environ else next(
+    parent for parent in repo.parents if (parent / ".tests/offline-clients/tools/host.py").is_file())
 host_repo = workspace / ".tests/offline-clients"
 sys.path.insert(0, str(host_repo / "tools"))
 from package import package
