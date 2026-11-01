@@ -41,7 +41,7 @@ public sealed class AutonomousRoamScenario : Scenario
 
     public override IEnumerator<float> Run(ScenarioContext ctx)
     {
-        ctx.Require(BotStatusSnapshot.Read().NavReady, "navigation is ready");
+        Issue2World.RequireReady(ctx);
         yield return ctx.EnsureRoundStarted();
 
         List<string> failures = new();

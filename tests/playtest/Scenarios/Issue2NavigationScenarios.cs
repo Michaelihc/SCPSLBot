@@ -383,11 +383,18 @@ internal static class Issue2World
 {
     public static void RequireAuthored(ScenarioContext ctx)
     {
-        var status = BotStatusSnapshot.Read();
-        ctx.Require(status.NavReady && status.AiRunnerRunning, $"current-map navigation and AI runner are ready: {status.Raw}");
+        var status = RequireReady(ctx);
         var nav = Command(ctx, "nav status");
         ctx.Require(nav.Response.Contains("active_backend=authored"), $"Authored backend is active: {nav.Response}");
-        ctx.Info($"ISSUE2 BASELINE {status.Raw} nav={nav.Response}");
+        ctx.Info($"ISSUE2 BASELINE {status} nav={nav.Response}");
+    }
+    // Standalone AI reports no management fields, so this reads only what SCPSLBot itself owns.
+    public static string RequireReady(ScenarioContext ctx)
+    {
+        string status = Command(ctx, "bot_status").Response;
+        ctx.Require(status.Contains("nav_ready=True") && status.Contains("ai_runner_running=True"),
+            $"current-map navigation and AI runner are ready: {status}");
+        return status;
     }
     public static NativeCommandResult Command(ScenarioContext ctx, string query)
     {

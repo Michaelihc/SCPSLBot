@@ -32,7 +32,7 @@ public sealed class BotOrderPassivityScenario : Scenario
 
     public override IEnumerator<float> Run(ScenarioContext ctx)
     {
-        ctx.Require(BotStatusSnapshot.Read().NavReady, "navigation is ready");
+        Issue2World.RequireReady(ctx);
         yield return ctx.EnsureRoundStarted();
 
         Player? spike = null;
