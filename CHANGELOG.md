@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v2026.11.02
+
 - Stop bots stalling in SCP-939's cell on runtime navigation. The bake treated the cell's fixed blast
   door as a door bots open and planned through a wider gap than its leaves leave, so bots ground
   against a leaf, carved out the only exit and walked back into the cryo pod. Fixed doors now keep
@@ -16,7 +18,6 @@
 - Let bots reach a nearby target the navigator cannot deliver them to: SCPs now jump onto low
   platforms such as the LCZ Greenhouse planters and walk floor the authored navmesh does not cover,
   over a route checked against live collision for the role's capsule.
-
 - Keep a bot passive when `BotOrders.MoveToRoom` is rejected. It used to stay on its normal AI and
   attack, with nothing recorded; it now holds position with `FailedNoPath` and a `FailureReason`.
 - Resolve `MoveToRoom` when the bot spawns, so an order issued right after `SpawnBot` walks on
