@@ -73,6 +73,22 @@ public sealed class ElevatorSurveyScenario : Scenario
                 && NavMesh.SamplePosition(to, out NavMeshHit b, 3f, NavMesh.AllAreas)
                 && NavMesh.CalculatePath(a.position, b.position, NavMesh.AllAreas, path);
             ctx.Info($"SURVEY_PATH {PlacementProbes.Format(from)} to {PlacementProbes.Format(to)} computed={computed} status={path.status} corners={string.Join(" ", path.corners.Select(PlacementProbes.Format))}");
+            StringBuilder route = new();
+            for (int corner = 1; corner < path.corners.Length; corner++)
+            {
+                Vector3 start = path.corners[corner - 1];
+                Vector3 end = path.corners[corner];
+                int samples = Mathf.CeilToInt(Vector3.Distance(start, end));
+                for (int sample = 0; sample < samples; sample++)
+                {
+                    Vector3 floor = Vector3.Lerp(start, end, (float)sample / samples);
+                    Vector3 root = floor + Vector3.up * 0.98f;
+                    Collider[] hits = Physics.OverlapCapsule(floor + Vector3.up * 0.66f, floor + Vector3.up * 1.39f, 0.36f, mask, QueryTriggerInteraction.Ignore);
+                    route.Append($"{PlacementProbes.Format(floor)} room={RoomAt(root)} coords={RoomUtils.PositionToCoords(root)} blockers={string.Join(",", hits.Select(hit => hit.name).Take(3))} / ");
+                }
+            }
+
+            ctx.Info($"SURVEY_ROUTE {route}");
         }
 
         foreach (RoomIdentifier room in RoomIdentifier.AllRoomIdentifiers)
