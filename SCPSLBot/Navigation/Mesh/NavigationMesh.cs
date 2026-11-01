@@ -20,6 +20,10 @@ namespace SCPSLBot.Navigation.Mesh
         /// <summary>True for meshes filled at runtime from live collision probes; never persisted.</summary>
         public bool IsGenerated { get; set; }
 
+        // Square-grid forms answer point lookups from here; any later edit falls back to a scan.
+        private Dictionary<(int, int), List<Cell>> cellGrid;
+        private float cellGridStep;
+
         private NavigationMesh()
         {
             VertexDeleted += RemoveVertexFromCells;
@@ -65,6 +69,7 @@ namespace SCPSLBot.Navigation.Mesh
         public bool MoveVertex(Vertex vertex, Vector3 newPosition)
         {
             vertex.Position = newPosition;
+            cellGrid = null;
             MarkTopologyChanged();
 
             return true;
@@ -74,6 +79,7 @@ namespace SCPSLBot.Navigation.Mesh
         {
             var newCell = new Cell(vertices);
             Cells.Add(newCell);
+            cellGrid = null;
 
             AddAdjacentCells(newCell);
 
@@ -81,6 +87,34 @@ namespace SCPSLBot.Navigation.Mesh
             MarkTopologyChanged();
 
             return newCell;
+        }
+
+        /// <summary>Adds a cell whose adjacency the caller sets itself.</summary>
+        public Cell MakeUnlinkedCell(IEnumerable<Vertex> vertices)
+        {
+            var newCell = new Cell(vertices);
+            Cells.Add(newCell);
+            CellCreated?.Invoke(newCell);
+            MarkTopologyChanged();
+            return newCell;
+        }
+
+        public void SetCellGrid(float step, Dictionary<(int, int), List<Cell>> grid)
+        {
+            cellGridStep = step;
+            cellGrid = grid;
+        }
+
+        /// <summary>The cells that may hold <paramref name="localPosition"/>.</summary>
+        public IReadOnlyList<Cell> GetCellsAt(Vector3 localPosition)
+        {
+            if (cellGrid == null)
+            {
+                return Cells;
+            }
+
+            var key = (Mathf.RoundToInt(localPosition.x / cellGridStep), Mathf.RoundToInt(localPosition.z / cellGridStep));
+            return cellGrid.TryGetValue(key, out var cells) ? cells : Array.Empty<Cell>();
         }
 
         private void AddAdjacentCells(Cell newCell)
@@ -99,6 +133,18 @@ namespace SCPSLBot.Navigation.Mesh
             }
         }
 
+        /// <summary>Drops every vertex and cell so the form can be filled again.</summary>
+        public void ClearCells()
+        {
+            foreach (var cell in Cells.ToArray())
+            {
+                RemoveCell(cell);
+            }
+
+            Vertices.Clear();
+            MarkTopologyChanged();
+        }
+
         public bool RemoveCell(Cell cell)
         {
             var cells = Cells;
@@ -106,6 +152,8 @@ namespace SCPSLBot.Navigation.Mesh
             {
                 return false;
             }
+
+            cellGrid = null;
 
             RemoveAdjacentCells(cell);
 

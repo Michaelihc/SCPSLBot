@@ -1,3 +1,5 @@
+using LabApi.Events.Arguments.ServerEvents;
+using LabApi.Events.Handlers;
 using LabApi.Features;
 using LabApi.Features.Console;
 using LabApi.Loader.Features.Plugins;
@@ -28,6 +30,8 @@ public sealed class ScpslBotPlaytestScenariosPlugin : Plugin<ScenarioLibraryConf
         }
         if (Config.LogScpAbilityEvents)
             ScpAbilityEventLog.Enable();
+        if (Config.MapSeed > 0)
+            ServerEvents.MapGenerating += UseConfiguredMapSeed;
         Logger.Info("[SCPSLBot.PlaytestScenarios] Loaded for PlaytestHarness discovery.");
     }
 
@@ -35,9 +39,16 @@ public sealed class ScpslBotPlaytestScenariosPlugin : Plugin<ScenarioLibraryConf
     {
         PursuitKeycardFixture.Restore();
         ScpAbilityEventLog.Disable();
+        ServerEvents.MapGenerating -= UseConfiguredMapSeed;
         if (originalTeamQueue != null)
             GameCore.ConfigFile.ServerConfig.SetString("team_respawn_queue", originalTeamQueue);
         originalTeamQueue = null;
+    }
+
+    private void UseConfiguredMapSeed(MapGeneratingEventArgs args)
+    {
+        args.Seed = Config.MapSeed;
+        Logger.Info($"[SCPSLBot.PlaytestScenarios] MAP_SEED {args.Seed}");
     }
 }
 
@@ -46,4 +57,6 @@ public sealed class ScenarioLibraryConfig
     public bool Enabled { get; set; } = true;
     public string NativeTeamQueue { get; set; } = string.Empty;
     public bool LogScpAbilityEvents { get; set; }
+    /// <summary>Replaces the host's fixed map seed for this server, so spatial checks can vary the map.</summary>
+    public int MapSeed { get; set; }
 }

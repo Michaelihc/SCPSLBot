@@ -20,9 +20,8 @@ namespace SCPSLBot.Navigation
     }
 
     /// <summary>
-    /// An elevator crossing on a bot's current path. Doors are null for backends that only know
-    /// an "edgeless" segment (the authored cell mesh); the elevation belief then falls back to
-    /// probing the world around <see cref="Origin"/>.
+    /// An elevator crossing on a bot's current path, from the landing in front of one door to the
+    /// landing in front of the other.
     /// </summary>
     internal readonly struct ElevatorLinkSegment
     {

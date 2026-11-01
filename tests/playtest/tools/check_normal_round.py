@@ -22,6 +22,7 @@ parser.add_argument("--management-config", metavar="FILE",
 parser.add_argument("--harness-config", metavar="FILE", help="replace the generated PlaytestHarness config with this fixture")
 parser.add_argument("--extensions", action="store_true",
     help="also load the test-only SCPSLPluginExtensions.dll (plugin_direload) for reload scenarios")
+parser.add_argument("--map-seed", type=int, help="map seed for a named scenario; the host otherwise fixes one seed")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
 # A worktree outside the metarepo names it explicitly.
@@ -93,6 +94,10 @@ if args.scenario:
         if args.management_config:
             management_fixture = Path(args.management_config).resolve()
         files.append(f"configs/8910/BotRoundControl/config.yml={management_fixture}")
+    if args.map_seed:
+        library_fixture = artifacts / "library.yml"
+        library_fixture.write_text(f"map_seed: {args.map_seed}\n", encoding="utf-8")
+        files.append(f"configs/8910/SCPSLBot.PlaytestScenarios/config.yml={library_fixture}")
 else:
     files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",
         f"configs/8910/PlaytestHarness/config.yml=tests/playtest/fixtures/{fixture}-harness.yml",

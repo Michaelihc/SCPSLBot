@@ -97,7 +97,8 @@ python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-che
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-greenhouse --limit 600
 ```
 
-The Standard population case uses the native team queue to assign three independent spectators,
+Add `--backend Authored` to exercise the embedded navmesh, and `--map-seed <n>` to leave the host's
+fixed map seed: spatial results only cover other maps when the seed changes. The Standard population case uses the native team queue to assign three independent spectators,
 then checks that an admin-selected spectator remains unmanaged. The escape case uses a single
 native Scientist spawn and observes autonomous travel, actual item pickups and the native escape
 event. The order cases first prove the armed bot lands a real hit without an order, so a bot that

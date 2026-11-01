@@ -6,6 +6,13 @@
   door as a door bots open and planned through a wider gap than its leaves leave, so bots ground
   against a leaf, carved out the only exit and walked back into the cryo pod. Fixed doors now keep
   their leaves in the navmesh, and a slit the bake seals is bridged along its centre line.
+- Link every elevator on `navigation.backend: Authored`, so bots leave Surface through the Gate
+  elevators and leave SCP-049's lower level. Landings come from the live doors, and rooms that no
+  longer match the embedded navmesh (Gate A, Gate B, SCP-049) are rebuilt from the live floor at load.
+- Call and ride elevators from their landings on `navigation.backend: Authored`. Links used to end
+  inside the cabin, which a bot could not reach while the doors were closed.
+- Keep bots moving on `navigation.backend: Authored` when they stand in a small gap in the navmesh,
+  where they used to retry the same recovery walk forever.
 
 - Keep a bot passive when `BotOrders.MoveToRoom` is rejected. It used to stay on its normal AI and
   attack, with nothing recorded; it now holds position with `FailedNoPath` and a `FailureReason`.
