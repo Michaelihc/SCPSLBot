@@ -14,6 +14,7 @@ parser.add_argument("--scenario", help="run one named scenario on a bots-only fi
 parser.add_argument("--backend", choices=["Runtime", "Authored"], default="Runtime")
 parser.add_argument("--level", default="standard")
 parser.add_argument("--limit", type=int, default=900, help="seconds the named scenario may run")
+parser.add_argument("--map-seed", type=int, help="map seed for a named scenario; the host otherwise fixes one seed")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
 # A worktree outside the metarepo names it explicitly.
@@ -58,6 +59,10 @@ if args.scenario:
     harness_fixture.write_text(chr(10).join([f"auto_run_scenario: {scenario}", f"auto_run_level: {args.level}",
         "auto_run_delay_seconds: 20", ""]), encoding="utf-8")
     files = [f"configs/8910/SCPSLBot/config.yml={bot_fixture}", f"configs/8910/PlaytestHarness/config.yml={harness_fixture}"]
+    if args.map_seed:
+        library_fixture = artifacts / "library.yml"
+        library_fixture.write_text(f"map_seed: {args.map_seed}\n", encoding="utf-8")
+        files.append(f"configs/8910/SCPSLBot.PlaytestScenarios/config.yml={library_fixture}")
 else:
     files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",
         f"configs/8910/PlaytestHarness/config.yml=tests/playtest/fixtures/{fixture}-harness.yml",
