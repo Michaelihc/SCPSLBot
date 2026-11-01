@@ -49,17 +49,11 @@ remove = [name for name in baseline if name.startswith("plugins/") and name.ends
 if args.scenario:
     # Named scenarios start from an empty server: they create every bot they observe.
     bot_fixture = artifacts / "bot.yml"
-    bot_fixture.write_text(f"language: cn
-bots_only: true
-normal_round_bot_count: 0
-navigation:
-  backend: {args.backend}
-", encoding="utf-8")
+    bot_fixture.write_text(chr(10).join(["language: cn", "bots_only: true", "normal_round_bot_count: 0", "navigation:",
+        f"  backend: {args.backend}", ""]), encoding="utf-8")
     harness_fixture = artifacts / "harness.yml"
-    harness_fixture.write_text(f"auto_run_scenario: {scenario}
-auto_run_level: {args.level}
-auto_run_delay_seconds: 20
-", encoding="utf-8")
+    harness_fixture.write_text(chr(10).join([f"auto_run_scenario: {scenario}", f"auto_run_level: {args.level}",
+        "auto_run_delay_seconds: 20", ""]), encoding="utf-8")
     files = [f"configs/8910/SCPSLBot/config.yml={bot_fixture}", f"configs/8910/PlaytestHarness/config.yml={harness_fixture}"]
 else:
     files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",
