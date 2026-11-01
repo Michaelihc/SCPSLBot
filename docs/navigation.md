@@ -24,7 +24,8 @@ What the patcher does:
 - Client files are never touched.
 
 To skip patching, set `navigation.backend: Authored`. Bots then use the hand-authored navmesh embedded
-in `SCPSLBot.dll`, which is what our production server runs.
+in `SCPSLBot.dll`, which is what our production server runs. It does not link the Surface or SCP-049
+elevators, so bots that spawn in those places cannot leave them.
 
 ## How the runtime backend works
 
@@ -111,5 +112,9 @@ authored cells from live floor probes, and keeps the `nav` cell editor.
 - The runtime backend needs the patched dedicated-server assets, and a game update or Steam file
   validation restores the stock files.
 - Bots stop at the Intercom doorway because its interior floor does not voxelize.
+- The navmesh is baked for the human capsule. SCP-939 can snag in its containment room after
+  spawning and take a minute or more to leave.
+- Keycard areas are static: a bot without the card does not plan through a keycard door even while
+  something else holds it open.
 - `force_standard_door_connectors: true` rewrites map connectors and can conflict with map-layout
   plugins. It is off by default.

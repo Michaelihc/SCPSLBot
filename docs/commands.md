@@ -11,7 +11,7 @@
 | `bot_difficulty [easy\|normal\|hard\|hardest]` | Query or change combat difficulty (default `hardest`, not persisted) | Query: none; change: `PlayersManagement` |
 | `bot_debug` | One line per bot: role, room, active behavior and its detail (running GOAP action, explore room, SCP-939 ambush), combat target and whether it is in sight, door/elevator crossing, path, current waypoint and stuck time | `FacilityManagement` |
 | `bot_trace start\|stop\|status` | Record the current (or next) round to a JSONL position trace; see [round traces](../tools/round-map/README.md) | `FacilityManagement` |
-| `bot_path`, `botspike ...` | Pathing and native movement diagnostics | Mutation: `PlayersManagement`; spike status: `GameplayData` |
+| `bot_path`, `botspike ...` | Pathing and native movement diagnostics; `botspike start autonomous [role]` keeps normal AI until the first order, `botspike start ordered <role> <RoomName>` orders in the same tick as the spawn | Mutation: `PlayersManagement`; spike status: `GameplayData` |
 | `botspike survey <clutter\|doors\|all\|keycard> [both\|forward]`, `botspike survey_status`, `botspike survey_stop` | Walk the spike bot natively across every door-less connector (or plain door) and log per-case `[BotSurvey]` verdicts; `keycard` asserts keycard-aware routing with path queries only | Survey: `PlayersManagement`; status: `GameplayData` |
 | `nav status` | Active/configured backend, readiness, bake and reconcile diagnostics | `GameplayData` |
 | `nav rebuild` | Re-bake (runtime) or re-load (authored) navigation for the current map | `ServerConfigs` |

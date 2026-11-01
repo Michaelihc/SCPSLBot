@@ -76,9 +76,9 @@ difficulty. The SCP bots were invulnerable so that each take ran its full length
 - Routing is keycard-aware: a Class-D never plans through a door its inventory cannot open, while
   a Scientist holding the right card does.
 - Every movement (exploring, objectives, chasing a target, orders) plans across zones and executes
-  the crossings: bots open doors with the right keycard, ride every elevator (a bot on Surface heading
-  into the facility walks to a Gate elevator first), climb stairs and jump across clutter in
-  door-less connectors.
+  the crossings: bots open doors with the right keycard, ride elevators (on the default `Runtime`
+  backend a bot on Surface heading into the facility walks to a Gate elevator first), climb stairs
+  and jump across clutter in door-less connectors.
 - Stuck recovery runs in escalating steps: nudge, jump, back off, re-plan, then avoid that crossing
   for 45 s.
 - Custom maps built from static admin toys can be added to the navmesh (`nav rebuild <center> <size>`).
@@ -174,6 +174,9 @@ active. `HsmAdapter` and `ServerKeybinds` are open source at
 - SCP-079 has no bot AI.
 - SCP-939 does not use mimicry.
 - Bots do not throw grenades or cuff.
+- On `navigation.backend: Authored`, bots that spawn on Surface or in SCP-049's lower level stay
+  there: the embedded navmesh does not link those elevators.
+- On `Runtime`, SCP-939 can take a minute or more to leave its containment room after spawning.
 - During Standard warmup, bots on Surface hold position until they find a target.
 - Do not install the legacy `WarmupPlayerPanel` or `ScpslPluginStarter.dll` alongside this suite.
 
