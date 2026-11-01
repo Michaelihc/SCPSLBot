@@ -24,8 +24,8 @@ What the patcher does:
 - Client files are never touched.
 
 To skip patching, set `navigation.backend: Authored`. Bots then use the hand-authored navmesh embedded
-in `SCPSLBot.dll`, which is what our production server runs. It does not link the Surface or SCP-049
-elevators, so bots that spawn in those places cannot leave them.
+in `SCPSLBot.dll`, which is what our production server runs. Every elevator is linked, including the
+Gate and SCP-049 elevators.
 
 ## How the runtime backend works
 
@@ -84,6 +84,12 @@ How bots move and recover:
 `navigation.backend: Authored` uses the embedded `Assets/navmesh.slnmf`, installed on a fresh
 configuration. It quarantines invalid live nav data with backup recovery, fills rooms that have no
 authored cells from live floor probes, and keeps the `nav` cell editor.
+
+Elevator links are derived at load from the live doors: each group links the cells at its two landings
+(`NAV_LINK`, or `NAV_LINK_SKIPPED` with a reason). A room with a landing that has no cell at its real
+height no longer matches the game, so its form is rebuilt from a walk over the live floor
+(`NAV_ROOM_REBUILT`). Rebuilt forms are not written by `nav save`, and edits to them last until the next
+map load.
 
 ## Custom maps
 

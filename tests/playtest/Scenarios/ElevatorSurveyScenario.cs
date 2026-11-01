@@ -60,6 +60,19 @@ public sealed class ElevatorSurveyScenario : Scenario
             yield return ctx.Wait(0.1f);
         }
 
+        foreach (string query in new[]
+        {
+            "nav path 196.4 -97.1 24.0 195.0 -100.0 40.0",
+            "nav path 205.4 -100.0 116.2 210.0 -100.0 95.0",
+            "nav path 214.6 -96.0 116.2 210.0 -100.0 95.0",
+            "nav path 104.3 -100.0 85.1 105.0 -100.0 100.0",
+            "nav path 85.3 -10.9 85.4 115.0 -10.9 85.0",
+            "nav path 123.8 287.9 18.4 63.7 294.7 -34.0",
+        })
+        {
+            ctx.Info($"SURVEY_PATH {query}: {NativeCommandAdapter.RemoteAdmin(query).Response}");
+        }
+
         foreach (RoomIdentifier room in RoomIdentifier.AllRoomIdentifiers)
         {
             if (room != null && room.Name is RoomName.Hcz049 or RoomName.EzGateA or RoomName.EzGateB or RoomName.Outside)
