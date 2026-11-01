@@ -116,18 +116,13 @@ namespace SCPSLBot.Navigation.Authored
                    && Mathf.Abs(position.y - point.y) <= 1.5f;
         }
 
-        /// <summary>
-        /// Elevator crossings are edgeless links between cells (a connected cell without a
-        /// connecting edge). Doors are unknown here; the elevation belief probes the world.
-        /// </summary>
+        /// <summary>Elevator crossings are edgeless links between landing cells.</summary>
         public bool TryGetElevatorLink(out ElevatorLinkSegment link)
         {
             foreach (var (cell, nextCell) in CellPathSegments)
             {
-                if (!cell.AdjacentCellEdges.ContainsKey(nextCell)
-                    && !NavigationMesh.TryGetForeignConnectedEdge(cell, nextCell, out _))
+                if (NavigationMesh.TryGetElevatorLink(cell, nextCell, out link))
                 {
-                    link = new ElevatorLinkSegment(cell.CenterPosition, nextCell.CenterPosition, null, null);
                     return true;
                 }
             }
@@ -447,7 +442,7 @@ namespace SCPSLBot.Navigation.Authored
             if (!currentCell.AdjacentCellEdges.TryGetValue(nextTargetCell, out var targetCellEdge)
                 && !NavigationMesh.TryGetForeignConnectedEdge(currentCell, nextTargetCell, out targetCellEdge))
             {
-                return currentCell.CenterPosition;
+                return LinkStart(currentCell, nextTargetCell);
             }
             var nextTargetEdgeMiddlePosition = Vector3.Lerp(targetCellEdge.From.Position, targetCellEdge.To.Position, 0.5f);
 
@@ -467,7 +462,7 @@ namespace SCPSLBot.Navigation.Authored
                 if (!nextTargetCell.AdjacentCellEdges.TryGetValue(aheadTargetCell, out var aheadTargetCellEdge)
                     && !NavigationMesh.TryGetForeignConnectedEdge(nextTargetCell, aheadTargetCell, out aheadTargetCellEdge))
                 {
-                    goalPosition = nextTargetCell.CenterPosition;
+                    goalPosition = LinkStart(nextTargetCell, aheadTargetCell);
                     break;
                 }
 
@@ -526,6 +521,11 @@ namespace SCPSLBot.Navigation.Authored
             }
 
             return nextTargetPosition;
+        }
+
+        private static Vector3 LinkStart(TransformCell cell, TransformCell nextCell)
+        {
+            return NavigationMesh.TryGetElevatorLink(cell, nextCell, out var link) ? link.Origin : cell.CenterPosition;
         }
 
         // Portal endpoints sit on walls and door frames; steer at a point the capsule can reach.

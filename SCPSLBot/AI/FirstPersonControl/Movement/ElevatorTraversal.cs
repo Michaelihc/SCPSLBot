@@ -110,11 +110,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         public bool TryBegin(ElevatorLinkSegment link, Vector3 goal)
         {
             Cancel();
-            if (!TryResolveDoors(link, out var origin, out var destination))
+            if (!link.HasDoors)
             {
                 return false;
             }
 
+            var origin = link.OriginDoor;
+            var destination = link.DestinationDoor;
             var resolvedChamber = origin.Chamber;
             if (resolvedChamber == null && !ElevatorChamber.TryGetChamber(origin.Group, out resolvedChamber))
             {
@@ -513,51 +515,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private static Vector3 PanelPosition(ElevatorPanel panel)
         {
             return panel.transform.position;
-        }
-
-        private static bool TryResolveDoors(ElevatorLinkSegment link, out ElevatorDoor origin, out ElevatorDoor destination)
-        {
-            if (link.HasDoors)
-            {
-                origin = link.OriginDoor;
-                destination = link.DestinationDoor;
-                return true;
-            }
-
-            // Edgeless links (authored cell mesh): the elevator doors nearest each endpoint.
-            origin = NearestElevatorDoor(link.Origin);
-            destination = NearestElevatorDoor(link.Destination);
-            return origin != null && destination != null && origin != destination && origin.Group == destination.Group;
-        }
-
-        private static ElevatorDoor NearestElevatorDoor(Vector3 position)
-        {
-            ElevatorDoor nearest = null;
-            var best = 6f * 6f;
-            foreach (var chamber in ElevatorChamber.AllChambers)
-            {
-                if (chamber == null || chamber.FloorDoors == null)
-                {
-                    continue;
-                }
-
-                foreach (var door in chamber.FloorDoors)
-                {
-                    if (door == null)
-                    {
-                        continue;
-                    }
-
-                    var distance = (door.transform.position - position).sqrMagnitude;
-                    if (distance < best)
-                    {
-                        best = distance;
-                        nearest = door;
-                    }
-                }
-            }
-
-            return nearest;
         }
 
         private void SetStage(Stage stage, string reason)

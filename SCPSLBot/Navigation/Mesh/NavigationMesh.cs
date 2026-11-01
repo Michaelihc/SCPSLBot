@@ -99,6 +99,18 @@ namespace SCPSLBot.Navigation.Mesh
             }
         }
 
+        /// <summary>Drops every vertex and cell so the form can be filled again.</summary>
+        public void ClearCells()
+        {
+            foreach (var cell in Cells.ToArray())
+            {
+                RemoveCell(cell);
+            }
+
+            Vertices.Clear();
+            MarkTopologyChanged();
+        }
+
         public bool RemoveCell(Cell cell)
         {
             var cells = Cells;

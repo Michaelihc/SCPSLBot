@@ -21,6 +21,8 @@ namespace SCPSLBot.Navigation.Mesh
         public static Dictionary<TransformCell, Dictionary<TransformCell, TransformEdge>> ForeignConnectedCellEdges = new();
         public static int TopologyVersion { get; private set; }
 
+        private static readonly Dictionary<(TransformCell From, TransformCell To), ElevatorLinkSegment> elevatorLinks = new();
+
         // Crossings that bots recently failed to traverse (clutter, a wedged corner, a sealed
         // connector). A* treats them as much longer for a while so alternative routes win when
         // they exist; entries expire so a transient blocker does not poison the map forever.
@@ -49,6 +51,17 @@ namespace SCPSLBot.Navigation.Mesh
         public static bool HasForeignConnectedCell(TransformCell cell, TransformCell nextCell)
         {
             return ForeignConnectedCells.TryGetValue(cell, out var list) && list.Contains(nextCell);
+        }
+
+        public static void AddElevatorLink(TransformCell from, TransformCell to, ElevatorLinkSegment link)
+        {
+            elevatorLinks[(from, to)] = link;
+            MarkTopologyChanged();
+        }
+
+        public static bool TryGetElevatorLink(TransformCell from, TransformCell to, out ElevatorLinkSegment link)
+        {
+            return elevatorLinks.TryGetValue((from, to), out link);
         }
 
         public static int PenalizedLinkCount => linkPenalties.Count;
@@ -565,6 +578,7 @@ namespace SCPSLBot.Navigation.Mesh
             LocalMeshesByRoom.Clear();
             ForeignConnectedCells.Clear();
             ForeignConnectedCellEdges.Clear();
+            elevatorLinks.Clear();
             linkPenalties.Clear();
             MarkTopologyChanged();
         }

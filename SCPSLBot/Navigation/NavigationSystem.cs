@@ -297,8 +297,11 @@ namespace SCPSLBot.Navigation
             ProbedConnectors = 0;
             NavigationAgentProfile.Invalidate();
 
+            Debug.Log($"Rebuilding rooms whose elevator landings have no cells at their live height.");
+            GeneratedRoomForms = AuthoredElevatorLinks.RebuildOutdatedRooms();
+
             Debug.Log($"Filling rooms without authored cells from live collision probes.");
-            GeneratedRoomForms = RuntimeRoomMeshBuilder.FillRoomsWithoutCells();
+            GeneratedRoomForms += RuntimeRoomMeshBuilder.FillRoomsWithoutCells();
 
             Debug.Log($"Connecting cells between rooms.");
             foreach (var door in DoorVariant.AllDoors)
@@ -334,27 +337,7 @@ namespace SCPSLBot.Navigation
             ConnectDoorlessConnectors();
 
             Debug.Log($"Connecting cells between elevator destinations.");
-            var elevatorGroups = Enum.GetValues(typeof(ElevatorGroup));
-            foreach (ElevatorGroup group in elevatorGroups)
-            {
-                var elevatorDoors = ElevatorDoor.GetDoorsForGroup(group);
-                if (elevatorDoors.Count != 2)
-                {
-                    Debug.LogWarning($"Irregular elevator level count ({elevatorDoors.Count}) of group {group}");
-                    continue;
-                }
-
-                var cellAt0InShaft = ResolveElevatorShaftCell(elevatorDoors[0]);
-                var cellAt1InShaft = ResolveElevatorShaftCell(elevatorDoors[1]);
-
-                LabLogger.Info($"[SCPSLBot] NAV_LINK_SURVEY group={group} a={Format(elevatorDoors[0].transform.position)} cellA={(cellAt0InShaft.HasValue ? Format(cellAt0InShaft.Value.CenterPosition) : "none")} b={Format(elevatorDoors[1].transform.position)} cellB={(cellAt1InShaft.HasValue ? Format(cellAt1InShaft.Value.CenterPosition) : "none")}");
-                if (cellAt0InShaft != null && cellAt1InShaft != null)
-                {
-                    // Connect
-                    ConnectForeignCells(cellAt0InShaft.Value, cellAt1InShaft.Value);
-                    ConnectForeignCells(cellAt1InShaft.Value, cellAt0InShaft.Value);
-                }
-            }
+            AuthoredElevatorLinks.Connect(ConnectForeignCells);
             Debug.Log($"Connecting cells finished.");
         }
 
@@ -561,37 +544,6 @@ namespace SCPSLBot.Navigation
 
             edges[to] = edge;
             NavigationMesh.MarkTopologyChanged();
-        }
-
-        // Resolves the navmesh cell at an elevator landing WITHOUT mutating native
-        // RoomIdentifier.RoomsByCoords. The previous probe-loop registered a fake coord->room
-        // entry there, which threw on a second nav load (duplicate key) and left a destroyed-room
-        // reference in native state across rounds. This is behavior-equivalent: if the shaft-side
-        // position maps to a room, resolve normally; otherwise resolve the landing cell against the
-        // door's far-side room mesh directly.
-        private static TransformCell? ResolveElevatorShaftCell(ElevatorDoor door)
-        {
-            if (door == null)
-            {
-                return null;
-            }
-
-            var doorTransform = door.transform;
-            var doorPosition = doorTransform.position + Vector3.up;
-            var doorForward = doorTransform.forward;
-            var probePosition = doorPosition - doorForward;
-
-            if (RoomUtils.TryGetRoom(probePosition, out _))
-            {
-                return NavigationMesh.GetCellWithin(probePosition);
-            }
-
-            if (!RoomUtils.TryGetRoom(doorPosition + doorForward, out var fallbackRoom) || fallbackRoom == null)
-            {
-                return null;
-            }
-
-            return NavigationMesh.GetRoomCellWithin(probePosition, fallbackRoom);
         }
 
         private static void ConnectForeignCells(TransformCell from, TransformCell to)
