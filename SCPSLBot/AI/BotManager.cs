@@ -501,12 +501,27 @@ namespace SCPSLBot.AI
                 return false;
             }
 
+            // Reachability is judged from where the bot stands, and it stands nowhere until it spawns.
+            if (hub.roleManager?.CurrentRole is not FpcStandardRoleBase)
+            {
+                var pending = CreateOrderState(hub, hub.transform.position, BotOrderKind.MoveToRoom, $"room:{roomName}");
+                pending.PendingRoom = roomName;
+                orders[hub] = pending;
+                LabLogger.Info($"[BotOrders] ORDER_PENDING bot={BotName(hub)} room={roomName} role={hub.roleManager?.CurrentRole?.RoleTypeId}");
+                return true;
+            }
+
+            return ResolveRoomOrder(hub, roomName);
+        }
+
+        private bool ResolveRoomOrder(ReferenceHub hub, RoomName roomName)
+        {
             var room = RoomIdentifier.AllRoomIdentifiers.FirstOrDefault(candidate => candidate.Name == roomName);
             var backend = NavigationSystem.Instance.Backend;
             if (room == null || backend == null || !backend.RoomHasNavigation(room))
             {
                 LabLogger.Error($"[BotOrders] ROOM_UNAVAILABLE bot={BotName(hub)} room={roomName}");
-                return false;
+                return RejectRoomOrder(hub, roomName, "the room has no navigation");
             }
 
             var origin = hub.transform.position;
@@ -514,10 +529,22 @@ namespace SCPSLBot.AI
             if (!backend.TryGetReachableRoomSample(room, origin, areaMask, out var goal))
             {
                 LabLogger.Error($"[BotOrders] ROOM_UNREACHABLE bot={BotName(hub)} room={roomName} from={Format(origin)}");
-                return false;
+                return RejectRoomOrder(hub, roomName, "no navigation route to the room with this bot's keycards");
             }
 
             return IssueMoveOrder(hub, goal, BotOrderKind.MoveToRoom, $"room:{roomName}");
+        }
+
+        // A rejected order still takes control: the caller asked for a move, not for combat, and
+        // leaves the same inspectable failed state as an off-mesh goal.
+        private bool RejectRoomOrder(ReferenceHub hub, RoomName roomName, string reason)
+        {
+            var state = CreateOrderState(hub, hub.transform.position, BotOrderKind.FailedNoPath, $"room:{roomName}");
+            state.Active = false;
+            state.FailureReason = reason;
+            orders[hub] = state;
+            LogSummary(hub, state, "FAIL");
+            return false;
         }
 
         public bool IssueMoveOrder(ReferenceHub hub, Vector3 goal, BotOrderKind kind, string description)
@@ -527,24 +554,7 @@ namespace SCPSLBot.AI
                 return false;
             }
 
-            var now = Time.time;
-            var state = new BotOrderState
-            {
-                Kind = kind,
-                Description = description,
-                Goal = goal,
-                Active = true,
-                HasPath = false,
-                DistanceRemaining = HorizontalDistance(hub.transform.position, goal),
-                IssuedAt = now,
-                LastProgressAt = now,
-                LastProgressUtc = DateTime.UtcNow,
-                LastPosition = hub.transform.position,
-                LastProgressPosition = hub.transform.position,
-                BestRemaining = float.PositiveInfinity,
-                LastWaypointDistance = float.PositiveInfinity,
-                NextBreadcrumbAt = now + 2f,
-            };
+            var state = CreateOrderState(hub, goal, kind, description);
             orders[hub] = state;
 
             var backend = NavigationSystem.Instance.Backend;
@@ -566,6 +576,28 @@ namespace SCPSLBot.AI
 
             LabLogger.Info($"[BotOrders] ORDER bot={BotName(hub)} kind={kind} description={description} goal={Format(goal)} role={hub.roleManager?.CurrentRole?.RoleTypeId}");
             return true;
+        }
+
+        private static BotOrderState CreateOrderState(ReferenceHub hub, Vector3 goal, BotOrderKind kind, string description)
+        {
+            var now = Time.time;
+            return new BotOrderState
+            {
+                Kind = kind,
+                Description = description,
+                Goal = goal,
+                Active = true,
+                HasPath = false,
+                DistanceRemaining = HorizontalDistance(hub.transform.position, goal),
+                IssuedAt = now,
+                LastProgressAt = now,
+                LastProgressUtc = DateTime.UtcNow,
+                LastPosition = hub.transform.position,
+                LastProgressPosition = hub.transform.position,
+                BestRemaining = float.PositiveInfinity,
+                LastWaypointDistance = float.PositiveInfinity,
+                NextBreadcrumbAt = now + 2f,
+            };
         }
 
         public bool StopOrder(ReferenceHub hub, string reason)
@@ -603,6 +635,12 @@ namespace SCPSLBot.AI
 
         public bool TryGetOrderedTarget(ReferenceHub hub, out Vector3 target)
         {
+            if (orders.TryGetValue(hub, out var waiting) && waiting.Active && waiting.PendingRoom is { } pendingRoom)
+            {
+                // Only spawned bots tick, so this bot now has a real position to route from.
+                ResolveRoomOrder(hub, pendingRoom);
+            }
+
             if (orders.TryGetValue(hub, out var state) && state.Active)
             {
                 target = state.Goal;
@@ -645,7 +683,10 @@ namespace SCPSLBot.AI
             }
             else
             {
+                // An order issued before the bot spawned starts its clocks when the bot can move.
                 state.SampledPosition = true;
+                state.IssuedAt = now;
+                state.LastProgressAt = now;
             }
             state.LastPosition = position;
 

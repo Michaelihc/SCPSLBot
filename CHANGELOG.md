@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Keep a bot passive when `BotOrders.MoveToRoom` is rejected. It used to stay on its normal AI and
+  attack, with nothing recorded; it now holds position with `FailedNoPath` and a `FailureReason`.
+- Resolve `MoveToRoom` when the bot spawns, so an order issued right after `SpawnBot` walks on
+  runtime navigation instead of failing with `FailedNoPath`.
+
 - Close a recently crossed door when a human observes an SCP pursuing its retreat, while clearing
   the doorway and avoiding nearby humans, door toggling and doors SCP-106 can phase through.
 - Use SCP-106 Stalk and Hunter's Atlas at medium chase distances while retaining native vigor costs.

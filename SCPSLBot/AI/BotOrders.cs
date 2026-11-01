@@ -51,6 +51,10 @@ namespace SCPSLBot.AI
         public static bool MoveTo(ReferenceHub hub, Vector3 worldPosition)
             => BotManager.Instance.IssueMoveOrder(hub, worldPosition, BotOrderKind.MoveTo, $"world:{Format(worldPosition)}");
 
+        /// <summary>
+        /// Walks to the nearest reachable point of a room. Before the bot has spawned this returns
+        /// true and resolves on spawn, so a later failure appears only in <see cref="TryGetStatus"/>.
+        /// </summary>
         public static bool MoveToRoom(ReferenceHub hub, RoomName roomName)
             => BotManager.Instance.IssueMoveToRoomOrder(hub, roomName);
 
@@ -73,6 +77,8 @@ namespace SCPSLBot.AI
         public string Description;
         public Vector3 Goal;
         public bool Active;
+        /// <summary>Set while a room order waits for its bot to spawn; the goal is resolved then.</summary>
+        public RoomName? PendingRoom;
         public bool HasPath;
         public float DistanceRemaining;
         public float IssuedAt;

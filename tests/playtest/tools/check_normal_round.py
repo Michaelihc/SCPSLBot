@@ -9,6 +9,10 @@ import time
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--escape", action="store_true")
+parser.add_argument("--scenario", help="run one named scenario on a bots-only fixture instead")
+parser.add_argument("--backend", choices=["Runtime", "Authored"], default="Runtime")
+parser.add_argument("--level", default="standard")
+parser.add_argument("--limit", type=int, default=900, help="seconds the named scenario may run")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
 workspace = next(parent for parent in repo.parents if (parent / ".tests/offline-clients/tools/host.py").is_file())
@@ -17,8 +21,8 @@ sys.path.insert(0, str(host_repo / "tools"))
 from package import package
 from production_mirror import resolve_baseline, members
 
-fixture = "escape" if args.escape else "population"
-scenario = "scpslbot-autonomous-escape" if args.escape else "scpslbot-normal-round"
+fixture = args.scenario or ("escape" if args.escape else "population")
+scenario = args.scenario or ("scpslbot-autonomous-escape" if args.escape else "scpslbot-normal-round")
 artifacts = workspace / "scpsl-bot-plugin/tests/playtest/artifacts" / time.strftime(f"normal-round-{fixture}-%Y%m%d-%H%M%S")
 artifacts.mkdir(parents=True)
 # Verify every prepared slot without mutating shared media. The runner chooses the free slot.
@@ -42,13 +46,24 @@ keep = {"plugins/8910/HintServiceMeow.dll", *("plugins/8910/" + path.name for pa
 keep.update(name for name in baseline if Path(name).name.startswith(("System.", "Microsoft.")))
 # Only SCPSLBot's subjects and dependencies load; gameplay-altering production plugins are absent.
 remove = [name for name in baseline if name.startswith("plugins/") and name.endswith(".dll") and name not in keep]
-files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",
-    f"configs/8910/PlaytestHarness/config.yml=tests/playtest/fixtures/{fixture}-harness.yml",
-    f"configs/8910/SCPSLBot.PlaytestScenarios/config.yml=tests/playtest/fixtures/{fixture}-library.yml"]
+if args.scenario:
+    # Named scenarios start from an empty server: they create every bot they observe.
+    bot_fixture = artifacts / "bot.yml"
+    bot_fixture.write_text(chr(10).join(["language: cn", "bots_only: true", "normal_round_bot_count: 0", "navigation:",
+        f"  backend: {args.backend}", ""]), encoding="utf-8")
+    harness_fixture = artifacts / "harness.yml"
+    harness_fixture.write_text(chr(10).join([f"auto_run_scenario: {scenario}", f"auto_run_level: {args.level}",
+        "auto_run_delay_seconds: 20", ""]), encoding="utf-8")
+    files = [f"configs/8910/SCPSLBot/config.yml={bot_fixture}", f"configs/8910/PlaytestHarness/config.yml={harness_fixture}"]
+else:
+    files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",
+        f"configs/8910/PlaytestHarness/config.yml=tests/playtest/fixtures/{fixture}-harness.yml",
+        f"configs/8910/SCPSLBot.PlaytestScenarios/config.yml=tests/playtest/fixtures/{fixture}-library.yml"]
 bundle = package(repo, artifacts / "candidate", plugins, [], files, "/bot_status", "ai_runner_running=True", remove)
 print(json.dumps(bundle), flush=True)
+limit = args.limit if args.scenario else 690 if args.escape else 120
 process = subprocess.Popen([sys.executable, str(host_repo / "tools/host.py"), "run", "--package", bundle["package"],
-    "--server-only", "--hold", "12" if args.escape else "3"], cwd=host_repo,
+    "--server-only", "--hold", str(limit // 60 + 1)], cwd=host_repo,
     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
 job = None
 evidence = None
@@ -71,7 +86,7 @@ try:
             # The job record identifies this run's exact evidence, never the newest shared run.
             record = json.loads((host_repo / "runtime/slots/jobs" / (job + ".json")).read_text(encoding="utf-8-sig"))
             evidence = Path(record["evidence"])
-            deadline = time.monotonic() + (690 if args.escape else 120)
+            deadline = time.monotonic() + limit
             while time.monotonic() < deadline:
                 if process.poll() is not None:
                     break
@@ -96,5 +111,6 @@ finally:
         subprocess.run([sys.executable, str(host_repo / "tools/host.py"), "cancel", job], cwd=host_repo)
         process.wait(timeout=45)
 print(json.dumps(dict(scenario=scenario, summary=summary, evidence=str(evidence), artifacts=str(artifacts))), flush=True)
+# The driver reports one scenario; a skipped case is never an acceptance.
 if not summary or summary["passed"] != 1 or summary["failed"] or summary["skipped"]:
     raise SystemExit(1)

@@ -50,6 +50,23 @@ E2E escape case uses a single native Scientist spawn and observes autonomous tra
 pickups and the native escape event for up to ten minutes. Neither case injects SCPSLBot orders or
 reflects into SCPSLBot. Other gameplay plugins are removed from the disposable overlay.
 
+## Orders, roaming and checkpoints
+
+The same driver runs any named scenario on an empty bots-only fixture:
+
+```powershell
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-order-passivity --limit 420
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-order-immediate --limit 200
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-autonomous-roam --limit 1020
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-checkpoints --limit 900
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-greenhouse --limit 600
+```
+
+Add `--backend Authored` to exercise the embedded navmesh. The order
+cases first prove the armed bot lands a real hit without an order, so a bot that never fights cannot
+pass. The roam case soaks one uncontested bot per role and fails on a long stop, on alternating
+between two rooms, or on a Surface spawn that never enters the facility.
+
 ## Runtime navmesh gates
 
 All 8891 drivers verify the dedicated-server asset patch (`tools/NavMeshAssetPatcher verify`) before
