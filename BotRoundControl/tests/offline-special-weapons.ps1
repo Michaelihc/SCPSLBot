@@ -38,11 +38,14 @@ function WaitForEnemy([double]$Within, [int]$Seconds = 90) {
     } while ((Get-Date) -lt $deadline)
     throw "No enemy came within $Within m: $(Observe | ConvertTo-Json -Depth 6 -Compress)"
 }
-function EnemyHealth { $map = @{}; foreach ($enemy in Enemies) { $map[$enemy.id] = $enemy.health }; $map }
+# A killed bot respawns at full health under the same id, so a new life also counts as a hit.
+function EnemyState { $map = @{}; foreach ($enemy in Enemies) { $map[$enemy.id] = $enemy }; $map }
 function WasHurt($Before) {
-    $after = EnemyHealth
+    $after = EnemyState
     foreach ($id in $Before.Keys) {
-        if (!$after.ContainsKey($id) -or $after[$id] -lt $Before[$id]) { return $true }
+        if (!$after.ContainsKey($id) -or $after[$id].life -ne $Before[$id].life -or $after[$id].health -lt $Before[$id].health) {
+            return $true
+        }
     }
     $false
 }
@@ -72,7 +75,7 @@ $launcherShot = Invoke-LabScreenshot -Name rocket-held
 $checks.Add('selecting the launcher hides the native shotgun')
 
 $enemy = WaitForEnemy 30
-$before = EnemyHealth
+$before = EnemyState
 $null = Set-LabAim -TargetActorId $enemy.id
 $null = Tap 'rocket-first-shot' $primaryUse 12
 $null = Tap 'rocket-press-during-reload' $primaryUse 12
@@ -107,7 +110,7 @@ if ((Me).items -notcontains 'ParticleDisruptor') { throw 'A bound weapon was dro
 $checks.Add('a bound weapon cannot be dropped')
 
 $enemy = WaitForEnemy 22
-$before = EnemyHealth
+$before = EnemyState
 $me = Me
 $toPlayer = @{x=$me.position.x-$enemy.position.x;z=$me.position.z-$enemy.position.z}
 $length = [Math]::Max(0.1, [Math]::Sqrt(($toPlayer.x * $toPlayer.x) + ($toPlayer.z * $toPlayer.z)))
