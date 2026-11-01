@@ -69,7 +69,7 @@ text, off/on churn, canceled role repair, native death/respawn, dense grounding 
 settle checks, and a real multi-room bot walk. `scpslbot-bot-ownership` is excluded from `run all`;
 it keeps an independent `bot_add` bot separate from maintained population. The warhead and Halloween
 moon cases are `quick` only. Construction-stage fault injection, 100-cycle native-memory/handle
-baselines, 20 cold boots/restarts remain separate live/manual gates.
+baselines and 20 cold boots/restarts remain separate live/manual gates.
 
 `scpslbot-connector-survey` (excluded from `run all`) disables warmup population, spawns the
 `botspike` bot, runs `botspike survey clutter both`, and requires zero failed cases and zero rooms
@@ -106,6 +106,7 @@ on alternating between two rooms, or on a Surface spawn that never enters the fa
 ## Runtime navmesh gates
 
 The driver's asset check (`tools/NavMeshAssetPatcher verify`) must pass before the server boots.
+Both gates read `bot_status` fields that exist only with BotRoundControl loaded, so they run with `--management`.
 `scpslbot-runtime-navmesh-gate` reads `bot_status`, `nav status`, `nav probe` and `nav path` and
 requires the runtime backend with zero unreadable meshes, zero uncovered rooms, elevator links,
 keycard door classes, a bake under 5 s, a room index under 1.5 s, and complete paths for
@@ -115,8 +116,8 @@ across the doorway must be blocked (or clearly longer) without the card and comp
 `scpslbot-unity-navmesh-probe` remains the research probe (sources, build time, coverage detail).
 
 ```powershell
-python tests/playtest/tools/check_normal_round.py --scenario scpslbot-runtime-navmesh-gate --limit 300
-python tests/playtest/tools/check_normal_round.py --scenario scpslbot-keycard-routing-survey --limit 900
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-runtime-navmesh-gate --management --limit 300
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-keycard-routing-survey --management --limit 900
 ```
 
 A successful `nav path` query proves planning only; connector acceptance requires native walks.
