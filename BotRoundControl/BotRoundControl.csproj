@@ -37,7 +37,8 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <EmbeddedResource Include="Duel\Assets\arena.json" LogicalName="DuelArena.arena.json" />
-    <EmbeddedResource Include="Warmup\SpecialWeapons\Assets\*.mer.json" LogicalName="SpecialWeapons.%(Filename)%(Extension)" />
+    <!-- WithCulture=false: "mer" is also a culture name, which would move these into a satellite assembly. -->
+    <EmbeddedResource Include="Warmup\SpecialWeapons\Assets\*.mer.json" LogicalName="SpecialWeapons.%(Filename)%(Extension)" WithCulture="false" />
     <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
     <Compile Include="$(CustomItemsSource)\**\*.cs" Link="CustomItems\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>

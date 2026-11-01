@@ -14,6 +14,9 @@ Standard warmup pauses the native Halloween moon controller. With
 players, administrators and automatic triggers. Entering warmup cancels an existing countdown,
 including its final ten seconds. Leaving warmup restores native moon, warhead and DMS behavior.
 
+The item menu also offers [special weapons](../docs/special-weapons.md), set under
+`special_weapons` in this config.
+
 During Standard warmup, the zone menu lists Surface, HCZ/EZ, LCZ and **Duel / 1v1**.
 Select a zone and press Apply. `.duel` / `.1v1` also enter the protected viewing deck.
 The bundled arena uses native toys from the supplied model and sits 180 meters above Surface;
@@ -67,5 +70,6 @@ RA `duel_status` reports readiness, active players, resident winner and the pair
 SCPSLBot's `bot_status` reports AI/navigation without requiring management.
 
 Build locally with `dotnet build BotRoundControl.csproj -c Release -p:DeployToLocalServer=false`.
-Task worktrees can pass `ServerKeybindsProject`, `HsmAdapterProject` and `SL_REFERENCES`.
+Task worktrees can pass `ServerKeybindsProject`, `HsmAdapterProject`, `CustomItemsSource` and
+`SL_REFERENCES`.
 Committed offline walkthroughs live in [tests](tests/); use the maintained offline host runner.
