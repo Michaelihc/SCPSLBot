@@ -48,6 +48,7 @@ public sealed class AutonomousRoamScenario : Scenario
         foreach (RoleTypeId role in Roles)
         {
             int botId = Issue2World.AddBot(ctx);
+            yield return ctx.Wait(1f); // A keycard loadout needs the dummy's identity, set after its first frame.
             Issue2World.Command(ctx, $"forcerole {botId} {role}");
             yield return ctx.WaitUntil(() => WarmupBotWorld.FindById(botId)?.Role == role, 5f, $"bot reached {role}");
             yield return ctx.Wait(1f);
@@ -57,9 +58,16 @@ public sealed class AutonomousRoamScenario : Scenario
             ctx.Arrange("keep the observed bot alive for the whole soak", () => bot.IsGodModeEnabled = true);
             RoamTrace trace = new(bot.Position, bot.Room?.Zone == FacilityZone.Surface);
             float end = Time.realtimeSinceStartup + SoakSeconds;
+            float nextDebug = 0f;
             while (Time.realtimeSinceStartup < end && bot.IsAlive)
             {
                 trace.Sample(bot.Position, bot.Room, Time.realtimeSinceStartup);
+                if (Time.realtimeSinceStartup >= nextDebug)
+                {
+                    nextDebug = Time.realtimeSinceStartup + 30f;
+                    ctx.Info($"ROAM_DEBUG role={role} pos={PlacementProbes.Format(bot.Position)} {NativeCommandAdapter.RemoteAdmin("bot_debug").Response}");
+                }
+
                 yield return ctx.Wait(1f);
             }
 

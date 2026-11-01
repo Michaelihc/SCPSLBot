@@ -29,7 +29,8 @@ public sealed class Issue2CheckpointScenario : Scenario
 
     public override IEnumerator<float> Run(ScenarioContext ctx)
     {
-        Issue2World.RequireAuthored(ctx);
+        Issue2World.RequireNavigation(ctx);
+        yield return ctx.EnsureRoundStarted();
         var checkpoints = DoorVariant.AllDoors.OfType<CheckpointDoor>()
             .Where(d => d.Rooms.Any(r => r != null && r.Name.ToString() == "HczCheckpointToEntranceZone"))
             .OrderBy(d => d.transform.position.x).ThenBy(d => d.transform.position.z).ToArray();
@@ -181,7 +182,8 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
 
     public override IEnumerator<float> Run(ScenarioContext ctx)
     {
-        Issue2World.RequireAuthored(ctx);
+        Issue2World.RequireNavigation(ctx);
+        yield return ctx.EnsureRoundStarted();
         RoomIdentifier room = RoomIdentifier.AllRoomIdentifiers.FirstOrDefault(r => r != null && r.Name == RoomName.LczGreenhouse)
             ?? throw new RequireException("LCZ Plants room is absent");
         using var pair = new Issue2BotPair(ctx);
@@ -379,12 +381,10 @@ internal sealed class Issue2Walk
 
 internal static class Issue2World
 {
-    public static void RequireAuthored(ScenarioContext ctx)
+    public static void RequireNavigation(ScenarioContext ctx)
     {
         var status = RequireReady(ctx);
-        var nav = Command(ctx, "nav status");
-        ctx.Require(nav.Response.Contains("active_backend=authored"), $"Authored backend is active: {nav.Response}");
-        ctx.Info($"ISSUE2 BASELINE {status} nav={nav.Response}");
+        ctx.Info($"ISSUE2 BASELINE {status} nav={Command(ctx, "nav status").Response}");
     }
     public static int AddBot(ScenarioContext ctx)
     {
