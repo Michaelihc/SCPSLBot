@@ -15,6 +15,9 @@ namespace SCPSLBot.PlaytestScenarios.Scenarios;
 public sealed class CheckpointElevatorRideScenario : Scenario
 {
     private const float LegSeconds = 200f;
+    // A cabin reports its destination's room as soon as it is sent, so arrival is read from height.
+    private const float LightContainmentFloorY = 90f;
+    private const float HeavyContainmentFloorY = -90f;
 
     public override string Name => "scpslbot-checkpoint-elevator-ride";
     public override string Description => "An ordered bot rides a checkpoint elevator from Heavy to Light Containment and back.";
@@ -35,11 +38,11 @@ public sealed class CheckpointElevatorRideScenario : Scenario
             ctx.Arrange("keep the observed bot alive for both legs", () => bot.IsGodModeEnabled = true);
             ctx.Require(bot.Room?.Zone == FacilityZone.HeavyContainment, $"the bot starts in Heavy Containment: {bot.Room?.Name}");
 
-            yield return ctx.WaitUntil(() => bot.Room?.Zone == FacilityZone.LightContainment, LegSeconds, "the bot rode into Light Containment");
+            yield return ctx.WaitUntil(() => bot.Position.y > LightContainmentFloorY, LegSeconds, "the bot rode into Light Containment");
             ctx.Info($"CHECKPOINT_RIDE arrived=LCZ pos={PlacementProbes.Format(bot.Position)} room={bot.Room?.Name}");
 
             Issue2World.Command(ctx, "botspike walk Hcz096");
-            yield return ctx.WaitUntil(() => bot.Room?.Zone == FacilityZone.HeavyContainment, LegSeconds, "the bot rode back into Heavy Containment");
+            yield return ctx.WaitUntil(() => bot.Position.y < HeavyContainmentFloorY, LegSeconds, "the bot rode back into Heavy Containment");
             ctx.Info($"CHECKPOINT_RIDE arrived=HCZ pos={PlacementProbes.Format(bot.Position)} room={bot.Room?.Name}");
         }
         finally
