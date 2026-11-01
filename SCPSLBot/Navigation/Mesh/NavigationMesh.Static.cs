@@ -187,7 +187,7 @@ namespace SCPSLBot.Navigation.Mesh
             // of the first authored match, which flip-flopped bots between levels while replanning.
             Cell best = null;
             var bestHeightDelta = float.PositiveInfinity;
-            foreach (var localCell in roomMesh.Cells)
+            foreach (var localCell in roomMesh.GetCellsAt(localPosition))
             {
                 if (!IsLocalPointWithinCell(localCell, localPosition))
                 {

@@ -15,19 +15,22 @@ namespace SCPSLBot.Navigation
     /// just above the floor it left, so ceilings and upper levels never read as floor, and stacked
     /// levels, stairs and raised landings all come out connected the way a capsule can walk them.
     /// Cells are one grid square around each walkable point, in room space, so the result holds for
-    /// any placement of the room.
+    /// any placement of the room. The grid is fine enough for the narrowest flights and diagonal
+    /// corridors, which makes for many cells; the form indexes them for lookups.
     /// </summary>
     internal static class LiveFloorRoomBuilder
     {
-        private const float GridStep = 1f;
+        private const float GridStep = 0.5f;
         private const float MinWalkableNormalY = 0.7f;
-        private const float ProbeStart = 1.4f;
-        private const float ProbeDepth = 2.8f;
+        private const float ProbeStart = 0.9f;
+        private const float ProbeDepth = 1.8f;
         // One grid square of a steep stair flight; the midpoint capsule rejects real ledges.
-        private const float MaxStepHeight = 1.1f;
+        private const float MaxStepHeight = 0.6f;
         private const float SameFloorTolerance = 0.3f;
-        private const int SeedSearchRadius = 1;
-        private const int MaxNodes = 6000;
+        private const int SeedSearchRadius = 2;
+        private const int MaxNodes = 16000;
+        // Slightly under the capsule, so a corridor only just wider than it still holds a grid line.
+        private const float WalkRadiusMargin = 0.06f;
         private const float ShaftHalfWidth = 2.2f;
         private const float ShaftDepth = 5f;
         private const float ShaftFrontMargin = 0.3f;
@@ -35,6 +38,7 @@ namespace SCPSLBot.Navigation
 
         private static readonly (int I, int J)[] Neighbours = { (1, 0), (-1, 0), (0, 1), (0, -1) };
         private static readonly Collider[] Overlaps = new Collider[32];
+        private static readonly List<Collider> DoorColliders = new();
 
         // Doors open at runtime, so a closed leaf must not cut the walk off.
         public static int ProbeMask => FpcStateProcessor.Mask & ~LayerMask.GetMask("Player", "Hitbox", "Door");
@@ -53,11 +57,12 @@ namespace SCPSLBot.Navigation
             public RoomIdentifier Room;
             public int Mask;
             public List<ElevatorDoor> ElevatorDoors = new();
-            public HashSet<Collider> DoorLeaves = new();
+            public HashSet<Collider> PassableColliders = new();
             public Dictionary<(int, int), List<Node>> Columns = new();
             public List<Node> Nodes = new();
             public Queue<Node> Open = new();
             public List<(Node From, Node To)> Links = new();
+            public HashSet<(int, int)> KnownLinks = new();
         }
 
         /// <summary>
@@ -72,14 +77,7 @@ namespace SCPSLBot.Navigation
                 walk.ElevatorDoors.AddRange(ElevatorDoor.GetDoorsForGroup(group));
             }
 
-            foreach (var door in DoorVariant.AllDoors)
-            {
-                if (door != null && door is not ElevatorDoor && door.AllColliders != null)
-                {
-                    walk.DoorLeaves.UnionWith(door.AllColliders);
-                }
-            }
-
+            CollectDoorLeaves(walk);
             foreach (var landing in landings)
             {
                 TrySeed(walk, room.transform.InverseTransformPoint(landing));
@@ -103,7 +101,11 @@ namespace SCPSLBot.Navigation
                     }
 
                     var next = GetOrAddNode(walk, toI, toJ, floorY);
-                    walk.Links.Add(stepI + stepJ > 0 ? (node, next) : (next, node));
+                    var link = stepI + stepJ > 0 ? (node, next) : (next, node);
+                    if (walk.KnownLinks.Add((link.Item1.Index, link.Item2.Index)))
+                    {
+                        walk.Links.Add(link);
+                    }
                 }
             }
 
@@ -119,6 +121,34 @@ namespace SCPSLBot.Navigation
             mesh.IsGenerated = true;
             LabLogger.Info($"[SCPSLBot] NAV_ROOM_REBUILT form={form} name={room.Name} cells={walk.Nodes.Count} islands={DescribeIslands(walk)}");
             return true;
+        }
+
+        // Bots open doors, so neither a closed leaf nor the glass moving with it blocks the walk.
+        private static void CollectDoorLeaves(Walk walk)
+        {
+            var glassLayer = LayerMask.NameToLayer("Glass");
+            foreach (var door in DoorVariant.AllDoors)
+            {
+                if (door == null || door is ElevatorDoor)
+                {
+                    continue;
+                }
+
+                if (door.AllColliders != null)
+                {
+                    walk.PassableColliders.UnionWith(door.AllColliders);
+                }
+
+                DoorColliders.Clear();
+                door.GetComponentsInChildren(true, DoorColliders);
+                foreach (var collider in DoorColliders)
+                {
+                    if (collider != null && collider.gameObject.layer == glassLayer)
+                    {
+                        walk.PassableColliders.Add(collider);
+                    }
+                }
+            }
         }
 
         private static string DescribeIslands(Walk walk)
@@ -250,17 +280,15 @@ namespace SCPSLBot.Navigation
             return !IsCapsuleBlocked(walk, middle);
         }
 
-        // Door leaves move, and bots open them, so a closed one does not block the walk whatever
-        // layer it is on.
         private static bool IsCapsuleBlocked(Walk walk, Vector3 floor)
         {
-            var radius = NavigationAgentProfile.Radius;
+            var radius = NavigationAgentProfile.Radius - WalkRadiusMargin;
             var bottomOffset = NavigationAgentProfile.StepClearance + radius;
             var topOffset = Mathf.Max(bottomOffset + 0.05f, NavigationAgentProfile.Height - radius - 0.05f);
             var count = Physics.OverlapCapsuleNonAlloc(floor + Vector3.up * bottomOffset, floor + Vector3.up * topOffset, radius, Overlaps, walk.Mask, QueryTriggerInteraction.Ignore);
             for (var index = 0; index < count; index++)
             {
-                if (!walk.DoorLeaves.Contains(Overlaps[index]))
+                if (!walk.PassableColliders.Contains(Overlaps[index]))
                 {
                     return true;
                 }
@@ -287,7 +315,7 @@ namespace SCPSLBot.Navigation
                 Union(parents, from.Index * corners + (alongI ? 3 : 2), to.Index * corners + (alongI ? 0 : 3));
             }
 
-            var heights = new Dictionary<int, (float Sum, int Count)>();
+            var heights = new Dictionary<int, (float Sum, int Count)>(parents.Length);
             for (var corner = 0; corner < parents.Length; corner++)
             {
                 var root = Find(parents, corner);
@@ -297,6 +325,8 @@ namespace SCPSLBot.Navigation
 
             var vertices = new Dictionary<int, Vertex>();
             var rootHeight = NavigationAgentProfile.RootHeight;
+            var cells = new Cell[walk.Nodes.Count];
+            var grid = new Dictionary<(int, int), List<Cell>>(walk.Columns.Count);
             foreach (var node in walk.Nodes)
             {
                 var cellVertices = new Vertex[corners];
@@ -315,8 +345,29 @@ namespace SCPSLBot.Navigation
                     cellVertices[corner] = vertex;
                 }
 
-                mesh.MakeCell(cellVertices);
+                var cell = mesh.MakeUnlinkedCell(cellVertices);
+                cells[node.Index] = cell;
+                if (!grid.TryGetValue((node.I, node.J), out var column))
+                {
+                    grid[(node.I, node.J)] = column = new List<Cell>(1);
+                }
+
+                column.Add(cell);
             }
+
+            // Links are known from the walk, so the mesh is spared its all-pairs edge search.
+            foreach (var (from, to) in walk.Links)
+            {
+                var alongI = to.I != from.I;
+                var fromCell = cells[from.Index];
+                var toCell = cells[to.Index];
+                var fromEdge = new Edge(fromCell.Vertices[alongI ? 2 : 1], fromCell.Vertices[alongI ? 3 : 2]);
+                var toEdge = new Edge(toCell.Vertices[alongI ? 0 : 3], toCell.Vertices[alongI ? 1 : 0]);
+                fromCell.AddAdjacentCell(toCell, toEdge);
+                toCell.AddAdjacentCell(fromCell, fromEdge);
+            }
+
+            mesh.SetCellGrid(GridStep, grid);
         }
 
         private static int Find(int[] parents, int index)
