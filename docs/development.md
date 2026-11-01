@@ -15,12 +15,11 @@ Build notes:
 
 Verification:
 
-- The navigation gates boot the isolated port 8891 against the patched server assets, and every
+- The navigation gates run on a disposable offline-host slot against the patched server assets, and the
   driver verifies the asset patch first:
-  - `python tests/playtest/tools/check_connector_survey.py --scenario scpslbot-runtime-navmesh-gate`
+  - `python tests/playtest/tools/check_normal_round.py --scenario scpslbot-runtime-navmesh-gate`
   - `--scenario scpslbot-keycard-routing-survey`
-  - `--rounds 2`
-  - `--scenario scpslbot-door-survey`
+  - `--scenario scpslbot-door-survey --management`
 
   See [tests/playtest/README.md](../tests/playtest/README.md).
 - The dedicated local bot-testing deployment is port `8888`. Start it with
