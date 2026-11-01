@@ -18,9 +18,9 @@ namespace SCPSLBot.PlaytestScenarios.Scenarios;
 /// </summary>
 public sealed class BotOrderPassivityScenario : Scenario
 {
-    private const string UnreachableRoom = "Hcz049";
+    private const string UnreachableRoom = "LczArmory";
     private const string ReachableRoom = "LczToilets";
-    private const float HoldIntervalSeconds = 1f;
+    internal const float HoldIntervalSeconds = 1f;
     private const float TargetDistance = 3f;
     private const int MinimumExposures = 5;
 
@@ -165,7 +165,7 @@ public sealed class BotOrderPassivityScenario : Scenario
     }
 
     /// <summary>Places the hostile in the spike's line of sight, behind its travel so it cannot block the route.</summary>
-    private static bool KeepTargetInSight(ScenarioContext ctx, Player spike, Player target, Vector3 travel)
+    internal static bool KeepTargetInSight(ScenarioContext ctx, Player spike, Player target, Vector3 travel)
     {
         if (!target.IsAlive)
         {
@@ -189,14 +189,124 @@ public sealed class BotOrderPassivityScenario : Scenario
         return false;
     }
 
-    private static bool RouteStopped()
+    internal static bool RouteStopped()
     {
         NativeCommandResult result = NativeCommandAdapter.RemoteAdmin("botspike status");
         return result.Success && Fields(result.Response).TryGetValue("routeRunning", out string running)
             && string.Equals(running, "False", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string Status(ScenarioContext ctx) => Issue2World.Command(ctx, "botspike status").Response;
+    internal static string Status(ScenarioContext ctx) => Issue2World.Command(ctx, "botspike status").Response;
 
-    private static Dictionary<string, string> Fields(string response) => CommandFields.ParseWhitespace(response);
+    internal static Dictionary<string, string> Fields(string response) => CommandFields.ParseWhitespace(response);
+}
+
+/// <summary>
+/// The sequence the plugin API documents: SpawnBot and MoveToRoom in one tick, before the bot has a
+/// role. The same armed role is first shown to fight without an order, so its passivity means something.
+/// </summary>
+public sealed class BotImmediateOrderScenario : Scenario
+{
+    private const string Role = "FacilityGuard";
+    private const string Destination = "EzGateB";
+
+    public override string Name => "scpslbot-order-immediate";
+    public override string Description => "An armed bot ordered in the same tick as SpawnBot walks to Gate B past a visible enemy without attacking.";
+    public override FidelityRange Supported => FidelityRange.Only(Fidelity.Standard);
+    public override bool IncludeInRunAll => false;
+    public override float TimeoutSeconds => 180f;
+
+    public override IEnumerator<float> Run(ScenarioContext ctx)
+    {
+        Issue2World.RequireReady(ctx);
+        yield return ctx.EnsureRoundStarted();
+
+        Player? spike = null;
+        Player? target = null;
+        int hits = 0;
+        void OnHurting(PlayerHurtingEventArgs ev)
+        {
+            if (spike == null || target == null
+                || !ReferenceEquals(ev.Player?.ReferenceHub, target.ReferenceHub)
+                || !ReferenceEquals(ev.Attacker?.ReferenceHub, spike.ReferenceHub))
+            {
+                return;
+            }
+
+            hits++;
+            ev.IsAllowed = false; // The count is the oracle; the target has to outlive every phase.
+        }
+
+        NativeCommandAdapter.RemoteAdmin("botspike cleanup");
+        PlayerEvents.Hurting += OnHurting;
+        try
+        {
+            int targetId = Issue2World.AddBot(ctx);
+            Issue2World.Command(ctx, $"forcerole {targetId} ClassD");
+            yield return ctx.WaitUntil(() => WarmupBotWorld.FindById(targetId)?.Role == RoleTypeId.ClassD, 5f,
+                "hostile bot reached its ClassD role");
+            target = WarmupBotWorld.FindById(targetId);
+
+            // Control: the same role without an order attacks.
+            Issue2World.Command(ctx, $"botspike start autonomous {Role}");
+            yield return ctx.WaitUntil(() => WarmupBotWorld.FindSpike() is { IsReady: true, IsAlive: true, Role: RoleTypeId.FacilityGuard }, 10f,
+                "control guard reached its native role");
+            yield return ctx.Wait(1f);
+            spike = WarmupBotWorld.FindSpike();
+            float deadline = Time.realtimeSinceStartup + 30f;
+            while (hits == 0 && Time.realtimeSinceStartup < deadline)
+            {
+                BotOrderPassivityScenario.KeepTargetInSight(ctx, spike!, target!, Vector3.zero);
+                yield return ctx.Wait(BotOrderPassivityScenario.HoldIntervalSeconds);
+            }
+
+            ctx.Require(hits > 0, "an armed guard without an order attacks the visible ClassD");
+            ctx.Info($"ORDER_IMMEDIATE control hits={hits}");
+            spike = null;
+            Issue2World.Command(ctx, "botspike cleanup");
+            yield return ctx.WaitUntil(() => WarmupBotWorld.FindSpike() == null, 5f, "control guard despawned");
+
+            // The documented sequence.
+            string started = Issue2World.Command(ctx, $"botspike start ordered {Role} {Destination}").Response;
+            ctx.Info($"ORDER_IMMEDIATE started: {started}");
+            yield return ctx.WaitUntil(() => WarmupBotWorld.FindSpike() is { IsReady: true, IsAlive: true, Role: RoleTypeId.FacilityGuard }, 10f,
+                "ordered guard reached its native role");
+            yield return ctx.Wait(1f);
+            spike = WarmupBotWorld.FindSpike();
+            Vector3 start = spike!.Position;
+            Vector3 previous = start;
+            hits = 0;
+            int exposures = 0;
+            for (int tick = 0; tick < 30; tick++)
+            {
+                if (BotOrderPassivityScenario.KeepTargetInSight(ctx, spike, target!, spike.Position - previous))
+                {
+                    exposures++;
+                }
+
+                previous = spike.Position;
+                yield return ctx.Wait(BotOrderPassivityScenario.HoldIntervalSeconds);
+            }
+
+            string status = BotOrderPassivityScenario.Status(ctx);
+            float moved = Vector3.Distance(start, spike.Position);
+            ctx.Info($"ORDER_IMMEDIATE ordered hits={hits} exposures={exposures} moved={moved:0.##}m status: {status}");
+            ctx.Require(exposures >= 10, $"hostile stayed visible (exposures={exposures})");
+            ctx.Require(hits == 0, $"ordered guard did not attack (hits={hits}, {started}, status: {status})");
+            ctx.Require(BotOrderPassivityScenario.Fields(status).TryGetValue("order", out string order)
+                        && order is "MoveToRoom" or "Completed",
+                $"the order is still live or finished: {status}");
+            ctx.Require(moved > 5f, $"ordered guard travelled toward its destination (moved={moved:0.##}m, status: {status})");
+        }
+        finally
+        {
+            PlayerEvents.Hurting -= OnHurting;
+            if (target is { IsDestroyed: false })
+            {
+                NativeCommandAdapter.RemoteAdmin($"dummies destroy {target.PlayerId}");
+            }
+
+            NativeCommandAdapter.RemoteAdmin("botspike cleanup");
+        }
+    }
 }

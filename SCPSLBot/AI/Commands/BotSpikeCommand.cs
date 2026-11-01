@@ -57,8 +57,9 @@ namespace SCPSLBot.AI.Commands
             switch (action)
             {
                 case "start":
-                    return BotSpikeDemo.Start(
-                        string.Equals(arguments.Count > 1 ? arguments.At(1) : string.Empty, "autonomous", StringComparison.OrdinalIgnoreCase),
+                    return BotSpikeDemo.Start(arguments.Count > 1 ? arguments.At(1) : string.Empty,
+                        arguments.Count > 2 ? arguments.At(2) : string.Empty,
+                        arguments.Count > 3 ? arguments.At(3) : string.Empty,
                         out response);
                 case "walk":
                     return BotSpikeDemo.Walk(arguments.Count > 1 ? arguments.At(1) : "preset", out response);
@@ -83,7 +84,7 @@ namespace SCPSLBot.AI.Commands
             }
         }
 
-        private const string Usage = "Usage: botspike start [autonomous] | walk <RoomName|preset|offmesh> | tour | status | stop | cleanup | survey <clutter|doors|all|keycard> [both|forward] | survey_status | survey_stop";
+        private const string Usage = "Usage: botspike start [autonomous [role] | ordered <role> <RoomName>] | walk <RoomName|preset|offmesh> | tour | status | stop | cleanup | survey <clutter|doors|all|keycard> [both|forward] | survey_status | survey_stop";
     }
 
     internal static class BotSpikeDemo
@@ -107,8 +108,28 @@ namespace SCPSLBot.AI.Commands
         private static bool routeRunning;
         private static string routeLabel = "none";
 
-        public static bool Start(bool autonomous, out string response)
+        /// <summary>
+        /// Default: a held ClassD. "autonomous" keeps its normal AI until the first order. "ordered"
+        /// issues the room order in the same tick as SpawnBot, before the bot has a role or position.
+        /// </summary>
+        public static bool Start(string mode, string roleArgument, string roomArgument, out string response)
         {
+            var autonomous = string.Equals(mode, "autonomous", StringComparison.OrdinalIgnoreCase);
+            var ordered = string.Equals(mode, "ordered", StringComparison.OrdinalIgnoreCase);
+            var role = RoleTypeId.ClassD;
+            if ((ordered || roleArgument.Length > 0) && !Enum.TryParse(roleArgument, true, out role))
+            {
+                response = $"Unknown role '{roleArgument}'.";
+                return false;
+            }
+
+            var room = RoomName.Unnamed;
+            if (ordered && !TryParseRoom(roomArgument, out room))
+            {
+                response = $"Unknown room '{roomArgument}'.";
+                return false;
+            }
+
             StopRoute();
             if (bot != null)
             {
@@ -116,7 +137,7 @@ namespace SCPSLBot.AI.Commands
                 bot = null;
             }
 
-            bot = BotOrders.SpawnBot("BotOrders Spike", RoleTypeId.ClassD);
+            bot = BotOrders.SpawnBot("BotOrders Spike", role);
             if (bot == null)
             {
                 response = "Failed to spawn the spike bot. Check the server log.";
@@ -125,13 +146,21 @@ namespace SCPSLBot.AI.Commands
 
             // Hold as soon as its FPC role arrives; the role system performs the only spawn placement.
             // An autonomous spike keeps its normal AI until its first order.
+            if (ordered)
+            {
+                var accepted = BotOrders.MoveToRoom(bot, room);
+                LabLogger.Info($"[BotOrders] SPIKE_START bot={BotName} requestedRole={role} orderedRoom={room} accepted={accepted}");
+                response = $"Spawned BotOrders Spike as {role} with a same-tick order to {room}: accepted={accepted}.";
+                return true;
+            }
+
             if (!autonomous)
             {
                 BotOrders.Stop(bot);
             }
 
-            LabLogger.Info($"[BotOrders] SPIKE_START bot={BotName} requestedRole={RoleTypeId.ClassD} autonomous={autonomous} placement=native-role-spawn");
-            response = "Spawned BotOrders Spike as ClassD via native role spawn. Wait about 2 seconds, then use botspike walk preset.";
+            LabLogger.Info($"[BotOrders] SPIKE_START bot={BotName} requestedRole={role} autonomous={autonomous} placement=native-role-spawn");
+            response = $"Spawned BotOrders Spike as {role} via native role spawn. Wait about 2 seconds, then use botspike walk preset.";
             return true;
         }
 
