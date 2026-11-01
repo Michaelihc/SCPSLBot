@@ -1,5 +1,7 @@
 using Interactables.Interobjects;
 using Interactables.Interobjects.DoorUtils;
+using LabApi.Events.Arguments.Scp049Events;
+using LabApi.Events.Handlers;
 using LabApi.Features.Wrappers;
 using MapGeneration;
 using PlayerRoles;
@@ -270,6 +272,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
                 string label = $"greenhouse mode={mode} rise={goal.y - start.y:F3} target={PlacementProbes.Format(goal)}";
                 ctx.Info($"ISSUE2 BEGIN {label} bot={pair.Bot.PlayerId} target={pair.Target.PlayerId} start={PlacementProbes.Format(pair.Bot.Position)} goal={PlacementProbes.Format(pair.Target.Position)} probe={NativeCommandAdapter.RemoteAdmin($"nav probe {Issue2World.Arguments(goal)}").Response}");
                 var walk = new Issue2Walk(pair.Bot, pair.Target.Position, requireLanding: mode == "elevated");
+                using var hits = new Issue2HitLog(pair.Bot, pair.Target);
                 float deadline = Time.realtimeSinceStartup + 20f;
                 while (!walk.Arrived && Time.realtimeSinceStartup < deadline)
                 {
@@ -281,7 +284,7 @@ public sealed class Issue2ElevatedPursuitScenario : Scenario
                 bool reachabilityVerified = mode == "floor" || nativeReachable;
                 if ((reachabilityVerified && !walk.Arrived) || !walk.WorldOk) failed++;
                 string verdict = !walk.WorldOk ? "FAIL" : !reachabilityVerified ? "UNVERIFIED_REACHABILITY" : walk.Arrived ? "PASS" : "FAIL";
-                ctx.Info($"ISSUE2 CASE {label} verdict={verdict} nativeJumpReachable={nativeReachable} {walk.Describe()} targetNow={PlacementProbes.Format(pair.Target.Position)}");
+                ctx.Info($"ISSUE2 CASE {label} verdict={verdict} nativeJumpReachable={nativeReachable} {walk.Describe()} {hits.Describe()} targetNow={PlacementProbes.Format(pair.Target.Position)}");
             }
         }
         ctx.Info($"ISSUE2 SUMMARY greenhouse tested={tested} failed={failed} nativeReachablePositions={reachable} setupSkippedPositions={skipped}");
@@ -347,6 +350,28 @@ internal sealed class Issue2BotPair : IDisposable
         if (Bot != null && !Bot.IsDestroyed) NativeCommandAdapter.RemoteAdmin($"dummies destroy {Bot.PlayerId}");
         NativeCommandAdapter.RemoteAdmin("botspike cleanup");
     }
+}
+
+/// <summary>Records native SCP-049 hits on the target. Evidence only: arrival remains the oracle.</summary>
+internal sealed class Issue2HitLog : IDisposable
+{
+    private readonly Player bot;
+    private readonly Player target;
+    private int hits;
+    private string first = "none";
+    public Issue2HitLog(Player bot, Player target)
+    {
+        this.bot = bot;
+        this.target = target;
+        Scp049Events.Attacked += OnAttacked;
+    }
+    private void OnAttacked(Scp049AttackedEventArgs args)
+    {
+        if (args.Player != bot || args.Target != target) return;
+        if (hits++ == 0) first = $"{Issue2World.HorizontalDistance(bot.Position, target.Position):F2}/{Mathf.Abs(bot.Position.y - target.Position.y):F2}";
+    }
+    public string Describe() => $"nativeHits={hits} firstHitGapHV={first}";
+    public void Dispose() => Scp049Events.Attacked -= OnAttacked;
 }
 
 internal sealed class Issue2Walk

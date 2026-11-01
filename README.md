@@ -175,7 +175,7 @@ active. `HsmAdapter` and `ServerKeybinds` are open source at
 - SCP-939 does not use mimicry.
 - Bots do not throw grenades or cuff.
 - On `navigation.backend: Authored`, bots can wedge for a minute or more on clutter or stair
-  corners the embedded navmesh routes through, on some map seeds. `Runtime` routes around them.
+  corners the embedded navmesh routes through, on some map seeds.
 - During Standard warmup, bots on Surface hold position until they find a target.
 - Do not install the legacy `WarmupPlayerPanel` or `ScpslPluginStarter.dll` alongside this suite.
 

@@ -57,6 +57,9 @@ namespace SCPSLBot.Navigation.Authored
         /// <summary>True when only a partial path (toward the reachable cell nearest the goal) exists.</summary>
         public bool HasPartialPath => hasPartialPath;
 
+        /// <summary>False when a complete path only leads to the mesh edge nearest a goal outside the cells.</summary>
+        public bool ReachesGoal => hasPath && !isGoalOutside;
+
         /// <summary>The steering point returned by the last <see cref="GetPositionTowards"/> call.</summary>
         public Vector3 CurrentWaypoint { get; private set; }
 
