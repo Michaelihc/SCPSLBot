@@ -177,7 +177,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
 
         private void OpenBlockingDoorOnCombatPath()
         {
-            foreach (var (point, nextPoint) in botPlayer.Navigator.PathSegments)
+            // Without a plan the segments are the previous route, whose doors have nothing to do
+            // with this chase: acting on one would take the body away from the movement above.
+            var navigator = botPlayer.Navigator;
+            if (!navigator.HasPath && !navigator.HasPartialPath)
+            {
+                return;
+            }
+
+            foreach (var (point, nextPoint) in navigator.PathSegments)
             {
                 if (!Physics.Linecast(point, nextPoint, out var hit, LayerMask.GetMask("Door")))
                 {
