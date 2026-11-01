@@ -58,8 +58,9 @@ namespace SCPSLBot.Navigation
         /// the floor), where <paramref name="forward"/> is the through-axis. Returns the selected
         /// portal band at the connector plane as lateral offsets along <paramref name="right"/>; the
         /// band is the range of capsule-center positions that are clear (radius already applied).
+        /// <paramref name="lateralHalfSpan"/> bounds the search, for an opening of known width.
         /// </summary>
-        public static PassageResult Probe(Vector3 center, Vector3 forward, Vector3 right)
+        public static PassageResult Probe(Vector3 center, Vector3 forward, Vector3 right, float lateralHalfSpan = LateralHalfSpan)
         {
             // A free column already means the whole probe capsule fits there, so gap widths and
             // slice overlaps are measured in capsule-center space: one column is enough.
@@ -72,25 +73,27 @@ namespace SCPSLBot.Navigation
                 floorY = center.y - NavigationAgentProfile.RootHeight;
             }
 
-            var walkResult = ProbeTier(center, forward, right, floorY, NavigationAgentProfile.StepClearance, radius, minWidth, minOverlap, out var walkGapCount);
+            var walkResult = ProbeTier(center, forward, right, floorY, NavigationAgentProfile.StepClearance, radius, lateralHalfSpan, minWidth, minOverlap, out var walkGapCount);
             if (walkResult.HasValue)
             {
                 return new PassageResult(walkResult, PassageTier.Walk, floorY, walkGapCount, floorFound);
             }
 
-            var jumpResult = ProbeTier(center, forward, right, floorY, JumpableClearance, radius, minWidth, minOverlap, out var jumpGapCount);
+            var jumpResult = ProbeTier(center, forward, right, floorY, JumpableClearance, radius, lateralHalfSpan, minWidth, minOverlap, out var jumpGapCount);
             return jumpResult.HasValue
                 ? new PassageResult(jumpResult, PassageTier.Jump, floorY, jumpGapCount, floorFound)
                 : new PassageResult(null, PassageTier.None, floorY, walkGapCount, floorFound);
         }
 
-        private static LateralGap? ProbeTier(Vector3 center, Vector3 forward, Vector3 right, float floorY, float groundClearance, float radius, float minWidth, float minOverlap, out int portalGapCount)
+        private static LateralGap? ProbeTier(Vector3 center, Vector3 forward, Vector3 right, float floorY, float groundClearance, float radius, float lateralHalfSpan, float minWidth, float minOverlap, out int portalGapCount)
         {
             var bottomOffset = groundClearance + radius;
             var topOffset = Mathf.Max(bottomOffset + 0.05f, NavigationAgentProfile.Height - radius - 0.05f);
             var probeRadius = radius * 0.92f;
             var mask = ProbeMask;
-            var columnCount = Mathf.RoundToInt(LateralHalfSpan * 2f / LateralStep) + 1;
+            // Whole steps keep a column on the center line of a narrow opening.
+            lateralHalfSpan = Mathf.Ceil(lateralHalfSpan / LateralStep - 1e-3f) * LateralStep;
+            var columnCount = Mathf.RoundToInt(lateralHalfSpan * 2f / LateralStep) + 1;
             var sliceCount = Mathf.RoundToInt(DepthHalfSpan * 2f / DepthStep) + 1;
             var portalSlice = sliceCount / 2;
 
@@ -103,12 +106,12 @@ namespace SCPSLBot.Navigation
                 freeColumns.Clear();
                 for (var column = 0; column < columnCount; column++)
                 {
-                    var lateral = -LateralHalfSpan + column * LateralStep;
+                    var lateral = -lateralHalfSpan + column * LateralStep;
                     var foot = new Vector3(center.x, floorY, center.z) + right * lateral + forward * depth;
                     freeColumns.Add(!Physics.CheckCapsule(foot + Vector3.up * bottomOffset, foot + Vector3.up * topOffset, probeRadius, mask, QueryTriggerInteraction.Ignore));
                 }
 
-                var gaps = LateralGapFinder.FindGaps(freeColumns, -LateralHalfSpan, LateralStep);
+                var gaps = LateralGapFinder.FindGaps(freeColumns, -lateralHalfSpan, LateralStep);
                 if (slice == portalSlice)
                 {
                     portalGapCount = gaps.Count;

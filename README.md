@@ -176,7 +176,6 @@ active. `HsmAdapter` and `ServerKeybinds` are open source at
 - Bots do not throw grenades or cuff.
 - On `navigation.backend: Authored`, bots that spawn on Surface or in SCP-049's lower level stay
   there: the embedded navmesh does not link those elevators.
-- On `Runtime`, SCP-939 can take a minute or more to leave its containment room after spawning.
 - During Standard warmup, bots on Surface hold position until they find a target.
 - Do not install the legacy `WarmupPlayerPanel` or `ScpslPluginStarter.dll` alongside this suite.
 

@@ -92,6 +92,7 @@ python tests/playtest/tools/check_normal_round.py --escape
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-order-passivity --limit 420
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-order-immediate --limit 200
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-autonomous-roam --limit 1020
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-autonomous-roam-939 --limit 700
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-checkpoints --limit 900
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-greenhouse --limit 600
 ```
@@ -101,7 +102,9 @@ then checks that an admin-selected spectator remains unmanaged. The escape case 
 native Scientist spawn and observes autonomous travel, actual item pickups and the native escape
 event. The order cases first prove the armed bot lands a real hit without an order, so a bot that
 never fights cannot pass. The roam case soaks one uncontested bot per role and fails on a long stop,
-on alternating between two rooms, or on a Surface spawn that never enters the facility.
+on alternating between two rooms, or on a Surface spawn that never enters the facility. Seconds
+SCP-939 spends holding native focus are an ambush, not a stop, and are limited separately. The
+`-939` variant repeats the SCP-939 soak four times.
 
 ## Runtime navmesh gates
 

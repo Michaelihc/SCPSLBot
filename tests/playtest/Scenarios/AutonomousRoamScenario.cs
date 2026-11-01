@@ -1,6 +1,7 @@
 using LabApi.Features.Wrappers;
 using MapGeneration;
 using PlayerRoles;
+using PlayerRoles.PlayableScps.Scp939;
 using PlaytestHarness.Core;
 using PlaytestHarness.Probes;
 using SCPSLBot.PlaytestScenarios.Harness;
@@ -14,16 +15,19 @@ namespace SCPSLBot.PlaytestScenarios.Scenarios;
 /// One uncontested bot per role explores from its native spawn. Each role's world trace has to show
 /// real travel: several rooms, no long stop and no back-and-forth between two rooms, which is how a
 /// bot turning around at a door presents. Roles that spawn on Surface also have to enter the facility.
+/// SCP-939 waits at doors on purpose, so seconds spent holding native focus are not a stop; that hold
+/// has its own limit, so a bot cannot pass by stalling in focus.
 /// </summary>
-public sealed class AutonomousRoamScenario : Scenario
+public class AutonomousRoamScenario : Scenario
 {
     private const float SoakSeconds = 150f;
     private const int MinimumRooms = 3;
     private const float MaximumStationarySeconds = 45f;
+    private const float MaximumFocusHoldSeconds = 46f;
     private const float StationaryRadius = 3f;
     private const int MaximumAlternations = 6;
 
-    private static readonly RoleTypeId[] Roles =
+    private static readonly RoleTypeId[] AllRoles =
     {
         RoleTypeId.Scp096,
         RoleTypeId.Scp049,
@@ -32,6 +36,8 @@ public sealed class AutonomousRoamScenario : Scenario
         RoleTypeId.NtfPrivate,
         RoleTypeId.ChaosRifleman,
     };
+
+    protected virtual IReadOnlyList<RoleTypeId> Roles => AllRoles;
 
     public override string Name => "scpslbot-autonomous-roam";
     public override string Description => "Each role roams alone from its native spawn without stopping, door-looping or staying on Surface.";
@@ -61,7 +67,7 @@ public sealed class AutonomousRoamScenario : Scenario
             float nextDebug = 0f;
             while (Time.realtimeSinceStartup < end && bot.IsAlive)
             {
-                trace.Sample(bot.Position, bot.Room, Time.realtimeSinceStartup);
+                trace.Sample(bot.Position, bot.Room, Time.realtimeSinceStartup, IsHoldingFocus(bot));
                 if (Time.realtimeSinceStartup >= nextDebug)
                 {
                     nextDebug = Time.realtimeSinceStartup + 30f;
@@ -85,6 +91,10 @@ public sealed class AutonomousRoamScenario : Scenario
         ctx.Require(failures.Count == 0, $"every role roamed: {string.Join("; ", failures)}");
     }
 
+    private static bool IsHoldingFocus(Player bot) => bot.RoleBase is Scp939Role role
+        && role.SubroutineModule.TryGetSubroutine(out Scp939FocusAbility focus)
+        && focus.State > 0f;
+
     private sealed class RoamTrace
     {
         private readonly HashSet<string> rooms = new();
@@ -93,6 +103,8 @@ public sealed class AutonomousRoamScenario : Scenario
         private Vector3 anchor;
         private float anchorTime = -1f;
         private float longestStop;
+        private float focusSince = -1f;
+        private float longestFocusHold;
         private bool enteredFacility;
 
         public RoamTrace(Vector3 spawn, bool onSurface)
@@ -104,14 +116,20 @@ public sealed class AutonomousRoamScenario : Scenario
 
         public Vector3 Spawn { get; }
 
-        public void Sample(Vector3 position, Room? room, float now)
+        public void Sample(Vector3 position, Room? room, float now, bool holdingFocus)
         {
             if (anchorTime < 0f)
             {
                 anchorTime = now;
             }
 
-            if (Vector3.Distance(anchor, position) > StationaryRadius)
+            focusSince = !holdingFocus ? -1f : focusSince < 0f ? now : focusSince;
+            if (holdingFocus)
+            {
+                longestFocusHold = Mathf.Max(longestFocusHold, now - focusSince);
+            }
+
+            if (holdingFocus || Vector3.Distance(anchor, position) > StationaryRadius)
             {
                 anchor = position;
                 anchorTime = now;
@@ -144,6 +162,11 @@ public sealed class AutonomousRoamScenario : Scenario
                 return $"stopped for {longestStop:0}s";
             }
 
+            if (longestFocusHold > MaximumFocusHoldSeconds)
+            {
+                return $"held focus for {longestFocusHold:0}s";
+            }
+
             if (LongestAlternation() > MaximumAlternations)
             {
                 return $"alternated between two rooms {LongestAlternation()} times";
@@ -157,7 +180,7 @@ public sealed class AutonomousRoamScenario : Scenario
             return !spawnedOnSurface && rooms.Count < MinimumRooms ? $"visited only {rooms.Count} rooms" : null;
         }
 
-        public string Describe() => $"rooms={rooms.Count} visits={visits.Count} longestStop={longestStop:0}s alternation={LongestAlternation()} route={string.Join(">", visits.Take(14))}";
+        public string Describe() => $"rooms={rooms.Count} visits={visits.Count} longestStop={longestStop:0}s focusHold={longestFocusHold:0}s alternation={LongestAlternation()} route={string.Join(">", visits.Take(14))}";
 
         private int LongestAlternation()
         {
@@ -172,4 +195,16 @@ public sealed class AutonomousRoamScenario : Scenario
             return longest;
         }
     }
+}
+
+/// <summary>The same soak repeated for SCP-939 alone, so its containment-room exit can be sampled faster.</summary>
+public sealed class Scp939AutonomousRoamScenario : AutonomousRoamScenario
+{
+    private static readonly RoleTypeId[] Repeats = { RoleTypeId.Scp939, RoleTypeId.Scp939, RoleTypeId.Scp939, RoleTypeId.Scp939 };
+
+    protected override IReadOnlyList<RoleTypeId> Roles => Repeats;
+
+    public override string Name => "scpslbot-autonomous-roam-939";
+    public override string Description => "SCP-939 roams from its native spawn four times without stopping or staying in its containment room.";
+    public override float TimeoutSeconds => 680f;
 }

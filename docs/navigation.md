@@ -32,16 +32,19 @@ elevators, so bots that spawn in those places cannot leave them.
 The runtime backend works in stages:
 
 1. **Collect.** Two frames after map generation, it collects the live colliders the human capsule
-   collides with. Players, door leaves and glass, pickups, ragdolls, elevator chambers, invisible
-   doorway blockers, the Surface helicopter, the capybara and non-collidable admin toys are excluded.
+   collides with. Players, the leaves and glass of doors bots can open, pickups, ragdolls, elevator
+   chambers, invisible doorway blockers, the Surface helicopter, the capybara and non-collidable
+   admin toys are excluded. Every first-person role uses this capsule. Non-interactable fixed doors, such
+   as the blast door of SCP-939's cell, keep their leaves.
 2. **Build.** It builds asynchronously with the human capsule: radius 0.36 m (eroded by whole
    voxels, not beyond the capsule, so one-meter stair flights stay walkable), height 1.8 m, 0.3 m
    step, 45° slope, 9 cm voxels.
 3. **Fill gaps.** Rooms whose meshes still cannot be read fall back to a probed floor
    (`NAV_ROOM_PROBED`).
 4. **Link.** Each elevator group gets a bidirectional link between its landings. Door-less clutter
-   connectors that the bake leaves sealed are probed with the capsule and bridged with a jump link.
-   Connectors impassable at every tier log `NAV_CONNECTOR_SEALED` and are routed around.
+   connectors and fixed doors that the bake leaves sealed are probed with the capsule and bridged
+   with a jump link; a fixed door's link runs along the centre of the gap between its leaves.
+   Passages impassable at every tier log `NAV_CONNECTOR_SEALED` and are routed around.
 5. **Keycard areas.** Keycard doors contribute one navmesh area per permission class
    (`navigation.keycard_area_routing`). Locked and unpowered doors are still handled when a bot
    interacts with them.
@@ -112,8 +115,6 @@ authored cells from live floor probes, and keeps the `nav` cell editor.
 - The runtime backend needs the patched dedicated-server assets, and a game update or Steam file
   validation restores the stock files.
 - Bots stop at the Intercom doorway because its interior floor does not voxelize.
-- The navmesh is baked for the human capsule. SCP-939 can snag in its containment room after
-  spawning and take a minute or more to leave.
 - Keycard areas are static: a bot without the card does not plan through a keycard door even while
   something else holds it open.
 - `force_standard_door_connectors: true` rewrites map connectors and can conflict with map-layout
