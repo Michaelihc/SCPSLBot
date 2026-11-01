@@ -173,7 +173,7 @@ active. `HsmAdapter` and `ServerKeybinds` are open source at
 
 - SCP-079 has no bot AI.
 - SCP-939 does not use mimicry.
-- Bots do not use medkits, grenades or armor, and do not cuff.
+- Bots do not throw grenades or cuff.
 - During Standard warmup, bots on Surface hold position until they find a target.
 - Do not install the legacy `WarmupPlayerPanel` or `ScpslPluginStarter.dll` alongside this suite.
 
