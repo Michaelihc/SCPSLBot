@@ -57,7 +57,7 @@ $null = Reply "/forcerole $($owner.id) Tutorial 0"
 Start-Sleep -Seconds 1
 $null = Reply "/strip $($owner.id)"
 
-$null = Reply "/give $($owner.id) GunAK"
+$null = Reply "/give $($owner.id) 40"
 Start-Sleep -Milliseconds 500
 Equip 'native-select'
 $results.nativeHitLoss = HitLosses 'native-hit'
