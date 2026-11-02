@@ -79,7 +79,8 @@ Start-Sleep -Milliseconds 500
 SelectFirearm
 FaceEachOther
 $results.separationMeters = [Math]::Round((Distance (Actor $owner.id).position (Actor $viewer.id).position), 1)
-# A fresh spawn is protected, which would hide the hit.
+# The lab starts clients in god mode, and a fresh spawn is protected; either would hide the hit.
+$null = Reply "/god $($viewer.id) disable"
 $null = Reply "/cleareffects $($viewer.id)"
 $before = Actor $viewer.id
 PressRocket 'tutorial-rocket-at-ntf' 12
@@ -98,6 +99,7 @@ Start-Sleep -Milliseconds 500
 $null = Invoke-LabInput @{id='select-graviton';frames=150;inputFrames=2;keys=@($firearmHotkey);capture=$true} -ClientId $ownerClient
 
 # Past the 2 m core, a shockwave leaves a 100 HP player alive, so the throw is observable.
+$null = Reply "/god $($viewer.id) disable"
 $null = Reply "/cleareffects $($viewer.id)"
 $me = Actor $owner.id
 $before = Actor $viewer.id
