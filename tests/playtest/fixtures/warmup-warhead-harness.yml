@@ -1,0 +1,3 @@
+auto_run_scenario: scpslbot-warmup-warhead
+auto_run_level: quick
+auto_run_delay_seconds: 12

@@ -1,0 +1,5 @@
+language: cn
+bots_only: true
+normal_round_bot_count: 1
+navigation:
+  backend: Runtime

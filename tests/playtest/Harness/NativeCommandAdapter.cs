@@ -37,6 +37,13 @@ internal static class NativeCommandAdapter
         return new NativeCommandResult(response, sender.LastReply, sender.LastSuccess, sender.ReplyCount);
     }
 
+    public static NativeCommandResult RemoteAdminAsPlayer(string query, ReferenceHub hub)
+    {
+        CapturePlayerSender sender = new(hub);
+        string response = Invoke(ProcessRemoteAdminQuery, null, query, sender);
+        return new NativeCommandResult(response, sender.LastReply, sender.LastSuccess, sender.ReplyCount);
+    }
+
     public static bool IsGameConsoleCommandRegistered(string command) =>
         GameCore.Console.ConsoleCommandHandler.TryGetCommand(command, out _);
 
@@ -47,7 +54,7 @@ internal static class NativeCommandAdapter
         return new NativeCommandResult(response, sender.LastReply, sender.LastSuccess, sender.ReplyCount);
     }
 
-    private static string Invoke(MethodInfo method, object? instance, string query, CaptureSender sender)
+    private static string Invoke(MethodInfo method, object? instance, string query, CommandSender sender)
     {
         try
         {
@@ -57,6 +64,23 @@ internal static class NativeCommandAdapter
         {
             throw exception.InnerException;
         }
+    }
+
+    private sealed class CapturePlayerSender : RemoteAdmin.PlayerCommandSender
+    {
+        public CapturePlayerSender(ReferenceHub hub) : base(hub) { }
+        public string LastReply { get; private set; } = string.Empty;
+        public bool LastSuccess { get; private set; }
+        public int ReplyCount { get; private set; }
+        public override ulong Permissions => ulong.MaxValue;
+        public override bool FullPermissions => true;
+        public override void RaReply(string text, bool success, bool logToConsole, string overrideDisplay)
+        {
+            LastReply = text ?? string.Empty;
+            LastSuccess = success;
+            ReplyCount++;
+        }
+        public override void Print(string text) { LastReply = text ?? string.Empty; ReplyCount++; }
     }
 
     private sealed class CaptureSender : CommandSender
