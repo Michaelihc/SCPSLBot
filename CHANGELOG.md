@@ -7,6 +7,8 @@
 - Stop SCP-939 ambushing from its own cell at round start, which kept it inside for up to 50 seconds.
 - Stop bots sitting in rooms at round start. Doors opened in the first seconds were reported as jammed
   and closed to every bot for 45 seconds, which held Class-D in their cells.
+- Stop bots freezing for the rest of the round when no path exists from where they stand. The no-path
+  timeout could never fire, so a bot off the navigation surface never reached its recovery walk.
 - Board elevators along the door axis. Bots starting from the side of the doorway pinned on its frame.
 - Send every human into adjacent zones while exploring, so Facility Guards leave Entrance when their
   keycards allow.

@@ -34,7 +34,6 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
     internal sealed class DoorTraversal
     {
         public const string DeniedState = "door:denied";
-        public const string StalledState = "door:stalled";
 
         private const float RoomProbeStepMeters = 4f;
         // Gates are about four meters wide; side doors never share a leg's crossing plane.
@@ -325,7 +324,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 var stallLimit = openingStarted ? MaxOpeningStallSeconds : MaxOpeningStartSeconds;
                 if (distance < HoldDistance && now - openingProgressAt > stallLimit)
                 {
-                    DiagnosticState = StalledState;
+                    DiagnosticState = "door:stalled";
                     return DoorTraversalResult.Blocked;
                 }
 

@@ -542,13 +542,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                         lastBlockedDoorAt = now;
                         if (door != null)
                         {
-                            // A stall is that door refusing to move right now. Reporting it would
-                            // close the doorway to every bot, sealing rooms with a single exit.
-                            if (doors.DiagnosticState != DoorTraversal.StalledState)
-                            {
-                                navigator.ReportBlockedAt(door.transform.position);
-                            }
-
+                            navigator.ReportBlockedAt(door.transform.position);
                             LogCrossing($"DOOR_BLOCKED door={door.name} reason={doors.DiagnosticState ?? "unknown"} at={Format(door.transform.position)}");
                         }
                     }

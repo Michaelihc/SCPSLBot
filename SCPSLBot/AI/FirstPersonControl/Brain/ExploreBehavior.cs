@@ -216,7 +216,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
                 return true;
             }
 
-            if (now > deadline)
+            if (now >= deadline)
             {
                 Log("timeout", deadlineMeasured ? "trip took too long" : "no path");
                 MarkUnreachable(targetRoom, now);
