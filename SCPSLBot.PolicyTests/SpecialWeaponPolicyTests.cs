@@ -31,6 +31,23 @@ public sealed class SpecialWeaponPolicyTests
         Assert.False(catalog.Entries["native.gunshotgun"].IsSpecialWeapon);
     }
 
+    [Theory]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    public void PanelListsWeaponsOnlyWhenRequestsAreAllowed(bool allowPlayerRequests, bool available, bool expected)
+    {
+        Assert.Equal(
+            expected,
+            SpecialWeaponCatalogDefaults.IsRequestable("special:guided-rocket", allowPlayerRequests, _ => available));
+    }
+
+    [Fact]
+    public void PanelAlwaysListsNativeItems()
+    {
+        Assert.True(SpecialWeaponCatalogDefaults.IsRequestable("GunShotgun", false, _ => false));
+    }
+
     [Fact]
     public void ConfigReloadKeepsTunedWeaponEntries()
     {

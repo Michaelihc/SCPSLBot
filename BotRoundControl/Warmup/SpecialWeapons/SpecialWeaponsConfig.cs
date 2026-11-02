@@ -7,8 +7,11 @@ namespace SCPSLBot.Warmup.SpecialWeapons;
 /// <summary>Operator switches and balance. Visual timing stays in each weapon's tuning class.</summary>
 public sealed class SpecialWeaponsConfig
 {
-    [Description("Master switch. Disabled weapons leave the item panel. / 总开关；禁用的武器不会出现在物品面板中。")]
+    [Description("Master switch for RA grants and the item panel. / 总开关，同时控制 RA 发放和物品面板。")]
     public bool Enabled { get; set; } = true;
+
+    [Description("List weapons in the player item panel. When false, only RA special_weapon grants them. / 在玩家物品面板中列出武器；为 false 时只能通过 RA special_weapon 发放。")]
+    public bool AllowPlayerRequests { get; set; }
 
     public GravitonDisruptorConfig GravitonDisruptor { get; set; } = new();
 

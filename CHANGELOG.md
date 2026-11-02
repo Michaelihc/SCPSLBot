@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Add warmup special weapons to the item menu: the Graviton Disruptor and the Guided Rocket Launcher.
+- Add warmup special weapons, the Graviton Disruptor and the Guided Rocket Launcher, granted by
+  administrators through RA `special_weapon`. `special_weapons.allow_player_requests` adds them to the
+  item menu.
 - Close a recently crossed door when a human observes an SCP pursuing its retreat, while clearing
   the doorway and avoiding nearby humans, door toggling and doors SCP-106 can phase through.
 - Use SCP-106 Stalk and Hunter's Atlas at medium chase distances while retaining native vigor costs.

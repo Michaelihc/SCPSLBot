@@ -14,8 +14,8 @@ Standard warmup pauses the native Halloween moon controller. With
 players, administrators and automatic triggers. Entering warmup cancels an existing countdown,
 including its final ten seconds. Leaving warmup restores native moon, warhead and DMS behavior.
 
-The item menu also offers [special weapons](../docs/special-weapons.md), set under
-`special_weapons` in this config.
+Administrators grant [special weapons](../docs/special-weapons.md) with RA `special_weapon`.
+`special_weapons.allow_player_requests` also lists them in the item menu; the default is `false`.
 
 During Standard warmup, the zone menu lists Surface, HCZ/EZ, LCZ and **Duel / 1v1**.
 Select a zone and press Apply. `.duel` / `.1v1` also enter the protected viewing deck.

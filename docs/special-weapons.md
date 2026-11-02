@@ -1,8 +1,11 @@
 # Special weapons
 
-Special weapons are bonus items players request from the warmup `Request item` menu. They exist only
-during Standard warmup. Each one is a native carrier item with a tracked serial, and the code lives in
-`BotRoundControl/Warmup/SpecialWeapons/`.
+Special weapons are bonus items that administrators grant with RA
+[`special_weapon grant`](commands.md). They exist only during Standard warmup. Each one is a native
+carrier item with a tracked serial, and the code lives in `BotRoundControl/Warmup/SpecialWeapons/`.
+
+Set `special_weapons.allow_player_requests: true` to also list them in the warmup `Request item` menu.
+The default is `false`.
 
 | Weapon | Carrier | How it works |
 | --- | --- | --- |
@@ -14,14 +17,15 @@ server cannot detect an unbound key, so the equip hint explains it.
 
 ## Rules for every weapon
 
-- Both defaults share the `high-impact` request group: 60 seconds, one per life.
+- Menu requests share the `high-impact` request group: 60 seconds, one per life. RA grants skip these
+  limits.
 - A weapon is bound to its player. It cannot be dropped, and it ends on death, on a role change and on
   leaving Standard warmup. Managed bots cannot receive or loot one.
 - Attacks obey arena, duel and safezone rules. A weapon that fires without a native shot asks the same
   native pre-shot event those rules already use, through `ISpecialWeaponHost.CanFire`.
 
-Settings live under `special_weapons` in the BotRoundControl config. A disabled weapon leaves the menu.
-Request cooldowns and limits live in its `controls.items` entry, whose `item_id` is `special:<weapon id>`.
+Settings live under `special_weapons` in the BotRoundControl config. A disabled weapon can't be granted
+by either route. Request cooldowns and limits live in its `controls.items` entry, whose `item_id` is `special:<weapon id>`.
 
 ## Adding a weapon
 
@@ -47,5 +51,5 @@ keep working. The runtime owns tracking and item lifetime; a weapon only clears 
 ## Testing
 
 `BotRoundControl/tests/offline-special-weapons.ps1` is the real-client walkthrough;
-`package-special-weapons.py` builds its candidate bundle and prints the run command. RA
-`special_weapon grant` stands in for the panel's Grant button, which the offline client cannot press.
+`package-special-weapons.py` builds its candidate bundle and prints the run command. It grants through
+RA `special_weapon grant`; the offline client cannot press the panel's Grant button.

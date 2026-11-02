@@ -62,9 +62,13 @@ internal sealed class WarmupControlsRuntime
         var weapons = new SpecialWeaponsRuntime(pluginConfig.SpecialWeapons, pluginConfig.HintDisplay, pluginConfig.Language);
         SpecialWeapons = weapons;
 
-        // A withdrawn weapon leaves the panel entirely rather than failing at every Grant.
+        // A weapon players may not request leaves the panel entirely rather than failing at every Grant.
+        bool allowPlayerRequests = pluginConfig.SpecialWeapons.AllowPlayerRequests;
         if (!LabApiItemGrantService.TryCreate(
-                pluginConfig.Controls.Items.Where(item => IsOffered(item, weapons)),
+                pluginConfig.Controls.Items.Where(item => SpecialWeaponCatalogDefaults.IsRequestable(
+                    item?.ItemId,
+                    allowPlayerRequests,
+                    weapons.IsAvailable)),
                 actions,
                 out items,
                 out var errors,
@@ -114,16 +118,6 @@ internal sealed class WarmupControlsRuntime
             items = null;
             throw;
         }
-    }
-
-    private static bool IsOffered(ItemCatalogEntryConfig item, SpecialWeaponsRuntime weapons)
-    {
-        if (!SpecialWeaponCatalogDefaults.TryGetWeaponId(item?.ItemId, out string weaponId))
-        {
-            return true;
-        }
-
-        return weapons.IsAvailable(weaponId);
     }
 
     public void Terminate()

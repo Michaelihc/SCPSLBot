@@ -42,6 +42,10 @@ public static class SpecialWeaponCatalogDefaults
 
     public static string ToItemId(string weaponId) => ItemIdPrefix + weaponId;
 
+    /// <summary>Whether the player panel lists a catalog entry. Native items are always listed.</summary>
+    public static bool IsRequestable(string? itemId, bool allowPlayerRequests, Func<string, bool> isAvailable) =>
+        !TryGetWeaponId(itemId, out string weaponId) || (allowPlayerRequests && isAvailable(weaponId));
+
     public static bool TryGetWeaponId(string? itemId, out string weaponId)
     {
         if (itemId != null
