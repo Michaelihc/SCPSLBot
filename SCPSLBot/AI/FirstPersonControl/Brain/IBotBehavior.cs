@@ -49,5 +49,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
         public const float RoleAbility = 0.6f;
         /// <summary>Self-preservation: heal when hurt and safe.</summary>
         public const float Survival = 0.7f;
+        /// <summary>Death is seconds away and the bot can still act: outranks everything that could wait.</summary>
+        public const float Emergency = 1f;
     }
 }

@@ -1,3 +1,4 @@
+using CustomPlayerEffects;
 using LabApi.Features.Wrappers;
 using MapGeneration;
 using PlayerRoles;
@@ -344,5 +345,61 @@ internal sealed class LifeBook
         private static int Floor(float y) => y < -50f ? 0 : y < 50f ? 1 : y < 200f ? 2 : SurfaceFloor;
 
         private static string RoomKey(Room? room) => room == null ? "none" : $"{room.Name}@{room.Position.x:0}/{room.Position.z:0}";
+    }
+}
+
+/// <summary>
+/// Human bots dropped into SCP-106's pocket dimension have to leave it on their own feet: through an
+/// exit, or into a killer teleporter, which from inside look the same. Corrosion alone takes about 31
+/// seconds to kill, so a bot still there at the deadline did not try.
+/// </summary>
+public sealed class PocketEscapeScenario : Scenario
+{
+    private const int Attempts = 8;
+    private const float AttemptSeconds = 28f;
+
+    public override string Name => "scpslbot-pocket-escape";
+    public override string Description => "Human bots caught in the pocket dimension run for a teleporter instead of standing still.";
+    public override FidelityRange Supported => FidelityRange.Only(Fidelity.Standard);
+    public override bool IncludeInRunAll => false;
+    public override float TimeoutSeconds => Attempts * (AttemptSeconds + 10f) + 30f;
+
+    public override IEnumerator<float> Run(ScenarioContext ctx)
+    {
+        Issue2World.RequireReady(ctx);
+        yield return ctx.EnsureRoundStarted();
+        int exits = 0;
+        int teleporterDeaths = 0;
+        List<string> idle = new();
+        for (int attempt = 0; attempt < Attempts; attempt++)
+        {
+            int botId = Issue2World.AddBot(ctx);
+            yield return ctx.Wait(1f);
+            Issue2World.Command(ctx, $"forcerole {botId} ClassD");
+            yield return ctx.WaitUntil(() => WarmupBotWorld.FindById(botId)?.Role == RoleTypeId.ClassD, 5f, "bot became Class-D");
+            yield return ctx.Wait(2f);
+
+            Player bot = WarmupBotWorld.FindById(botId) ?? throw new RequireException("the bot vanished after spawning");
+            ctx.Arrange("catch the bot in the pocket dimension", () => bot.EnableEffect<PocketCorroding>());
+            yield return ctx.WaitUntil(() => bot.Room?.Name == RoomName.Pocket, 5f, "bot arrived in the pocket dimension");
+
+            Vector3 start = bot.Position;
+            float end = Time.realtimeSinceStartup + AttemptSeconds;
+            while (Time.realtimeSinceStartup < end && bot.IsAlive && bot.Room?.Name == RoomName.Pocket)
+                yield return ctx.Wait(0.25f);
+
+            float elapsed = AttemptSeconds - (end - Time.realtimeSinceStartup);
+            string outcome = !bot.IsAlive ? "teleporter-death" : bot.Room?.Name != RoomName.Pocket ? "exit" : "idle";
+            ctx.Info($"POCKET attempt={attempt} outcome={outcome} seconds={elapsed:F1} moved={Vector3.Distance(start, bot.Position):F1} pos={PlacementProbes.Format(bot.Position)}");
+            if (outcome == "exit") exits++;
+            else if (outcome == "teleporter-death") teleporterDeaths++;
+            else idle.Add($"attempt {attempt}");
+
+            NativeCommandAdapter.RemoteAdmin($"dummies destroy {botId}");
+            yield return ctx.Wait(1f);
+        }
+
+        ctx.Info($"POCKET_RESULT exits={exits} teleporterDeaths={teleporterDeaths} idle={idle.Count}");
+        ctx.Require(idle.Count == 0, $"every caught bot reached a teleporter: {string.Join(", ", idle)}");
     }
 }

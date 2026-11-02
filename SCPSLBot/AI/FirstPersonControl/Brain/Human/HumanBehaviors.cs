@@ -6,7 +6,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
     /// Registers the human item and survival behaviors on a bot's brain. Each behavior scores 0
     /// unless the bot currently has a human role, so one registration covers runtime role changes.
     /// <list type="bullet">
-    /// <item><see cref="FleeBehavior"/> (Survival, highest): civilians escape SCPs even while armed; unarmed humans escape dangerous enemies.</item>
+    /// <item><see cref="PocketEscapeBehavior"/> (Emergency): run for a teleporter out of SCP-106's pocket dimension.</item>
+    /// <item><see cref="FleeBehavior"/> (Survival, highest of the rest): civilians escape SCPs even while armed; unarmed humans escape dangerous enemies.</item>
     /// <item><see cref="HealBehavior"/> (Survival): use a medical item when hurt and no threat is around.</item>
     /// <item><see cref="LootBehavior"/> (Opportunity): pick up nearby items worth having for the role.</item>
     /// </list>
@@ -17,6 +18,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Human
         {
             var context = new HumanBotContext(bot);
             return brain
+                .Add(new PocketEscapeBehavior(context))
                 .Add(new FleeBehavior(context))
                 .Add(new HealBehavior(context))
                 .Add(new LootBehavior(context));
