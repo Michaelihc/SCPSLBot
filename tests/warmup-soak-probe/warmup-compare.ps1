@@ -78,6 +78,8 @@ elseif($arena -eq 'lcz') {
 if($Context.Options.door) {
     $null=Server "/doortp $id $($Context.Options.door)"
     Start-Sleep -Seconds 1
+    # doortp faces the door; opening it exposes the client to the arena beyond.
+    if($Context.Options.openDoor) { $null=Invoke-LabInput @{frames=60;inputFrames=2;keys=@(101)} }
 }
 Start-Sleep -Seconds 3
 Status 'arena-entered'
