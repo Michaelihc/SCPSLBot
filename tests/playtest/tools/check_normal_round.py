@@ -24,6 +24,7 @@ parser.add_argument("--extensions", action="store_true",
     help="also load the test-only SCPSLPluginExtensions.dll (plugin_direload) for reload scenarios")
 parser.add_argument("--map-seed", type=int, help="map seed for a named scenario; the host otherwise fixes one seed")
 parser.add_argument("--round-bots", type=int, default=0, help="with --scenario, independent round bots to create and record with round_trace")
+parser.add_argument("--auto-run-delay", type=int, default=20, help="seconds before the harness runs a named scenario; a full lobby starts its round sooner than the default")
 parser.add_argument("--native-team-queue", help="with --scenario, the native team queue that allocates those bots' roles")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
@@ -86,7 +87,7 @@ if args.scenario:
         f"  backend: {args.backend}", *(["round_trace:", "  enabled: true", "  sample_interval_seconds: 1"] if args.round_bots else []), ""]), encoding="utf-8")
     harness_fixture = artifacts / "harness.yml"
     harness_fixture.write_text(chr(10).join([f"auto_run_scenario: {scenario}", f"auto_run_level: {args.level}",
-        "auto_run_delay_seconds: 20", ""]), encoding="utf-8")
+        f"auto_run_delay_seconds: {args.auto_run_delay}", ""]), encoding="utf-8")
     if args.harness_config:
         harness_fixture = Path(args.harness_config).resolve()
     files = [f"configs/8910/SCPSLBot/config.yml={bot_fixture}", f"configs/8910/PlaytestHarness/config.yml={harness_fixture}"]
