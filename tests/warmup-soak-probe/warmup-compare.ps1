@@ -35,6 +35,27 @@ function Status([string]$Label) {
     Note "status $Label $fields"
 }
 
+# Optional: native round restarts advance warmup's LCZ SCP rotation; a server only ever starts on one
+# SCP role. Actor IDs change across the reconnect, so the context actor is refreshed.
+foreach($restart in 1..[int]($Context.Options.restarts)) {
+    if(!$Context.Options.restarts) { break }
+    $null=Server '/roundrestart'
+    Start-Sleep -Seconds 8
+    $deadline=(Get-Date).AddSeconds(120); $back=$null; $reconnected=$false
+    while(!$back -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds 2
+        try {
+            $back=@(Observe -ClientsOnly | Where-Object { $_.ready -and $_.userId })[0]
+            if(!$back -and !$reconnected -and (Get-Date) -gt $deadline.AddSeconds(-75)) { $reconnected=$true; $null=Invoke-LabSetup "connect 127.0.0.1:$($Context.Port)" }
+        }
+        catch { $back=$null }
+    }
+    if(!$back) { throw "Client did not return after round restart $restart" }
+    $Context.Actor=$back
+    $id=$back.id
+    "round restart $restart client=$id role=$($back.role)" | Add-Content $log -Encoding utf8
+    Start-Sleep -Seconds 6
+}
 $null=Server "/soakprobe start $($Context.Evidence)\probe.jsonl"
 $null=Server '/bot_warmup'
 $null=Server '/roundtime'
