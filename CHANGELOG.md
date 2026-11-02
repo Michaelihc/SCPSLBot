@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v2026.11.02.1
+
 - Add warmup special weapons, the Graviton Disruptor and the Guided Rocket Launcher, granted by
   administrators through RA `special_weapon`. `special_weapons.allow_player_requests` adds them to the
   item menu.
