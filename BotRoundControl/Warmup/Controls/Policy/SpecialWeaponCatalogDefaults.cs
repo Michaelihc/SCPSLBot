@@ -38,6 +38,7 @@ public static class SpecialWeaponCatalogDefaults
     {
         new SpecialWeaponCatalogRow("graviton-disruptor", "Graviton Disruptor", "引力粒子裂解者"),
         new SpecialWeaponCatalogRow("guided-rocket", "Guided Rocket Launcher", "制导火箭筒"),
+        new SpecialWeaponCatalogRow("ak-12", "AK-12", "AK-12 突击步枪"),
     };
 
     public static string ToItemId(string weaponId) => ItemIdPrefix + weaponId;

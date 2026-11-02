@@ -11,6 +11,7 @@ The default is `false`.
 | --- | --- | --- |
 | Graviton Disruptor (`graviton-disruptor`) | `ParticleDisruptor` | Native firing, plus a gravity shockwave at the impact, recharging between shots. Real players are thrown back; bots and dummies take the damage without moving. |
 | Guided Rocket Launcher (`guided-rocket`) | `GunShotgun` | Primary Use fires a slow rocket. A visible enemy near the crosshair is locked; otherwise it flies straight. Cover breaks a lock. Each launcher is consumed by its last rocket. |
+| AK-12 (`ak-12`) | `GunAK` | A locked fit with the Muzzle Booster and a foregrip fires 571 rounds per minute against the AK's 510, for 0.88 times the damage per hit, so damage per second stays level. A grant also adds reserve ammo. |
 
 The launcher needs **Primary Use** bound under Settings > Server-Specific Settings > Gameplay. The
 server cannot detect an unbound key, so the equip hint explains it.
@@ -47,6 +48,8 @@ keep working. The runtime owns tracking and item lifetime; a weapon only clears 
 
 ## Known limits
 
+- The client rate-limits automatic fire from its own prefab, so a server cannot raise it past what a native
+  attachment gives. The AK-12's 571 rounds per minute is the AK's limit.
 - The launcher's one model is visible to everyone, so a player invisible through SCP-268 still shows it.
 - A launcher hides the native item while out, so the player's hands read as empty to other systems and
   the character's arms stay at rest under the shouldered model.

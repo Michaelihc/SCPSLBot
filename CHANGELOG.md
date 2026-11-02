@@ -7,6 +7,7 @@
   item menu.
 - Let Tutorial attackers hit with special weapons during warmup, and seat the launcher on the shoulder
   so it no longer floats in front of the player.
+- Add the AK-12 special weapon: a locked AK fit that fires faster for less damage per hit.
 - Keep SCP-106 from stranding itself with Hunter's Atlas. It aimed at the target's exact position,
   and the native landing cast could end on top of level geometry, so it now aims just inside a door,
   and uses Atlas again to reach a room when it is left off the navigation surface.

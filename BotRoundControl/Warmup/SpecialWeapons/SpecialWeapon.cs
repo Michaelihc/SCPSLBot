@@ -9,6 +9,7 @@ internal enum SpecialWeaponKind
 {
     GravitonDisruptor,
     GuidedRocket,
+    Ak12,
 }
 
 /// <summary>What a weapon may ask of its owner. Warmup, duel and safezone rules stay behind this.</summary>

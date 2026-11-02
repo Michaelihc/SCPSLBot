@@ -49,6 +49,7 @@ internal sealed class SpecialWeaponsRuntime : ISpecialWeaponHost
         // A new weapon registers here and adds a row to SpecialWeaponCatalogDefaults.
         Register(new GravitonDisruptorWeapon(config.GravitonDisruptor, this));
         Register(new GuidedRocketWeapon(config.GuidedRocket, this));
+        Register(new Ak12Weapon(config.Ak12, this));
     }
 
     public IEnumerable<string> WeaponIds => weaponsById.Keys.OrderBy(id => id, StringComparer.Ordinal);
