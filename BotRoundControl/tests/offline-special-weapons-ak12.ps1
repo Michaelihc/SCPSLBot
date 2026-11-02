@@ -1,7 +1,7 @@
 param($Context)
 $ErrorActionPreference = 'Stop'
 
-# Measures the AK-12 against a plain AK from the same Tutorial attacker: shots over the same held frames,
+# Measures the AK-12 against a plain AK from the same attacker: shots over the same held frames,
 # and the health a bot loses per hit, which compares fairly because both guns face the same armor.
 $firearmHotkey = 49
 $dropKey = 116
@@ -27,13 +27,10 @@ function NearestEnemy([double]$Within) {
     } while ((Get-Date) -lt $deadline)
     throw "No enemy came within $Within m"
 }
-# Bots ignore Tutorial, so meet them as NTF and change role in place (flag 0 keeps the position).
-function MeetEnemiesAsTutorial {
+# Bots keep coming to an NTF player, whom the lab's god mode protects.
+function StartEmptyHanded {
     $null = Reply "/forcerole $actorId NtfPrivate"
     Start-Sleep -Seconds 3
-    $null = NearestEnemy 18
-    $null = Reply "/forcerole $actorId Tutorial 0"
-    Start-Sleep -Seconds 1
     $null = Reply "/strip $actorId"
 }
 function Equip([string]$Id) {
@@ -69,7 +66,7 @@ Start-Sleep -Seconds 5
 if ((Reply '/special_weapon list') -notmatch 'ak-12') { throw 'AK-12 is not registered' }
 
 # GunAK is item 40.
-MeetEnemiesAsTutorial
+StartEmptyHanded
 $null = Reply "/give $actorId 40"
 Start-Sleep -Milliseconds 500
 Equip 'native-select'
@@ -82,7 +79,7 @@ Equip 'native-select-2'
 $results.nativeShots = ShotsOverHold 'native-hold'
 Save
 
-MeetEnemiesAsTutorial
+StartEmptyHanded
 $reply = Reply "/special_weapon grant ak-12 $actorId"
 if ($reply -notmatch 'Granted') { throw "Grant failed: $reply" }
 Start-Sleep -Milliseconds 500
