@@ -15,6 +15,10 @@ $results = [ordered]@{}
 function Actor([int]$Id) { @(Observe | Where-Object id -eq $Id)[0] }
 function Reply([string]$Command) { (Invoke-LabServer $Command) -join "`n" }
 function ReadyViewer {
+    if ((Actor $viewer.id).role -ne 'NtfPrivate') {
+        $null = Reply "/forcerole $($viewer.id) NtfPrivate"
+        Start-Sleep -Seconds 3
+    }
     $null = Reply "/forcerole $($viewer.id) NtfPrivate 0"
     Start-Sleep -Milliseconds 500
     $null = Reply "/strip $($viewer.id)"
@@ -37,6 +41,8 @@ function HitLosses([string]$Name) {
         $after = Actor $viewer.id
         if ($after.health -gt 0 -and $after.health -lt $before) { $losses.Add([Math]::Round($before - $after.health, 1)) }
     }
+    # Keeps the target alive until the next measurement.
+    $null = Reply "/god $($viewer.id) enable"
     @($losses)
 }
 function ShotsOverHold([string]$Id) {
