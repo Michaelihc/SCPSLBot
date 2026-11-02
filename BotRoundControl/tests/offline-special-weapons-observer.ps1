@@ -65,26 +65,31 @@ Start-Sleep -Seconds 2
 $results.tutorialVsTutorialHurt = WasHurt $before
 if ($results.tutorialVsTutorialHurt) { throw 'A rocket hurt a same-team Tutorial with friendly fire off' }
 
-# Flag 0 keeps the viewer's position through the role change.
-$null = Reply "/forcerole $($viewer.id) NtfPrivate 0"
-Start-Sleep -Seconds 2
+# Warmup sends NTF to its Surface arena, so meet there; flag 0 then keeps the owner in place as Tutorial.
+$null = Reply "/forcerole $($owner.id) NtfPrivate"
+$null = Reply "/forcerole $($viewer.id) NtfPrivate"
+Start-Sleep -Seconds 4
+$null = Reply "/forcerole $($owner.id) Tutorial 0"
+Start-Sleep -Seconds 1
+$null = Reply "/strip $($owner.id)"
+$null = Reply "/god $($owner.id) enable"
+$reply = Reply "/special_weapon grant guided-rocket $($owner.id)"
+if ($reply -notmatch 'Granted') { throw "Grant failed: $reply" }
+Start-Sleep -Milliseconds 500
+SelectFirearm
 FaceEachOther
+$results.separationMeters = [Math]::Round((Distance (Actor $owner.id).position (Actor $viewer.id).position), 1)
 $before = Actor $viewer.id
 PressRocket 'tutorial-rocket-at-ntf' 12
 $results.observerReload = Shot 'observer-reload' $viewerClient
 $results.ownerReload = Shot 'owner-reload' $ownerClient
-$null = Invoke-LabInput @{id='rocket-flight';frames=120;capture=$true} -ClientId $ownerClient
+$null = Invoke-LabInput @{id='rocket-flight';frames=150;capture=$true} -ClientId $ownerClient
 $results.tutorialVsNtfHurt = WasHurt $before
-if (!$results.tutorialVsNtfHurt) { throw 'A Tutorial rocket did not hurt an NTF player' }
+if (!$results.tutorialVsNtfHurt) { throw "A Tutorial rocket did not hurt an NTF player: $($results | ConvertTo-Json -Depth 4 -Compress)" }
 
-$null = Reply "/forcerole $($owner.id) Tutorial"
-$null = Reply "/forcerole $($viewer.id) Tutorial"
-Start-Sleep -Seconds 3
 $null = Reply "/strip $($owner.id)"
-$null = Reply "/god $($owner.id) enable"
-$null = Reply "/forcerole $($viewer.id) NtfPrivate 0"
-Start-Sleep -Seconds 1
-$null = Invoke-LabInput @{id='viewer-back-2';frames=110;keys=@($walkBack)} -ClientId $viewerClient
+$null = Reply "/forcerole $($viewer.id) NtfPrivate"
+Start-Sleep -Seconds 4
 $reply = Reply "/special_weapon grant graviton-disruptor $($owner.id)"
 if ($reply -notmatch 'Granted') { throw "Grant failed: $reply" }
 Start-Sleep -Milliseconds 500
