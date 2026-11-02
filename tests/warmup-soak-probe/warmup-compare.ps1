@@ -73,6 +73,12 @@ elseif($arena -eq 'lcz') {
     $null=Server "/forcerole $id ClassD"
     $null=Wait-LabActor { param($a) $a.role -eq 'ClassD' -and $a.position.y -lt 200 } 'Arena role was not applied'
 }
+# Optional fixture: stand at a native door inside the arena, past the Class-D cells safezone, so the
+# arena's bots can contact the client. RA doortp is the validated native placement.
+if($Context.Options.door) {
+    $null=Server "/doortp $id $($Context.Options.door)"
+    Start-Sleep -Seconds 1
+}
 Start-Sleep -Seconds 3
 Status 'arena-entered'
 Note "arena-entered $arena pos=$((Actor).position | ConvertTo-Json -Compress)"
