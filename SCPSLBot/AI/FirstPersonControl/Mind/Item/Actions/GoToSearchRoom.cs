@@ -13,7 +13,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
     /// </summary>
     internal class GoToSearchRoom<C> : GoTo<RoomEnterLocation> where C : IItemBeliefCriteria, IEquatable<C>
     {
-        private const float ArrivalMeters = 1.5f;
+        // Entries sit just past a doorway: a wider radius counts as arrived on the door plane, still
+        // in the old room, and the next plan walks the bot to that room's other door instead.
+        private const float ArrivalMeters = 0.5f;
         private const float SearchedRoomSeconds = 120f;
 
         public readonly C Criteria;
@@ -52,7 +54,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
 
         protected override ActionStatus TickTowardsTarget()
         {
-            if (!MoveToTarget(ArrivalMeters))
+            if (!MoveToTarget(ArrivalMeters) && !IsInTargetRoom())
             {
                 return ActionStatus.Running;
             }
@@ -60,6 +62,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Item.Actions
             MarkTargetDone(SearchedRoomSeconds);
             return ActionStatus.Completed;
         }
+
+        private bool IsInTargetRoom() => RoomUtils.TryGetRoom(botPlayer.PlayerPosition, out var room)
+                                         && RoomUtils.TryGetRoom(Target, out var targetRoom)
+                                         && room == targetRoom;
 
         public override string ToString()
         {

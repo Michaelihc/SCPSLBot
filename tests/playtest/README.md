@@ -40,6 +40,9 @@ nothing failed or skipped.
 | `--management-config <file>` | With `--management`: replaces BotRoundControl's generated config |
 | `--harness-config <file>` | Replaces the generated PlaytestHarness config |
 | `--extensions` | Also loads the test-only `SCPSLPluginExtensions.dll` (`plugin_direload`) |
+| `--round-bots <n>` | With `--scenario`: creates that many independent round bots (0-10) and records `round_trace` |
+| `--native-team-queue <queue>` | With `--scenario`: the native team queue that allocates those bots' roles |
+| `--auto-run-delay <seconds>` | With `--scenario`: seconds before the harness runs it; a full lobby starts its round sooner than the default 20 |
 
 The bundle uses the fixed `plugins/8910/` and `configs/8910/` names and exactly one
 `ServerKeybinds.dll`. Scenarios never write `Round.IsLocked` and the Standard population and escape
@@ -95,6 +98,20 @@ python tests/playtest/tools/check_normal_round.py --scenario scpslbot-autonomous
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-autonomous-roam-939 --limit 700
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-checkpoints --limit 900
 python tests/playtest/tools/check_normal_round.py --scenario scpslbot-issue2-greenhouse --limit 600
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-pocket-escape --limit 420
+```
+
+## Native round symptoms
+
+`scpslbot-round-symptoms` watches a native ten-bot round and then native NTF and Chaos waves, with the
+SCP slots forced to SCP-106, SCP-939 and SCP-049 straight after spawn. It traces every life from world
+state and fails on an SCP stopped for 20 seconds or still in its spawn room after 60, a wave bot on
+Surface after 120 seconds or near the escape, and a Guard, Class-D or Scientist that spends 240
+seconds in its spawn zone. `scpslbot-round-symptoms-control` swaps in SCP-096, SCP-173 and SCP-3114,
+and `scpslbot-round-symptoms-long-wave` holds each wave for 420 seconds to catch returns to Surface.
+
+```powershell
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-round-symptoms --round-bots 10 --native-team-queue 0004433114 --auto-run-delay 2 --limit 840 --map-seed 4242
 ```
 
 Add `--backend Authored` to exercise the embedded navmesh, and `--map-seed <n>` to leave the host's

@@ -1,8 +1,10 @@
+using Interactables.Interobjects.DoorUtils;
 using MapGeneration;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.PlayableScps;
 using PlayerRoles.PlayableScps.Scp106;
 using PlayerStatsSystem;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
@@ -29,6 +31,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
         private const float HurtStalkMaxDistance = 16f;
 
         private const float AtlasMinDistance = 24f;
+        private const float AtlasDoorsideMeters = 2.5f;
+        // Native refuses a destination more than 100 m above or below SCP-106.
+        private const float AtlasMaxHeightMeters = 95f;
         private const float AtlasVigorReserve = 0.25f;
         private const float AtlasBaseCost = 0.15f;
         private const float AtlasCostPerMeter = 0.015f;
@@ -131,13 +136,88 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
             }
 
             var destination = target.Hub.transform.position;
-            if (!RoomUtils.TryGetRoom(destination, out var room))
+            if (!RoomUtils.TryGetRoom(destination, out var room) || !TryGetDoorsideLanding(room, destination, out var landing))
             {
                 return false;
             }
 
             nextAtlasTime = Time.time + AtlasRetrySeconds;
-            return ScpAbilityCommands.SendAtlasDestination(atlas, room.transform, destination);
+            return ScpAbilityCommands.SendAtlasDestination(atlas, room.transform, landing);
+        }
+
+        /// <summary>
+        /// The native way out for an SCP-106 stranded off the navigation surface or shut in a pit:
+        /// Atlas to the nearest room it can land in. False when this is not SCP-106 or it cannot
+        /// use the ability right now.
+        /// </summary>
+        public bool TryAtlasToNearestRoom(IEnumerable<RoomIdentifier> rooms, RoomIdentifier excluded, Vector3 position)
+        {
+            var abilities = combat.Abilities;
+            if (abilities.Role is not Scp106Role role
+                || !abilities.TryGet<Scp106HuntersAtlasAbility>(out var atlas))
+            {
+                return false;
+            }
+
+            var sinkhole = role.Sinkhole;
+            if (sinkhole == null || !sinkhole.ReadonlyCooldown.IsReady || sinkhole.SubmergeProgress > 0f || !role.FpcModule.IsGrounded)
+            {
+                return false;
+            }
+
+            RoomIdentifier nearest = null;
+            var nearestLanding = Vector3.zero;
+            var nearestSqr = float.PositiveInfinity;
+            foreach (var room in rooms)
+            {
+                if (room == null || room == excluded)
+                {
+                    continue;
+                }
+
+                var center = room.transform.position;
+                var sqr = (center - position).sqrMagnitude;
+                if (sqr < nearestSqr && Mathf.Abs(center.y - position.y) <= AtlasMaxHeightMeters
+                    && TryGetDoorsideLanding(room, center, out var landing))
+                {
+                    nearest = room;
+                    nearestLanding = landing;
+                    nearestSqr = sqr;
+                }
+            }
+
+            return nearest != null && ScpAbilityCommands.SendAtlasDestination(atlas, nearest.transform, nearestLanding);
+        }
+
+        // Native Atlas lands by casting from one of the room's doors toward the destination, and the
+        // cast ignores what SCP-106 can phase through. A long one can end on top of level geometry,
+        // above the floor with no way down, so aim just inside the door nearest the target.
+        private static bool TryGetDoorsideLanding(RoomIdentifier room, Vector3 destination, out Vector3 landing)
+        {
+            landing = default;
+            if (!DoorVariant.DoorsByRoom.TryGetValue(room, out var doors))
+            {
+                return false;
+            }
+
+            var nearestSqr = float.PositiveInfinity;
+            foreach (var door in doors)
+            {
+                if (door is not IScp106PassableDoor { IsScp106Passable: true })
+                {
+                    continue;
+                }
+
+                var doorPosition = door.transform.position;
+                var toDestination = Vector3.ProjectOnPlane(destination - doorPosition, Vector3.up);
+                if (toDestination.sqrMagnitude < nearestSqr)
+                {
+                    nearestSqr = toDestination.sqrMagnitude;
+                    landing = doorPosition + Vector3.ClampMagnitude(toDestination, AtlasDoorsideMeters);
+                }
+            }
+
+            return !float.IsPositiveInfinity(nearestSqr);
         }
 
         /// <summary>

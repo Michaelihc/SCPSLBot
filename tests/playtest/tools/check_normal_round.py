@@ -23,6 +23,9 @@ parser.add_argument("--harness-config", metavar="FILE", help="replace the genera
 parser.add_argument("--extensions", action="store_true",
     help="also load the test-only SCPSLPluginExtensions.dll (plugin_direload) for reload scenarios")
 parser.add_argument("--map-seed", type=int, help="map seed for a named scenario; the host otherwise fixes one seed")
+parser.add_argument("--round-bots", type=int, default=0, help="with --scenario, independent round bots to create and record with round_trace")
+parser.add_argument("--auto-run-delay", type=int, default=20, help="seconds before the harness runs a named scenario; a full lobby starts its round sooner than the default")
+parser.add_argument("--native-team-queue", help="with --scenario, the native team queue that allocates those bots' roles")
 args = parser.parse_args()
 repo = Path(__file__).resolve().parents[3]
 # A worktree outside the metarepo names it explicitly.
@@ -80,11 +83,11 @@ remove = [name for name in baseline if name.startswith("plugins/") and name.ends
 if args.scenario:
     # Named scenarios start from an empty server: they create every bot they observe.
     bot_fixture = artifacts / "bot.yml"
-    bot_fixture.write_text(chr(10).join(["language: cn", "bots_only: true", "normal_round_bot_count: 0", "navigation:",
-        f"  backend: {args.backend}", ""]), encoding="utf-8")
+    bot_fixture.write_text(chr(10).join(["language: cn", "bots_only: true", f"normal_round_bot_count: {args.round_bots}", "navigation:",
+        f"  backend: {args.backend}", *(["round_trace:", "  enabled: true", "  sample_interval_seconds: 1"] if args.round_bots else []), ""]), encoding="utf-8")
     harness_fixture = artifacts / "harness.yml"
     harness_fixture.write_text(chr(10).join([f"auto_run_scenario: {scenario}", f"auto_run_level: {args.level}",
-        "auto_run_delay_seconds: 20", ""]), encoding="utf-8")
+        f"auto_run_delay_seconds: {args.auto_run_delay}", ""]), encoding="utf-8")
     if args.harness_config:
         harness_fixture = Path(args.harness_config).resolve()
     files = [f"configs/8910/SCPSLBot/config.yml={bot_fixture}", f"configs/8910/PlaytestHarness/config.yml={harness_fixture}"]
@@ -94,9 +97,10 @@ if args.scenario:
         if args.management_config:
             management_fixture = Path(args.management_config).resolve()
         files.append(f"configs/8910/BotRoundControl/config.yml={management_fixture}")
-    if args.map_seed:
+    if args.map_seed or args.native_team_queue:
         library_fixture = artifacts / "library.yml"
-        library_fixture.write_text(f"map_seed: {args.map_seed}\n", encoding="utf-8")
+        library_fixture.write_text("".join([f"map_seed: {args.map_seed}\n" if args.map_seed else "",
+            f"native_team_queue: '{args.native_team_queue}'\n" if args.native_team_queue else ""]), encoding="utf-8")
         files.append(f"configs/8910/SCPSLBot.PlaytestScenarios/config.yml={library_fixture}")
 else:
     files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",

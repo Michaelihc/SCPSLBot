@@ -49,6 +49,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         private readonly Scp3114CombatAbilities scp3114;
 
         internal Scp939CombatAbilities Scp939 => scp939;
+        internal Scp106CombatAbilities Scp106 => scp106;
 
         public StandardScpCombatStrategy(FpcBotCombat combat, Scp096CombatStrategy scp096Strategy)
         {

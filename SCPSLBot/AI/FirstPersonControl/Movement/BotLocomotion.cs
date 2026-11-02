@@ -95,6 +95,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
         public string DiagnosticState => elevator.DiagnosticState ?? doors.DiagnosticState;
 
+        /// <summary>The last abandon was a closed door this bot cannot open, not a jam or a lost route.</summary>
+        public bool AbandonedAtDeniedDoor { get; private set; }
+
         /// <summary>
         /// True once since the last call when the current goal should be given up: a crossing on
         /// its route stays blocked after replanning, or the stuck ladder ran out of options.
@@ -224,6 +227,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             localRoute.Reset();
             StuckRecovery.Reset();
             abandonRequested = false;
+            AbandonedAtDeniedDoor = false;
             movedSinceEndFrame = false;
             lastBlockedDoor = null;
             lastBlockedDoorAt = float.NegativeInfinity;
@@ -494,11 +498,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             }
         }
 
-        private void RequestAbandon(string reason)
+        private void RequestAbandon(string reason, bool deniedDoor = false)
         {
             if (!abandonRequested)
             {
                 LogCrossing($"ABANDON reason={reason}");
+                AbandonedAtDeniedDoor = deniedDoor;
             }
 
             abandonRequested = true;
@@ -544,7 +549,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                     else if (now - lastBlockedDoorAt > AbandonAfterBlockedSeconds)
                     {
                         // The replan still runs through the same door: nothing else reaches the goal.
-                        RequestAbandon($"route still runs through blocked door {(door != null ? door.name : "?")}");
+                        RequestAbandon($"route still runs through blocked door {(door != null ? door.name : "?")}", doors.DiagnosticState == DoorTraversal.DeniedState);
                     }
 
                     break;

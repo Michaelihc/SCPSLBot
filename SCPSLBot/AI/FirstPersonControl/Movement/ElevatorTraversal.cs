@@ -44,6 +44,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         // Accepted anywhere inside the cabin this far from its walls: two riders cannot both
         // stand on the exact centre.
         private const float CabinInsetMeters = 0.35f;
+        // The bot steps onto the door axis this far in front of the door, then walks straight in.
+        private const float DoorstepMeters = 1f;
+        private const float DoorAxisToleranceMeters = 0.3f;
         private const float ExitReachedMeters = 2f;
         private const float ExitVerticalTolerance = 1.5f;
         private const float LandingPressIntervalSeconds = 2f;
@@ -294,8 +297,30 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 return Block("could not board");
             }
 
-            Steer(CabinCenter());
+            Steer(BoardingTarget());
             return ElevatorTraversalStatus.Running;
+        }
+
+        // Boarding can start up to two meters to the side of the doorway, and the straight line to
+        // the cabin from there runs into the frame beside the opening and pins the capsule.
+        private Vector3 BoardingTarget()
+        {
+            var cabin = CabinCenter();
+            var position = botPlayer.PlayerPosition;
+            var door = originDoor.transform.position;
+            door.y = position.y;
+            var inward = cabin - door;
+            inward.y = 0f;
+            if (inward.sqrMagnitude < 0.01f)
+            {
+                return cabin;
+            }
+
+            inward.Normalize();
+            var offset = position - door;
+            var along = Vector3.Dot(offset, inward);
+            var lateral = (offset - inward * along).magnitude;
+            return along >= 0f || lateral <= DoorAxisToleranceMeters ? cabin : door - inward * DoorstepMeters;
         }
 
         private ElevatorTraversalStatus TickSend()

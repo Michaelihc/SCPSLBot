@@ -7,6 +7,24 @@
   item menu.
 - Let Tutorial attackers hit with special weapons during warmup, and seat the launcher on the shoulder
   so it no longer floats in front of the player.
+- Keep SCP-106 from stranding itself with Hunter's Atlas. It aimed at the target's exact position,
+  and the native landing cast could end on top of level geometry, so it now aims just inside a door,
+  and uses Atlas again to reach a room when it is left off the navigation surface.
+- Search for keycards room by room. Reaching a doorway counted as searching the next room, so Class-D
+  and Scientists walked between a room's doors instead of moving on.
+- Give up on SCP-914's output chamber when no route reaches it, instead of circling the room for minutes.
+- Let SCP-106 leave its cell. Bots judged checkpoint doors by the outer door instead of the sub-doors
+  SCP-106 phases through, so it stood at the exit for the whole round.
+- Stop SCP-939 ambushing from its own cell at round start, which kept it inside for up to 50 seconds.
+- Stop bots sitting in rooms at round start. Doors opened in the first seconds were reported as jammed
+  and closed to every bot for 45 seconds, which held Class-D in their cells.
+- Stop bots freezing for the rest of the round when no path exists from where they stand. The no-path
+  timeout could never fire, so a bot off the navigation surface never reached its recovery walk.
+- Board elevators along the door axis. Bots starting from the side of the doorway pinned on its frame.
+- Send every human into adjacent zones while exploring, so Facility Guards leave Entrance when their
+  keycards allow.
+- Run for a teleporter in SCP-106's pocket dimension instead of standing still until dead.
+- Pace the room when every exit is a door the role cannot open, instead of retrying it every few seconds.
 
 ## v2026.11.02
 

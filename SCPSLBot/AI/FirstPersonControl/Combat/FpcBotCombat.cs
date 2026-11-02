@@ -46,6 +46,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         internal FpcBotPlayer BotPlayer => botPlayer;
         internal ScpAbilitySet Abilities { get; }
         internal Scp939CombatAbilities Scp939 => scpStrategy.Scp939;
+        internal Scp106CombatAbilities Scp106 => scpStrategy.Scp106;
         internal ReferenceHub CurrentTarget => targetSelector.CurrentTarget;
         internal int StrafeDirection => strafeDirection;
         internal float NextShotTime

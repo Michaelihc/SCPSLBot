@@ -39,9 +39,29 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         /// <c>Scp106MovementModule</c> disables its colliders for each move. Nothing to open or wait for.
         /// </summary>
         public static bool IsPhasedThrough(ReferenceHub hub, DoorVariant door)
-            => door is IScp106PassableDoor { IsScp106Passable: true }
+            => IsScp106Passable(door)
                && hub != null
                && hub.roleManager.CurrentRole.RoleTypeId == RoleTypeId.Scp106;
+
+        // A checkpoint is a shell around its sub-doors: the module resolves a collider to the nearest
+        // parent door, which is the sub-door, so the shell's own type says nothing about passing it.
+        private static bool IsScp106Passable(DoorVariant door)
+        {
+            if (door is not CheckpointDoor { SubDoors: { Length: > 0 } subDoors })
+            {
+                return door is IScp106PassableDoor { IsScp106Passable: true };
+            }
+
+            foreach (var subDoor in subDoors)
+            {
+                if (subDoor is not IScp106PassableDoor { IsScp106Passable: true })
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         public static bool IsPlayerDoor(DoorVariant door)
             => door != null && door is not ElevatorDoor && door is not DummyDoor && door is not BasicNonInteractableDoor;

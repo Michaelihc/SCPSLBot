@@ -30,6 +30,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat
         }
 
         internal ScpAbilities.Scp939CombatAbilities Scp939 => standardStrategy.Scp939;
+        internal ScpAbilities.Scp106CombatAbilities Scp106 => standardStrategy.Scp106;
 
         internal float NextAttackTime
         {
