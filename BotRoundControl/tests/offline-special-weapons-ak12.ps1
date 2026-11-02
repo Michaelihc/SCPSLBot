@@ -38,15 +38,15 @@ function Equip([string]$Id) {
     if ((Me).held -ne 'GunAK') { throw "AK not held: $((Me).held)" }
 }
 function HitLosses([string]$Name) {
-    $losses = [Collections.Generic.List[double]]::new()
-    for ($shot = 0; $shot -lt 24 -and $losses.Count -lt 6; $shot++) {
-        $enemy = NearestEnemy 30
+    $losses = [Collections.Generic.List[string]]::new()
+    for ($shot = 0; $shot -lt 28 -and $losses.Count -lt 6; $shot++) {
+        $enemy = NearestEnemy 14
         $null = Set-LabAim -TargetActorId $enemy.id
         $null = Invoke-LabInput @{id="$Name-$shot";frames=20;inputFrames=2;keys=@($fire)}
         Start-Sleep -Milliseconds 250
         $after = @(Observe | Where-Object id -eq $enemy.id)[0]
         if ($after.life -eq $enemy.life -and $after.health -lt $enemy.health) {
-            $losses.Add([Math]::Round($enemy.health - $after.health, 1))
+            $losses.Add("$($enemy.role)=$([Math]::Round($enemy.health - $after.health, 1))")
         }
     }
     @($losses)
@@ -54,9 +54,13 @@ function HitLosses([string]$Name) {
 function ShotsOverHold([string]$Id) {
     $null = Set-LabLook -Yaw 0 -Pitch 40
     $before = (Me).shots
-    $null = Invoke-LabInput @{id=$Id;frames=120;keys=@($fire);capture=$true}
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $null = Invoke-LabInput @{id=$Id;frames=80;keys=@($fire);capture=$true}
+    $clock.Stop()
     Start-Sleep -Milliseconds 300
-    (Me).shots - $before
+    $shots = (Me).shots - $before
+    if ($shots -ge 30) { throw "$Id emptied the magazine, so $shots shots measured nothing" }
+    [Math]::Round($shots / $clock.Elapsed.TotalMinutes)
 }
 function Save { $results | ConvertTo-Json -Depth 6 | Set-Content "$($Context.Evidence)/special-weapons-ak12.json" -Encoding utf8 }
 
@@ -72,11 +76,13 @@ Start-Sleep -Milliseconds 500
 Equip 'native-select'
 $results.nativeHitLoss = HitLosses 'native-hit'
 Save
-$null = Reply "/strip $actorId"
-$null = Reply "/give $actorId 40"
-Start-Sleep -Milliseconds 500
-Equip 'native-select-2'
-$results.nativeShots = ShotsOverHold 'native-hold'
+$results.nativeRpm = @(foreach ($hold in 1..3) {
+    $null = Reply "/strip $actorId"
+    $null = Reply "/give $actorId 40"
+    Start-Sleep -Milliseconds 500
+    Equip "native-select-$hold"
+    ShotsOverHold "native-hold-$hold"
+})
 Save
 
 StartEmptyHanded
@@ -87,8 +93,10 @@ Equip 'ak12-select'
 $results.ak12Screenshot = Invoke-LabScreenshot -Name 'ak12-held'
 $results.ak12HitLoss = HitLosses 'ak12-hit'
 Save
-$null = Invoke-LabInput @{id='ak12-reload-before-hold';frames=300;inputFrames=2;keys=@($reloadKey)}
-$results.ak12Shots = ShotsOverHold 'ak12-hold'
+$results.ak12Rpm = @(foreach ($hold in 1..3) {
+    $null = Invoke-LabInput @{id="ak12-reload-$hold";frames=300;inputFrames=2;keys=@($reloadKey)}
+    ShotsOverHold "ak12-hold-$hold"
+})
 Save
 
 $null = Invoke-LabInput @{id='ak12-drop';frames=40;inputFrames=2;keys=@($dropKey)}
@@ -107,4 +115,6 @@ if ($results.ammoAfterReload.ammo -le $results.ammoAfterDepletion.ammo) { throw 
 $null = Reply "/forcerole $actorId NtfPrivate"
 Start-Sleep -Seconds 2
 if ((Reply '/special_weapon status') -notmatch 'tracked=0') { throw 'A role change kept the AK-12' }
-if ($results.ak12Shots -le $results.nativeShots) { throw "The AK-12 was not faster: $($results.ak12Shots) vs $($results.nativeShots)" }
+$native = ($results.nativeRpm | Measure-Object -Average).Average
+$ak12 = ($results.ak12Rpm | Measure-Object -Average).Average
+if ($ak12 -le $native) { throw "The AK-12 was not faster: $ak12 vs $native" }
