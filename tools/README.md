@@ -50,6 +50,25 @@ dotnet $patcher dump    --server "<server root>" --name <mesh name>   # serializ
 ```
 
 The server root is the folder containing `SCPSL_Data` (`SCPSL_SERVER_ROOT` is used when `--server`
-is omitted). `verify` is wired into `Start-BotTestServer8888.ps1`, the isolated 8891 drivers under
-`tests/playtest/tools/` and `Deploy-BotProduction7777.sh`. Re-apply after every game update; the
-manifest records the `Assembly-CSharp.dll` hash it was made for.
+is omitted). `verify` is wired into `Start-BotTestServer8888.ps1` and the isolated 8891 drivers under
+`tests/playtest/tools/`. `Deploy-BotProduction7777.sh` checks for the patch manifest when the host uses
+`navigation.backend: Runtime`. Re-apply after every game update; the manifest records the
+`Assembly-CSharp.dll` hash it was made for.
+
+## Bot server deployment
+
+Run these on the bot server as root. Upload the published release zip to `/tmp` and the three tools
+beside each other, then:
+
+```bash
+snapshot="/home/scpsl/.config/SCP Secret Laboratory/LabAPI/backups/7777/pre-<tag>.zip.bak"
+python3 Create-BotProductionBackup.py "$snapshot"
+bash Deploy-BotProduction7777.sh /tmp/SCPSLBot-<tag>.zip <zip-sha256> "$snapshot" --check
+bash Deploy-BotProduction7777.sh /tmp/SCPSLBot-<tag>.zip <zip-sha256> "$snapshot"
+```
+
+Deployment swaps the DLLs while the game runs and arms the one-shot `empty-now` restart, so the old
+build runs until the server is empty. `--check` validates everything and changes nothing.
+
+`Rollback-BotProduction7777.sh "$snapshot"` restores the snapshot the same way. `--check` validates
+it; `--force-occupied` restarts immediately and disconnects anyone playing.
