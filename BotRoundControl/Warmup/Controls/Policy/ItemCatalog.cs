@@ -15,6 +15,8 @@ public sealed class ItemCatalogEntry
         EnglishLabel = string.IsNullOrWhiteSpace(config.EnglishLabel) ? StableId : config.EnglishLabel;
         ChineseLabel = string.IsNullOrWhiteSpace(config.ChineseLabel) ? StableId : config.ChineseLabel;
         NativeItemId = config.ItemId;
+        SpecialWeaponCatalogDefaults.TryGetWeaponId(config.ItemId, out string specialWeaponId);
+        SpecialWeaponId = specialWeaponId;
         CooldownSeconds = config.CooldownSeconds;
         SharedCooldownGroup = config.SharedCooldownGroup ?? string.Empty;
         SharedCooldownSeconds = config.SharedCooldownSeconds > 0d
@@ -33,6 +35,11 @@ public sealed class ItemCatalogEntry
     public string ChineseLabel { get; }
 
     public string NativeItemId { get; }
+
+    /// <summary>Empty for a native item; otherwise the weapon granted instead of a native item.</summary>
+    public string SpecialWeaponId { get; }
+
+    public bool IsSpecialWeapon => SpecialWeaponId.Length > 0;
 
     public double CooldownSeconds { get; }
 

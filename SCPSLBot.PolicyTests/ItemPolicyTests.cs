@@ -260,7 +260,7 @@ public sealed class ItemPolicyTests
         Assert.Contains("Scp079", config.Roles.AllowedRegularRoleIds);
         Assert.Contains("Scp3114", config.Roles.AllowedRegularRoleIds);
         Assert.DoesNotContain("Tutorial", config.Roles.AllowedRegularRoleIds);
-        Assert.Equal(69, config.Items.Count);
+        Assert.Equal(69 + SpecialWeaponCatalogDefaults.Weapons.Count, config.Items.Count);
         Assert.DoesNotContain(config.Items, item => item.ItemId.Contains("Debug", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(new[] { "surface", "pvpve", "lcz" }, config.Presets.Select(preset => preset.Id));
         Assert.Equal("NtfPrivate", config.Presets.Single(preset => preset.Id == "surface").SpawnAnchorRoleId);

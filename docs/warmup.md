@@ -93,8 +93,9 @@ menu registers only during Standard warmup and follows `bot_warmup`.
 - **`Respawn as` + `Apply`.** The dropdown lists every registered native gameplay role except `None`,
   `Spectator`, `Destroyed`, `Overwatch`, `Filmmaker`, `CustomRole` and `Tutorial`. `Apply` performs
   the revalidated exact-role change. Role changes inside the facility keep the player's position.
-- **`Request item` + `Grant`.** The dropdown lists the complete safe native item list. `Grant`
-  rechecks full-UserId cooldowns and per-life/per-round limits before one native grant.
+- **`Request item` + `Grant`.** The dropdown lists the complete safe native item list, plus the
+  [special weapons](special-weapons.md) when `special_weapons.allow_player_requests` is on. `Grant`
+  rechecks full-UserId cooldowns and per-life/per-round limits before one grant.
 - **`Teleport room` + `Apply`.**
   - The dropdown stages a generated room from the native RA named-door registry.
   - Apply re-resolves the door tag with the same collision-safe calculation as RA `doortp`.

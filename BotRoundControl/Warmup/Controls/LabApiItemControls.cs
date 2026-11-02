@@ -26,16 +26,19 @@ public sealed class LabApiItemGrantService
 {
     private readonly ItemCatalog catalog;
     private readonly ILabApiItemControlAuthority authority;
+    private readonly Func<LabPlayer, string, bool>? grantSpecialWeapon;
     private readonly ItemGrantPolicy policy;
 
     private LabApiItemGrantService(
         ItemCatalog catalog,
         ILabApiItemControlAuthority authority,
+        Func<LabPlayer, string, bool>? grantSpecialWeapon,
         CooldownLedger ledger,
         PerUserRequestGuard requestGuard)
     {
         this.catalog = catalog;
         this.authority = authority;
+        this.grantSpecialWeapon = grantSpecialWeapon;
         Ledger = ledger;
         policy = new ItemGrantPolicy(catalog, ledger, requestGuard);
     }
@@ -50,7 +53,8 @@ public sealed class LabApiItemGrantService
         out LabApiItemGrantService? service,
         out IReadOnlyList<string> errors,
         IMonotonicClock? clock = null,
-        PerUserRequestGuard? sharedRequestGuard = null)
+        PerUserRequestGuard? sharedRequestGuard = null,
+        Func<LabPlayer, string, bool>? grantSpecialWeapon = null)
     {
         var foundErrors = new List<string>();
         if (!ItemCatalog.TryCreate(configs, out ItemCatalog? catalog, out IReadOnlyList<string> catalogErrors)
@@ -62,7 +66,15 @@ public sealed class LabApiItemGrantService
         {
             foreach (ItemCatalogEntry entry in catalog.Entries.Values)
             {
-                if (!Enum.TryParse(entry.NativeItemId, true, out ItemType itemType)
+                if (entry.IsSpecialWeapon)
+                {
+                    if (grantSpecialWeapon == null)
+                    {
+                        foundErrors.Add(
+                            $"Item catalog '{entry.StableId}' names special weapon '{entry.SpecialWeaponId}' but none are available.");
+                    }
+                }
+                else if (!Enum.TryParse(entry.NativeItemId, true, out ItemType itemType)
                     || !Enum.IsDefined(typeof(ItemType), itemType)
                     || itemType == ItemType.None)
                 {
@@ -109,6 +121,7 @@ public sealed class LabApiItemGrantService
         service = new LabApiItemGrantService(
             catalog,
             authority,
+            grantSpecialWeapon,
             new CooldownLedger(clock ?? StopwatchMonotonicClock.Instance),
             sharedRequestGuard ?? new PerUserRequestGuard());
         return true;
@@ -126,7 +139,7 @@ public sealed class LabApiItemGrantService
             return Array.Empty<ItemCatalogEntry>();
         }
 
-        var context = new LabApiItemGrantContext(player, authority);
+        var context = new LabApiItemGrantContext(player, authority, grantSpecialWeapon);
         return catalog.Entries.Values
             .Where(entry => policy.EvaluateAvailability(
                 context,
@@ -146,7 +159,7 @@ public sealed class LabApiItemGrantService
         }
 
         return policy.EvaluateAvailability(
-            new LabApiItemGrantContext(player, authority),
+            new LabApiItemGrantContext(player, authority, grantSpecialWeapon),
             new ItemGrantRequest(expectedFullUserId, stableCatalogId));
     }
 
@@ -158,7 +171,7 @@ public sealed class LabApiItemGrantService
         }
 
         return policy.TryGrant(
-            new LabApiItemGrantContext(player, authority),
+            new LabApiItemGrantContext(player, authority, grantSpecialWeapon),
             new ItemGrantRequest(expectedFullUserId, stableCatalogId));
     }
 }
@@ -167,11 +180,16 @@ internal sealed class LabApiItemGrantContext : IItemGrantContext
 {
     private readonly LabPlayer player;
     private readonly ILabApiItemControlAuthority authority;
+    private readonly Func<LabPlayer, string, bool>? grantSpecialWeapon;
 
-    public LabApiItemGrantContext(LabPlayer player, ILabApiItemControlAuthority authority)
+    public LabApiItemGrantContext(
+        LabPlayer player,
+        ILabApiItemControlAuthority authority,
+        Func<LabPlayer, string, bool>? grantSpecialWeapon)
     {
         this.player = player;
         this.authority = authority;
+        this.grantSpecialWeapon = grantSpecialWeapon;
     }
 
     public string FullUserId => player.IsDestroyed ? string.Empty : player.UserId ?? string.Empty;
@@ -209,6 +227,11 @@ internal sealed class LabApiItemGrantContext : IItemGrantContext
 
     public bool TryAddExactItemOnce(ItemCatalogEntry entry)
     {
+        if (entry.IsSpecialWeapon)
+        {
+            return !player.IsDestroyed && grantSpecialWeapon?.Invoke(player, entry.SpecialWeaponId) == true;
+        }
+
         if (player.IsDestroyed
             || !Enum.TryParse(entry.NativeItemId, true, out ItemType itemType)
             || !Enum.IsDefined(typeof(ItemType), itemType)

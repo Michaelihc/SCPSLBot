@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add warmup special weapons, the Graviton Disruptor and the Guided Rocket Launcher, granted by
+  administrators through RA `special_weapon`. `special_weapons.allow_player_requests` adds them to the
+  item menu.
+
 ## v2026.11.02
 
 - Stop bots stalling in SCP-939's cell on runtime navigation. The bake treated the cell's fixed blast

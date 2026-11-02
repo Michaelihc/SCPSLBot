@@ -8,6 +8,7 @@
 | `bot_manage <player ID>` | Adopt an independent bot into a maintained population slot (Standard warmup); at full population it replaces one managed bot | `PlayersManagement` |
 | `bot_unmanage <player ID>` | Release a maintained bot without despawning it; the controller creates a replacement | `PlayersManagement` |
 | `bot_warmup [none\|standard]` | Query or change the persisted warmup mode; refused while `bots_only` is on | Query: none; change: `PlayersManagement` |
+| `special_weapon list\|status\|grant <weapon> [player ID]\|fire [player ID]` | List, inspect, grant or test-fire [special weapons](special-weapons.md) during Standard warmup (alias `sw`) | `GivingItems` |
 | `bot_difficulty [easy\|normal\|hard\|hardest]` | Query or change combat difficulty (default `hardest`, not persisted) | Query: none; change: `PlayersManagement` |
 | `bot_debug` | One line per bot: role, room, active behavior and its detail (running GOAP action, explore room, SCP-939 ambush), combat target and whether it is in sight, door/elevator crossing, path, current waypoint and stuck time | `FacilityManagement` |
 | `bot_trace start\|stop\|status` | Record the current (or next) round to a JSONL position trace; see [round traces](../tools/round-map/README.md) | `FacilityManagement` |
