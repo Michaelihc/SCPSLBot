@@ -473,6 +473,20 @@ namespace SCPSLBot.Warmup
             botsNeedingAssignmentPlacement.Remove(hub);
         }
 
+        /// <summary>
+        /// Whether a plugin weapon may hit a target. Tutorial sits outside arena management, so as with
+        /// a native shot only native team rules decide its hits; a duel still separates its players.
+        /// </summary>
+        public bool CanWeaponHit(ReferenceHub attacker, ReferenceHub target)
+        {
+            bool outsideManagement = !WarmupParticipation.IsManagedRole(attacker.GetRoleId())
+                || !WarmupParticipation.IsManagedRole(target.GetRoleId());
+            return (outsideManagement
+                    && !DuelArena.DuelIntegration.Owns(attacker)
+                    && !DuelArena.DuelIntegration.Owns(target))
+                || CanHubsFight(attacker, target);
+        }
+
         public bool CanHubsFight(ReferenceHub left, ReferenceHub right)
         {
             if (DuelArena.DuelIntegration.Owns(left) || DuelArena.DuelIntegration.Owns(right))

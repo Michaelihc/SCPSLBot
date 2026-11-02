@@ -221,6 +221,9 @@ namespace SCPSLBot.Warmup
         public bool CanHubsFightInWarmup(ReferenceHub left, ReferenceHub right) =>
             arenas.CanHubsFight(left, right);
 
+        public bool CanWeaponHit(ReferenceHub attacker, ReferenceHub target) =>
+            arenas.CanWeaponHit(attacker, target);
+
         public bool CanPlayersTeleportWithinArena(Player requester, Player target) =>
             arenas.CanPlayersTeleportWithinArena(requester, target);
 

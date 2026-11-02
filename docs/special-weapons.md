@@ -23,6 +23,8 @@ server cannot detect an unbound key, so the equip hint explains it.
   leaving Standard warmup. Managed bots cannot receive or loot one.
 - Attacks obey arena, duel and safezone rules. A weapon that fires without a native shot asks the same
   native pre-shot event those rules already use, through `ISpecialWeaponHost.CanFire`.
+- Tutorial is outside arena management, so only native team rules decide its hits. With friendly fire
+  off, two Tutorial players cannot hurt each other with these or any other weapon.
 
 Settings live under `special_weapons` in the BotRoundControl config. A disabled weapon can't be granted
 by either route. Request cooldowns and limits live in its `controls.items` entry, whose `item_id` is `special:<weapon id>`.
@@ -45,11 +47,13 @@ keep working. The runtime owns tracking and item lifetime; a weapon only clears 
 
 ## Known limits
 
-- The launcher's model is visible to everyone, so a player invisible through SCP-268 still shows it.
-- A launcher hides the native item while out, so the player's hands read as empty to other systems.
+- The launcher's one model is visible to everyone, so a player invisible through SCP-268 still shows it.
+- A launcher hides the native item while out, so the player's hands read as empty to other systems and
+  the character's arms stay at rest under the shouldered model.
 
 ## Testing
 
-`BotRoundControl/tests/offline-special-weapons.ps1` is the real-client walkthrough;
-`package-special-weapons.py` builds its candidate bundle and prints the run command. It grants through
+`BotRoundControl/tests/offline-special-weapons.ps1` is the real-client walkthrough, and
+`offline-special-weapons-observer.ps1` covers the third-person view and hits on a player with
+`--clients 2`. `package-special-weapons.py` builds their candidate bundle and prints the run command. It grants through
 RA `special_weapon grant`; the offline client cannot press the panel's Grant button.

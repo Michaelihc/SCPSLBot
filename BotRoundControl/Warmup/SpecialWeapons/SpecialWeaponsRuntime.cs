@@ -183,7 +183,7 @@ internal sealed class SpecialWeaponsRuntime : ISpecialWeaponHost
         return attackerHub != null
             && targetHub != null
             && HitboxIdentity.IsDamageable(attackerHub, targetHub)
-            && BotServerPolicy.AllowsCombat(attackerHub, targetHub);
+            && WarmupManager.Instance.CanWeaponHit(attackerHub, targetHub);
     }
 
     void ISpecialWeaponHost.NotifyAttacked(Player player)

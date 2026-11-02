@@ -453,13 +453,14 @@ internal sealed class GuidedRocketWeapon : SpecialWeapon
     private void Prompt(Player player, string message, float seconds = 2.8f) =>
         Host.ShowHint(player, HintTag, message, seconds, PromptY);
 
-    // One model at a camera offset: it reads as shouldered to observers, and it needs no per-viewer scoping.
+    // One model for every viewer, seated on the right shoulder so it also reads on the body in third person.
+    // The authored grip is the model origin, and the shoulder saddle sits 0.25 m behind it.
     private static HeldMeshSpec BuildHeldSpec() => new(
         EmbeddedItemModels.Load(LauncherModel),
-        new Vector3(0.27f, -0.22f, 0.62f),
-        0.8f,
+        new Vector3(0.21f, -0.27f, 0.32f),
+        1f,
         preserveAuthoredOrigin: true,
-        rotationEuler: new Vector3(-3f, -5f, -4f));
+        rotationEuler: new Vector3(0f, -2f, 0f));
 
     private static string EscapeRichText(string value) =>
         (value ?? string.Empty).Replace('<', '‹').Replace('>', '›');
