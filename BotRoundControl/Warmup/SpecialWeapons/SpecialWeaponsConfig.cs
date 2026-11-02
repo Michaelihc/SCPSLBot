@@ -17,10 +17,13 @@ public sealed class SpecialWeaponsConfig
 
     public GuidedRocketConfig GuidedRocket { get; set; } = new();
 
+    public Ak12Config Ak12 { get; set; } = new();
+
     internal void Normalize()
     {
         GravitonDisruptor ??= new GravitonDisruptorConfig();
         GuidedRocket ??= new GuidedRocketConfig();
+        Ak12 ??= new Ak12Config();
     }
 }
 
@@ -68,4 +71,15 @@ public sealed class GuidedRocketConfig
     public float CenterDamage { get; set; } = 500f;
 
     public float SplashRadius { get; set; } = 4.5f;
+}
+
+public sealed class Ak12Config
+{
+    public bool Enabled { get; set; } = true;
+
+    [Description("Multiplier on every hit. The default keeps damage per second level with the AK. / 每次命中的伤害倍率，默认使每秒伤害与 AK 持平。")]
+    public float DamageMultiplier { get; set; } = 0.88f;
+
+    [Description("Rounds added to the owner's reserve on grant. / 发放时补充的备用弹药。")]
+    public int ReserveAmmo { get; set; } = 120;
 }

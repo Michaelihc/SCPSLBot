@@ -7,6 +7,7 @@
   item menu.
 - Let Tutorial attackers hit with special weapons during warmup, and seat the launcher on the shoulder
   so it no longer floats in front of the player.
+- Add the AK-12 special weapon: a locked AK fit that fires faster for less damage per hit.
 
 ## v2026.11.02
 
