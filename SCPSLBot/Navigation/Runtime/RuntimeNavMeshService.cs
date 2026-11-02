@@ -25,6 +25,10 @@ namespace SCPSLBot.Navigation.Runtime
     {
         private const float BakeTimeoutSeconds = 90f;
         private const float EventReconcileDelaySeconds = 0.75f;
+        // Lockers and door colliders can appear after the bake with no event, so a long configured
+        // interval must not leave the first passes after a map load waiting for it.
+        private const float SettlingIntervalSeconds = 5f;
+        private const int SettlingPasses = 3;
         private const float RoomBoundsPadding = 6f;
         private const int TileSizeVoxels = 128;
         // Recast erodes by whole voxels, rounding the agent radius up. The capsule radius plus a
@@ -49,6 +53,7 @@ namespace SCPSLBot.Navigation.Runtime
         private ulong sourceHash;
         private AsyncOperation pendingUpdate;
         private bool eventsSubscribed;
+        private int settlingPasses;
         private float reconcileRequestedAt = float.NegativeInfinity;
         private bool reconcileRequested;
         private CoroutineHandle reconcileHandle;
@@ -155,6 +160,7 @@ namespace SCPSLBot.Navigation.Runtime
             LastBakeMs = stopwatch.ElapsedMilliseconds;
             IsBuilt = true;
             Subscribe();
+            settlingPasses = 0;
             reconcileHandle = Timing.RunCoroutine(ReconcileLoop(generation));
             LabLogger.Info($"[SCPSLBot] NAV_BAKED generation={generation} bakeMs={LastBakeMs} sources={SourceCount} triangles={Triangles} vertices={Vertices} links={links.Count} passageLinks={links.PassageLinks} sealedConnectors={links.SealedConnectors} doorClasses={Areas.ClassCount} modifierBoxes={ModifierBoxes} unreadableMeshes={UnreadableMeshes} fallbackRooms={FallbackFloorRooms} rooms={rooms.NavigableRooms.Count} samples={rooms.SampleCount} islands={rooms.IslandSamples} entries={rooms.EntryCount} indexMs={rooms.LastRebuildMs} uncovered=[{string.Join(",", rooms.UncoveredRooms)}]");
         }
@@ -391,6 +397,11 @@ namespace SCPSLBot.Navigation.Runtime
             while (IsBuilt && owningGeneration == generation)
             {
                 var interval = Mathf.Max(1f, config.ReconcileIntervalSeconds);
+                if (settlingPasses < SettlingPasses)
+                {
+                    interval = Mathf.Min(interval, SettlingIntervalSeconds);
+                }
+
                 var waited = 0f;
                 while (waited < interval && !(reconcileRequested && Time.time - reconcileRequestedAt >= EventReconcileDelaySeconds))
                 {
@@ -400,6 +411,9 @@ namespace SCPSLBot.Navigation.Runtime
                     {
                         yield break;
                     }
+
+                    // Blocked crossings expire on their own clock, however long the scan interval is.
+                    obstacles.Prune(Time.time);
                 }
 
                 reconcileRequested = false;
@@ -412,7 +426,7 @@ namespace SCPSLBot.Navigation.Runtime
                     continue;
                 }
 
-                obstacles.Prune(Time.time);
+                settlingPasses++;
 
                 var operation = TryStartReconcile(out var changed);
                 if (operation == null)

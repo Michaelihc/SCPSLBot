@@ -29,7 +29,7 @@ namespace SCPSLBot.Navigation
 
         internal void Normalize(System.Collections.Generic.ICollection<string> changes)
         {
-            ReconcileIntervalSeconds = Clamp(nameof(ReconcileIntervalSeconds), ReconcileIntervalSeconds, 1f, 120f, changes);
+            ReconcileIntervalSeconds = Clamp(nameof(ReconcileIntervalSeconds), ReconcileIntervalSeconds, 1f, 600f, changes);
             VoxelSize = Clamp(nameof(VoxelSize), VoxelSize, 0.05f, 0.3f, changes);
             BlockedCrossingSeconds = Clamp(nameof(BlockedCrossingSeconds), BlockedCrossingSeconds, 5f, 600f, changes);
         }

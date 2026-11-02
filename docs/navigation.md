@@ -51,10 +51,12 @@ The runtime backend works in stages:
 
 Keeping the navmesh current:
 
-- The navmesh is reconciled with live geometry every `navigation.reconcile_interval_seconds` (5 s)
-  and immediately after admin toys, room connectors or breakable doors change. Unchanged geometry
-  costs only a source hash, and changed tiles rebuild asynchronously. While no bot exists the
-  periodic re-scan is skipped; the next pass after a bot appears catches up.
+- The navmesh is reconciled with live geometry every `navigation.reconcile_interval_seconds` (5 s,
+  up to 600 s) and immediately after admin toys, room connectors or breakable doors change. The
+  first three passes after a map load run at most 5 s apart. Each pass is a main-thread scan of every
+  source, so a longer interval trades slower pickup of geometry changes that fire no event for fewer
+  hitches. Changed tiles rebuild asynchronously. While no bot exists the periodic re-scan is skipped;
+  the next pass after a bot appears catches up.
 - When a bot reports a blocked crossing, that spot is carved out for
   `navigation.blocked_crossing_seconds` (45 s).
 - A bake that fails twice on a map falls back to the authored backend for that map
