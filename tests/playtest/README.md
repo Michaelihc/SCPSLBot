@@ -42,6 +42,7 @@ nothing failed or skipped.
 | `--extensions` | Also loads the test-only `SCPSLPluginExtensions.dll` (`plugin_direload`) |
 | `--round-bots <n>` | With `--scenario`: creates that many independent round bots (0-10) and records `round_trace` |
 | `--native-team-queue <queue>` | With `--scenario`: the native team queue that allocates those bots' roles |
+| `--reconcile-interval <seconds>` | With `--scenario`: sets `navigation.reconcile_interval_seconds` |
 | `--auto-run-delay <seconds>` | With `--scenario`: seconds before the harness runs it; a full lobby starts its round sooner than the default 20 |
 
 The bundle uses the fixed `plugins/8910/` and `configs/8910/` names and exactly one
