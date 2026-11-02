@@ -114,8 +114,40 @@ damage_by = collections.Counter()
 for e in bot_hits:
     damage_by[e["by"]] += e.get("dmg", 0)
 
+speeds, chase_ranges, reversals, moving_samples, motion_samples = [], [], 0, 0, 0
+previous_sample, previous_heading = None, {}
+for sample in samples:
+    client = next((p for p in sample["p"] if p["id"] == client_id and p["r"] not in ALIVE_EXCLUDE), None)
+    if previous_sample and sample["t"] >= start_play:
+        dt = sample["t"] - previous_sample["t"]
+        before = {(p["id"], p["l"]): p for p in previous_sample["p"]}
+        for p in sample["p"]:
+            old = before.get((p["id"], p["l"]))
+            if not p["d"] or not old or p["r"] in ALIVE_EXCLUDE or dt <= 0:
+                continue
+            vx, vz = (p["x"] - old["x"]) / dt, (p["w"] - old["w"]) / dt
+            speed = (vx * vx + vz * vz) ** 0.5
+            if speed > 12:
+                continue  # Respawn or placement, not locomotion.
+            motion_samples += 1
+            if speed > 0.5:
+                moving_samples += 1
+                speeds.append(speed)
+                heading = previous_heading.get(p["id"])
+                if heading and vx * heading[0] + vz * heading[1] < 0:
+                    reversals += 1
+                previous_heading[p["id"]] = (vx, vz)
+            if client and p["z"] == client["z"]:
+                chase_ranges.append(((p["x"] - client["x"]) ** 2 + (p["w"] - client["w"]) ** 2) ** 0.5)
+    previous_sample = sample
+
 result = dict(
     seconds=round(span, 1),
+    bot_speed_p50=round(statistics.median(speeds), 2) if speeds else None,
+    bot_speed_p90=round(statistics.quantiles(speeds, n=10)[8], 2) if len(speeds) > 10 else None,
+    bot_moving_fraction=round(moving_samples / motion_samples, 3) if motion_samples else None,
+    bot_heading_reversals_per_moving_minute=round(reversals / (moving_samples * 0.25 / 60), 1) if moving_samples else None,
+    bot_client_range_p50=round(statistics.median(chase_ranges), 1) if chase_ranges else None,
     plugins=next((r["plugins"] for r in records if r["k"] == "start"), None),
     bot_roles={str(k): sorted(v - ALIVE_EXCLUDE) for k, v in roles_of.items() if k != client_id},
     bot_lives=len(bot_lives),
