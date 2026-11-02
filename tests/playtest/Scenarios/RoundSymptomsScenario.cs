@@ -22,10 +22,11 @@ namespace SCPSLBot.PlaytestScenarios.Scenarios;
 public class RoundSymptomsScenario : Scenario
 {
     private const int RoundBots = 10;
-    private const float PopulationSeconds = 360f;
-    private const float WaveSeconds = 180f;
     private const float SampleSeconds = 2f;
     private const float StateLogSeconds = 10f;
+
+    protected virtual float PopulationSeconds => 360f;
+    protected virtual float WaveSeconds => 180f;
 
     protected virtual IReadOnlyList<RoleTypeId> ScpRoles => new[] { RoleTypeId.Scp106, RoleTypeId.Scp939, RoleTypeId.Scp049 };
 
@@ -85,6 +86,16 @@ public class RoundSymptomsScenario : Scenario
             ctx.Info($"SYMPTOM_VERDICT {verdict}");
         ctx.Require(book.Verdicts.Count == 0, $"no reported symptom appeared: {string.Join("; ", book.Verdicts)}");
     }
+}
+
+/// <summary>Waves that outlive exploration's room-novelty window, so a return to Surface can show.</summary>
+public sealed class RoundSymptomsLongWaveScenario : RoundSymptomsScenario
+{
+    protected override float PopulationSeconds => 30f;
+    protected override float WaveSeconds => 420f;
+
+    public override string Name => "scpslbot-round-symptoms-long-wave";
+    public override float TimeoutSeconds => PopulationSeconds + 2f * WaveSeconds + 90f;
 }
 
 /// <summary>Controls for the same observer: SCPs the report does not name.</summary>
@@ -197,6 +208,7 @@ internal sealed class LifeBook
         private double focusSince = -1d;
         private int lastFloor;
         private int rides;
+        private int surfaceReturns;
         private double leftRoomAt = -1d;
         private double leftSurfaceAt = -1d;
         private double nearestEscape = double.PositiveInfinity;
@@ -242,6 +254,8 @@ internal sealed class LifeBook
             if (floor != lastFloor)
             {
                 rides++;
+                if (floor == SurfaceFloor)
+                    surfaceReturns++;
                 lastFloor = floor;
             }
 
@@ -290,7 +304,7 @@ internal sealed class LifeBook
         public string Describe(double now) =>
             $"{Label} lived={now - spawnedAt:F0}s spawnRoom={spawnRoom} leftRoom={Since(leftRoomAt)} rooms={rooms.Count} "
             + $"zones={string.Join(",", zoneSeconds.OrderByDescending(entry => entry.Value).Select(entry => $"{entry.Key}:{entry.Value:F0}"))} "
-            + $"rides={rides} leftSurface={Since(leftSurfaceAt)} nearestEscape={(double.IsInfinity(nearestEscape) ? "n/a" : nearestEscape.ToString("F0"))} "
+            + $"rides={rides} surfaceReturns={surfaceReturns} leftSurface={Since(leftSurfaceAt)} nearestEscape={(double.IsInfinity(nearestEscape) ? "n/a" : nearestEscape.ToString("F0"))} "
             + $"nearEscape={nearEscapeSeconds:F0}s longestStop={longestStop:F0}s focus={longestFocus:F0}s stopStates=[{longestStopStates}] "
             + $"route={string.Join(">", route.Take(18))}";
 
@@ -303,6 +317,8 @@ internal sealed class LifeBook
             {
                 if (lived >= SurfaceExitSeconds && (leftSurfaceAt < 0d || leftSurfaceAt - spawnedAt > SurfaceExitSeconds))
                     yield return $"S1 {Label} left Surface after {Since(leftSurfaceAt)}";
+                if (surfaceReturns > 0)
+                    yield return $"S1 {Label} returned to Surface {surfaceReturns} times, nearest escape {nearestEscape:F0}m";
                 if (nearEscapeSeconds >= EscapeLoiterSeconds)
                     yield return $"S1 {Label} spent {nearEscapeSeconds:F0}s within {EscapeMeters:F0}m of the escape";
             }
