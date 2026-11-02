@@ -11,12 +11,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
     {
         private const float ArrivalMeters = 1.5f;
         private const float LookedSeconds = 10f;
+        // The chamber is walled off while its doors are shut, and nothing here reopens them.
+        private const float NoRouteSeconds = 6f;
 
         public GoToItemInOutakeChamber(C criteria, FpcBotPlayer botPlayer) : base(criteria, botPlayer)
         {
         }
 
         private Scp914Location scp914Location;
+        private float routeSeenAt;
 
         public override void SetEnabledByBeliefs(FpcMind fpcMind)
         {
@@ -31,6 +34,12 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
         }
 
         public override float Weight { get; } = 1f;
+
+        public override void Reset()
+        {
+            base.Reset();
+            routeSeenAt = Time.time;
+        }
 
         protected override ActionStatus TickTowardsTarget()
         {
@@ -48,6 +57,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Mind.Scp914
             else
             {
                 botPlayer.MoveToPosition(outakeChamberPosition);
+                if (botPlayer.Navigator.HasPath)
+                {
+                    routeSeenAt = Time.time;
+                }
+                else if (Time.time - routeSeenAt > NoRouteSeconds)
+                {
+                    return ActionStatus.Failed;
+                }
             }
 
             if (!LookAt(Target, 5f) || !arrived)

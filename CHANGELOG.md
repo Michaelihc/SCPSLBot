@@ -7,6 +7,7 @@
   and uses Atlas again to reach a room when it is left off the navigation surface.
 - Search for keycards room by room. Reaching a doorway counted as searching the next room, so Class-D
   and Scientists walked between a room's doors instead of moving on.
+- Give up on SCP-914's output chamber when no route reaches it, instead of circling the room for minutes.
 - Let SCP-106 leave its cell. Bots judged checkpoint doors by the outer door instead of the sub-doors
   SCP-106 phases through, so it stood at the exit for the whole round.
 - Stop SCP-939 ambushing from its own cell at round start, which kept it inside for up to 50 seconds.
