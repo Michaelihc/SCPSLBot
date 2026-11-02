@@ -15,12 +15,15 @@ function WaitEnemy([double]$Within) {
 function State { $h=@{}; foreach ($e in Enemies) { $h[$e.id]=$e }; $h }
 function Hurt($b) { $a=State; foreach ($k in $b.Keys) { if (!$a.ContainsKey($k) -or $a[$k].life -ne $b[$k].life -or $a[$k].health -lt $b[$k].health) { return $true } }; $false }
 $null = Reply '/bot_warmup standard'; $null = Reply '/forcestart'; Start-Sleep 5
-$null = Reply "/forcerole $actorId Tutorial"; Start-Sleep 3; $null = Reply "/strip $actorId"; $null = Reply "/god $actorId enable"
+# Bots ignore Tutorial, so meet them as NTF and change role in place (flag 0 keeps the position).
+$null = Reply "/forcerole $actorId NtfPrivate"; Start-Sleep 3; $null = Reply "/god $actorId enable"
+$null = WaitEnemy 25
+$null = Reply "/forcerole $actorId Tutorial 0"; Start-Sleep 1; $null = Reply "/strip $actorId"
 $rows=[Collections.Generic.List[string]]::new()
 $null = Reply "/special_weapon grant guided-rocket $actorId"; Start-Sleep -Milliseconds 500
 $null = Invoke-LabInput @{id='select';frames=60;inputFrames=2;keys=@($firearmHotkey);capture=$true}
 foreach ($shot in 1..2) {
-  $e = WaitEnemy 25; $before = State
+  $e = WaitEnemy 30; $before = State
   $null = Set-LabAim -TargetActorId $e.id
   $null = Invoke-LabInput @{id="rocket-$shot";frames=170;inputFrames=2;keys=@($primaryUse);capture=$true}
   Start-Sleep 2
@@ -29,7 +32,7 @@ foreach ($shot in 1..2) {
 $null = Reply "/strip $actorId"; Start-Sleep 1
 $null = Reply "/special_weapon grant graviton-disruptor $actorId"; Start-Sleep -Milliseconds 500
 $null = Invoke-LabInput @{id='select-g';frames=150;inputFrames=2;keys=@($firearmHotkey);capture=$true}
-$e = WaitEnemy 18; $before = State
+$e = WaitEnemy 22; $before = State
 $m=Me; $dx=$m.position.x-$e.position.x; $dz=$m.position.z-$e.position.z; $len=[Math]::Max(0.1,[Math]::Sqrt($dx*$dx+$dz*$dz))
 $null = Set-LabAim -Target @{x=$e.position.x+($dx/$len*2.5);y=$e.position.y-0.9;z=$e.position.z+($dz/$len*2.5)}
 $null = Invoke-LabInput @{id='shockwave';frames=150;inputFrames=2;keys=@($fire);capture=$true}
