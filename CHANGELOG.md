@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Keep SCP-106 from stranding itself with Hunter's Atlas. It aimed at the target's exact position,
-  and the native landing cast could end on top of level geometry, so it now aims just inside a door.
+  and the native landing cast could end on top of level geometry, so it now aims just inside a door,
+  and uses Atlas again to reach a room when it is left off the navigation surface.
 - Search for keycards room by room. Reaching a doorway counted as searching the next room, so Class-D
   and Scientists walked between a room's doors instead of moving on.
 - Let SCP-106 leave its cell. Bots judged checkpoint doors by the outer door instead of the sub-doors

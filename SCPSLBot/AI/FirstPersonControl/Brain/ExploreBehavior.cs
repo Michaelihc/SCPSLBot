@@ -240,6 +240,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             }
 
             blockedTrips = 0;
+            var backend = Backend;
+            if (backend != null && botPlayer.Combat.Scp106.TryAtlasToNearestRoom(backend.GetNavigableRooms(), currentRoom, botPlayer.PlayerPosition))
+            {
+                Log("atlas", "stranded, using Hunter's Atlas to reach a room");
+                return;
+            }
+
             pacingUntil = now + PacingSeconds;
             Log("pacing", "no way out of this room for now");
         }
@@ -308,11 +315,17 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             var position = botPlayer.PlayerPosition;
             var feetY = position.y - NavigationAgentProfile.RootHeight;
             var arrived = HorizontalDistance(position, recoveryPoint) <= RecoveryArrivalMeters && Mathf.Abs(feetY - recoveryPoint.y) <= ArrivalVerticalMeters;
-            if (arrived || botPlayer.Navigator.IsOnMesh() || now - recoveryStartedAt > RecoveryTimeoutSeconds)
+            var timedOut = now - recoveryStartedAt > RecoveryTimeoutSeconds;
+            if (arrived || botPlayer.Navigator.IsOnMesh() || timedOut)
             {
                 recovering = false;
                 nextPickAt = now;
                 botPlayer.Locomotion.Stop();
+                if (timedOut)
+                {
+                    NoteBlockedTrip(now);
+                }
+
                 return;
             }
 
