@@ -1,3 +1,4 @@
+using Interactables.Interobjects.DoorUtils;
 using MapGeneration;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.PlayableScps;
@@ -29,6 +30,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
         private const float HurtStalkMaxDistance = 16f;
 
         private const float AtlasMinDistance = 24f;
+        private const float AtlasDoorsideMeters = 2.5f;
         private const float AtlasVigorReserve = 0.25f;
         private const float AtlasBaseCost = 0.15f;
         private const float AtlasCostPerMeter = 0.015f;
@@ -131,13 +133,44 @@ namespace SCPSLBot.AI.FirstPersonControl.Combat.ScpAbilities
             }
 
             var destination = target.Hub.transform.position;
-            if (!RoomUtils.TryGetRoom(destination, out var room))
+            if (!RoomUtils.TryGetRoom(destination, out var room) || !TryGetDoorsideLanding(room, destination, out var landing))
             {
                 return false;
             }
 
             nextAtlasTime = Time.time + AtlasRetrySeconds;
-            return ScpAbilityCommands.SendAtlasDestination(atlas, room.transform, destination);
+            return ScpAbilityCommands.SendAtlasDestination(atlas, room.transform, landing);
+        }
+
+        // Native Atlas lands by casting from one of the room's doors toward the destination, and the
+        // cast ignores what SCP-106 can phase through. A long one can end on top of level geometry,
+        // above the floor with no way down, so aim just inside the door nearest the target.
+        private static bool TryGetDoorsideLanding(RoomIdentifier room, Vector3 destination, out Vector3 landing)
+        {
+            landing = default;
+            if (!DoorVariant.DoorsByRoom.TryGetValue(room, out var doors))
+            {
+                return false;
+            }
+
+            var nearestSqr = float.PositiveInfinity;
+            foreach (var door in doors)
+            {
+                if (door is not IScp106PassableDoor { IsScp106Passable: true })
+                {
+                    continue;
+                }
+
+                var doorPosition = door.transform.position;
+                var toDestination = Vector3.ProjectOnPlane(destination - doorPosition, Vector3.up);
+                if (toDestination.sqrMagnitude < nearestSqr)
+                {
+                    nearestSqr = toDestination.sqrMagnitude;
+                    landing = doorPosition + Vector3.ClampMagnitude(toDestination, AtlasDoorsideMeters);
+                }
+            }
+
+            return !float.IsPositiveInfinity(nearestSqr);
         }
 
         /// <summary>

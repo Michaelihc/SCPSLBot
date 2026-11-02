@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep SCP-106 from stranding itself with Hunter's Atlas. It aimed at the target's exact position,
+  and the native landing cast could end on top of level geometry, so it now aims just inside a door.
+- Search for keycards room by room. Reaching a doorway counted as searching the next room, so Class-D
+  and Scientists walked between a room's doors instead of moving on.
 - Let SCP-106 leave its cell. Bots judged checkpoint doors by the outer door instead of the sub-doors
   SCP-106 phases through, so it stood at the exit for the whole round.
 - Stop SCP-939 ambushing from its own cell at round start, which kept it inside for up to 50 seconds.
