@@ -48,6 +48,10 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
         private const float DistanceScaleMeters = 120f;
         private const int FallbackAfterFailedPicks = 2;
         private const float CrossingDeadlineGraceSeconds = 15f;
+        private const int BlockedTripsBeforePacing = 3;
+        private const float PacingSeconds = 30f;
+        private const float PaceMinimumMeters = 5f;
+        private const int PaceSampleTries = 8;
         private const float RecoveryArrivalMeters = 0.8f;
         private const float RecoveryTimeoutSeconds = 10f;
         private const float RecoveryNavigatorRangeMeters = 5f;
@@ -80,6 +84,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
         private int memoryGeneration = -1;
 
         private int failedPicks;
+        private int blockedTrips;
+        private float pacingUntil;
         private bool recovering;
         private Vector3 recoveryPoint;
         private float recoveryStartedAt;
@@ -153,6 +159,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             {
                 Log("abandon", "locomotion gave up the route");
                 MarkUnreachable(targetRoom, now);
+                if (botPlayer.Locomotion.AbandonedAtDeniedDoor)
+                {
+                    NoteBlockedTrip(now);
+                }
+
                 ClearTarget();
             }
 
@@ -185,7 +196,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
                 if (!TryPick(now))
                 {
                     failedPicks++;
-                    if (failedPicks < FallbackAfterFailedPicks || !TryPickFallback(now))
+                    if (failedPicks < FallbackAfterFailedPicks || now < pacingUntil || !TryPickFallback(now))
                     {
                         nextPickAt = now + PickRetrySeconds;
                         botPlayer.Locomotion.Stop();
@@ -209,10 +220,60 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             {
                 Log("timeout", deadlineMeasured ? "trip took too long" : "no path");
                 MarkUnreachable(targetRoom, now);
+                if (!deadlineMeasured)
+                {
+                    NoteBlockedTrip(now);
+                }
+
                 ClearTarget();
             }
 
             return true;
+        }
+
+        // Trips that keep dying without the bot ever changing room mean it is shut in.
+        private void NoteBlockedTrip(float now)
+        {
+            if (++blockedTrips < BlockedTripsBeforePacing)
+            {
+                return;
+            }
+
+            blockedTrips = 0;
+            pacingUntil = now + PacingSeconds;
+            Log("pacing", "no way out of this room for now");
+        }
+
+        // Every exit is shut by a door this role cannot open (SCP-939 trapped in SCP-914's room), and
+        // only someone opening up can change that. Walk the room rather than stand against the door,
+        // and try the door again once pacing ends.
+        private bool TryPickPacing(INavigationBackend backend, float now)
+        {
+            var samples = currentRoom != null ? backend.GetRoomSamples(currentRoom) : null;
+            if (samples == null || samples.Count == 0)
+            {
+                return false;
+            }
+
+            var position = botPlayer.PlayerPosition;
+            var pathChecks = 0;
+            for (var attempt = 0; attempt < PaceSampleTries && pathChecks < MaxPathChecksPerPick; attempt++)
+            {
+                var sample = samples[random.Next(samples.Count)];
+                if (HorizontalDistance(position, sample) < PaceMinimumMeters)
+                {
+                    continue;
+                }
+
+                pathChecks++;
+                if (botPlayer.Navigator.CanReach(sample))
+                {
+                    Commit(currentRoom, sample, now);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private bool TryStartRecovery(float now)
@@ -391,6 +452,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
                 return;
             }
 
+            if (room != currentRoom)
+            {
+                blockedTrips = 0;
+            }
+
             currentRoom = room;
             currentZone = room.Zone;
             lastVisitAt[room] = now;
@@ -413,6 +479,11 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             if (backend == null)
             {
                 return false;
+            }
+
+            if (now < pacingUntil)
+            {
+                return TryPickPacing(backend, now);
             }
 
             var hub = botPlayer.BotHub.PlayerHub;
@@ -601,12 +672,14 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             nextPickAt = 0f;
             lingerUntil = 0f;
             failedPicks = 0;
+            blockedTrips = 0;
+            pacingUntil = 0f;
             recovering = false;
         }
 
         /// <summary>
-        /// Zones a role wanders through: guards patrol their zone, NTF and Chaos also the zones next
-        /// to it, SCPs the whole facility; the objective roles (and anything else) stay in their zone.
+        /// Zones a role wanders through: SCPs the whole facility, humans their zone and the zones next
+        /// to it. Path checks keep a human without the right keycard on this side of a border.
         /// LCZ is dropped once decontamination runs and everything but Surface after detonation.
         /// </summary>
         private static int GetAllowedZones(PlayerRoleBase role, FacilityZone current)
@@ -622,14 +695,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
             {
                 zones = facility;
             }
-            else if (role.RoleTypeId is RoleTypeId.NtfPrivate or RoleTypeId.NtfSergeant or RoleTypeId.NtfSpecialist or RoleTypeId.NtfCaptain
-                     || role.Team == Team.ChaosInsurgency)
-            {
-                zones = ZoneBit(current) | AdjacentZones(current);
-            }
             else
             {
-                zones = ZoneBit(current);
+                zones = ZoneBit(current) | AdjacentZones(current);
             }
 
             if (DecontaminationController.Singleton != null && DecontaminationController.Singleton.IsDecontaminating)

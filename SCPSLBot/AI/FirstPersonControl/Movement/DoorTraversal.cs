@@ -33,6 +33,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
     /// </summary>
     internal sealed class DoorTraversal
     {
+        public const string DeniedState = "door:denied";
+        public const string StalledState = "door:stalled";
+
         private const float RoomProbeStepMeters = 4f;
         // Gates are about four meters wide; side doors never share a leg's crossing plane.
         private const float DoorHalfWidth = 2.2f;
@@ -49,6 +52,9 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private const float MaxClosedSeconds = 10f;
         // HCZ bulk gates take several seconds to open but their exact state advances every frame.
         private const float MaxOpeningStallSeconds = 3f;
+        // Doors ignore a new state for their first frames after spawning, so one opened right at
+        // round start accepts the interaction and then sits still for seconds before it moves.
+        private const float MaxOpeningStartSeconds = 15f;
         private const float OpeningProgressEpsilon = 0.01f;
         private const float KeycardLeaseSeconds = 6f;
 
@@ -98,6 +104,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
         private float closedSince;
         private float openingProgress = -1f;
         private float openingProgressAt;
+        private bool openingStarted;
 
         private DoorVariant keycardDoor;
         private ushort keycardSerial;
@@ -286,6 +293,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 closedSince = now;
                 openingProgress = -1f;
                 openingProgressAt = now;
+                openingStarted = false;
             }
 
             var hub = botPlayer.BotHub.PlayerHub;
@@ -309,13 +317,15 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
                 var exactState = door.GetExactState();
                 if (exactState > openingProgress + OpeningProgressEpsilon)
                 {
+                    openingStarted = openingProgress >= 0f;
                     openingProgress = exactState;
                     openingProgressAt = now;
                 }
 
-                if (distance < HoldDistance && now - openingProgressAt > MaxOpeningStallSeconds)
+                var stallLimit = openingStarted ? MaxOpeningStallSeconds : MaxOpeningStartSeconds;
+                if (distance < HoldDistance && now - openingProgressAt > stallLimit)
                 {
-                    DiagnosticState = "door:stalled";
+                    DiagnosticState = StalledState;
                     return DoorTraversalResult.Blocked;
                 }
 
@@ -325,6 +335,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
             openingProgress = -1f;
             openingProgressAt = now;
+            openingStarted = false;
 
             if (distance <= InteractRange && now - closedSince > MaxClosedSeconds)
             {
@@ -337,7 +348,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
             switch (access)
             {
                 case DoorAccessKind.Denied:
-                    DiagnosticState = "door:denied";
+                    DiagnosticState = DeniedState;
                     return DoorTraversalResult.Blocked;
 
                 case DoorAccessKind.Wait:
@@ -349,7 +360,7 @@ namespace SCPSLBot.AI.FirstPersonControl.Movement
 
                     if (now - closedSince > WaitForSelfOpeningSeconds)
                     {
-                        DiagnosticState = "door:denied";
+                        DiagnosticState = DeniedState;
                         return DoorTraversalResult.Blocked;
                     }
 
