@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Let SCP-106 leave its cell. Bots judged checkpoint doors by the outer door instead of the sub-doors
+  SCP-106 phases through, so it stood at the exit for the whole round.
+- Stop SCP-939 ambushing from its own cell at round start, which kept it inside for up to 50 seconds.
+- Stop bots sitting in rooms at round start. Doors opened in the first seconds were reported as jammed
+  and closed to every bot for 45 seconds, which held Class-D in their cells.
+- Board elevators along the door axis. Bots starting from the side of the doorway pinned on its frame.
+- Send every human into adjacent zones while exploring, so Facility Guards leave Entrance when their
+  keycards allow.
+- Run for a teleporter in SCP-106's pocket dimension instead of standing still until dead.
+- Pace the room when every exit is a door the role cannot open, instead of retrying it every few seconds.
+
 ## v2026.11.02
 
 - Stop bots stalling in SCP-939's cell on runtime navigation. The bake treated the cell's fixed blast

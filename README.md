@@ -62,8 +62,10 @@ difficulty. The SCP bots were invulnerable so that each take ran its full length
   of danger, and equip a matching keycard to open keycard doors and lockers.
 - **Class-D and Scientists try to escape.** They search floors, lockers and rooms for keycards,
   upgrade them in SCP-914, and work toward the exit through keycard doors and elevators.
-- **Everyone else explores.** Guards patrol their zone, NTF and Chaos also visit neighbouring
-  zones, and SCPs roam the whole facility, preferring rooms they have not visited recently.
+- **Everyone else explores.** Humans cover their zone and the zones next to it when their keycards
+  allow, and SCPs roam the whole facility, preferring rooms they have not visited recently.
+- **Pocket dimension.** Humans caught by SCP-106 run for a teleporter, and like a player they cannot
+  tell the exits from the deadly ones.
 - **Four difficulty levels.** `bot_difficulty easy|normal|hard|hardest` tunes fire rate, aim, strafing,
   how long bots chase a target they've lost, and SCP-096's rage.
 
