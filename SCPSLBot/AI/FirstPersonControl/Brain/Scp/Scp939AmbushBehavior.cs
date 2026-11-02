@@ -87,9 +87,13 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain.Scp
                 return 0f;
             }
 
+            // Its containment cell comes first: an ambush there only waits out humans who are not
+            // coming, and reads as an SCP that cannot leave without being lured out.
+            var spawnRoom = lastRolledRoom == null;
+
             // One roll per room entered keeps the ambushes occasional and spread over the map.
             lastRolledRoom = room;
-            if (Random.value > AmbushChance || !TryPickDoor(room))
+            if (spawnRoom || Random.value > AmbushChance || !TryPickDoor(room))
             {
                 return 0f;
             }
