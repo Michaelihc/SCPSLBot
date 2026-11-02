@@ -1,146 +1,102 @@
 #!/usr/bin/env bash
+# Restores a Create-BotProductionBackup.py snapshot and queues the restart that loads it.
+# --force-occupied restarts straight away and disconnects anyone playing; use it only for an emergency.
 set -euo pipefail
 
-lab_root='/home/scpsl/.config/SCP Secret Laboratory/LabAPI'
-service_name='scpsl-warmup.service'
-expected_host='scpsl-warmup-hk'
+lab_root=${BOT_LAB_ROOT:-'/home/scpsl/.config/SCP Secret Laboratory/LabAPI'}
 backup_root="$lab_root/backups/7777"
-state_root_dropin='/etc/systemd/system/scpsl-warmup.service.d/ops-state-root.conf'
+expected_host='scpsl-warmup-hk'
 
 usage() {
-  printf 'Usage: %s <snapshot.zip.bak> [--force-occupied]\n' "$0" >&2
+  printf 'Usage: %s <snapshot.zip.bak> [--check | --force-occupied]\n' "$0" >&2
   exit 64
 }
 
+fail() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+
 test "$#" -ge 1 && test "$#" -le 2 || usage
-archive="$1"
-force_occupied='false'
+snapshot="$1"
+mode='queue'
 if test "$#" -eq 2; then
-  test "$2" = '--force-occupied' || usage
-  force_occupied='true'
+  case "$2" in
+    --check) mode='check' ;;
+    --force-occupied) mode='force' ;;
+    *) usage ;;
+  esac
 fi
 
-test "$(hostname)" = "$expected_host" || {
-  printf 'Refusing rollback on unexpected host %s.\n' "$(hostname)" >&2
-  exit 1
-}
+test "$(hostname)" = "$expected_host" || fail "Refusing rollback on unexpected host $(hostname)."
 
-archive_real=$(readlink -f -- "$archive")
-backup_real=$(readlink -f -- "$backup_root")
-case "$archive_real" in
-  "$backup_real"/*.zip.bak) ;;
-  *)
-    printf 'Snapshot must be a .zip.bak file under %s.\n' "$backup_real" >&2
-    exit 1
-    ;;
+snapshot_real=$(readlink -f -- "$snapshot")
+case "$snapshot_real" in
+  "$(readlink -f -- "$backup_root")"/*.zip.bak) ;;
+  *) fail "Snapshot must be a .zip.bak file under $backup_root." ;;
 esac
+test -f "$snapshot_real" || fail "Snapshot not found: $snapshot_real"
+unzip -tqq "$snapshot_real"
 
-test -f "$archive_real" || {
-  printf 'Snapshot not found: %s\n' "$archive_real" >&2
-  exit 1
-}
-unzip -tqq "$archive_real"
-
-required_entries=(
-  'plugins/7777/SCPSLBot.dll'
-  'plugins/7777/SCPSLBot.Components.dll'
-  'plugins/7777/WarmupSafezone.dll'
-  'plugins/7777/WarmupPlayerPanel.dll'
-  'configs/7777/SCPSLBot/config.yml'
-  'configs/7777/WarmupSafezone/config.yml'
-  'rollback.sha256'
-  'manifest.txt'
-)
-archive_entries=$(unzip -Z1 "$archive_real")
-for entry in "${required_entries[@]}"; do
-  grep -Fqx -- "$entry" <<<"$archive_entries" || {
-    printf 'Snapshot is missing required entry: %s\n' "$entry" >&2
-    exit 1
-  }
-done
-
-restore_stage=$(mktemp -d)
-trap 'rm -rf -- "$restore_stage"' EXIT
-unzip -oq "$archive_real" -d "$restore_stage"
+stage=$(mktemp -d "${TMPDIR:-/tmp}/bot-prod-rollback.XXXXXX")
+trap 'rm -rf -- "$stage"' EXIT
+unzip -oq "$snapshot_real" -d "$stage"
+test -f "$stage/rollback.sha256" || fail 'Snapshot has no rollback.sha256.'
 (
-  cd "$restore_stage"
-  sha256sum -c rollback.sha256
+  cd "$stage"
+  sha256sum -c --quiet rollback.sha256
 )
 
-player_count=0
-if systemctl is-active --quiet "$service_name"; then
-  players_output=$(scpsl-ctl console players)
-  player_count=$(sed -n 's/^List of players (\([0-9][0-9]*\)):.*/\1/p' <<<"$players_output" | head -n 1)
-  test -n "$player_count" || {
-    printf 'Could not establish the current player count.\n' >&2
-    exit 1
-  }
-fi
-if test "$player_count" -gt 0 && test "$force_occupied" != 'true'; then
-  printf 'Refusing occupied rollback: %s player(s) are connected. Re-run with --force-occupied only for an emergency.\n' "$player_count" >&2
-  exit 1
-fi
-
-systemctl stop "$service_name"
-
-# The production change adds this exact lane-owned environment assignment. Player stats are mutable
-# state, so rollback removes the service wiring but deliberately parks the state directory.
-rm -f -- "$state_root_dropin"
-rmdir --ignore-fail-on-non-empty -- "$(dirname "$state_root_dropin")" 2>/dev/null || true
-systemctl daemon-reload
-
-introduced_files=(
-  'plugins/7777/HintServiceMeow.dll'
-  'plugins/7777/StatsBots.dll'
-  'plugins/7777/StatsSystem.dll'
-  'dependencies/7777/Microsoft.Bcl.AsyncInterfaces.dll'
-  'dependencies/7777/MySqlConnector.dll'
-  'dependencies/7777/ServerKeybinds.dll'
-  'dependencies/7777/System.Buffers.dll'
-  'dependencies/7777/System.Diagnostics.DiagnosticSource.dll'
-  'dependencies/7777/System.IO.Pipelines.dll'
-  'dependencies/7777/System.Memory.dll'
-  'dependencies/7777/System.Numerics.Vectors.dll'
-  'dependencies/7777/System.Runtime.CompilerServices.Unsafe.dll'
-  'dependencies/7777/System.Text.Encodings.Web.dll'
-  'dependencies/7777/System.Text.Json.dll'
-  'dependencies/7777/System.Threading.Tasks.Extensions.dll'
-  'dependencies/7777/System.ValueTuple.dll'
-  'configs/7777/StatsBots/config.yml'
-  'configs/7777/StatsSystem/config.yml'
-)
-for relative_path in "${introduced_files[@]}"; do
-  rm -f -- "$lab_root/$relative_path"
-done
-
-restored_files=(
-  'plugins/7777/SCPSLBot.dll'
-  'plugins/7777/SCPSLBot.Components.dll'
-  'plugins/7777/WarmupSafezone.dll'
-  'plugins/7777/WarmupPlayerPanel.dll'
-  'configs/7777/SCPSLBot/config.yml'
-  'configs/7777/WarmupSafezone/config.yml'
-)
+mapfile -t restored_files < <(sed 's/^[0-9a-f]\{64\}  //' "$stage/rollback.sha256")
+test "${#restored_files[@]}" -gt 0 || fail 'Snapshot lists no files.'
 for relative_path in "${restored_files[@]}"; do
-  install -d -o scpsl -g scpsl -m 0755 "$(dirname "$lab_root/$relative_path")"
-  install -o scpsl -g scpsl -m 0644 "$restore_stage/$relative_path" "$lab_root/$relative_path"
-  chown scpsl:scpsl "$lab_root/$relative_path"
-  chmod 0644 "$lab_root/$relative_path"
+  case "$relative_path" in
+    plugins/7777/*|configs/7777/*) ;;
+    *) fail "Snapshot entry is outside this port: $relative_path" ;;
+  esac
+  case "$relative_path" in
+    *'..'*) fail "Unsafe snapshot entry: $relative_path" ;;
+  esac
 done
 
+printf 'Restoring %s file(s).\n' "${#restored_files[@]}"
+scpsl-ctl console players | tail -n 1
+if test "$mode" = 'check'; then
+  printf 'Check passed; nothing was changed.\n'
+  exit 0
+fi
+
+rollback_id=$(date +%Y%m%d-%H%M%S)
+cleanup_staged() {
+  local relative_path
+  for relative_path in "${restored_files[@]}"; do
+    rm -f -- "$lab_root/$relative_path.next-$rollback_id"
+  done
+}
+trap 'cleanup_staged; rm -rf -- "$stage"' EXIT
+
+for relative_path in "${restored_files[@]}"; do
+  staged_path="$lab_root/$relative_path.next-$rollback_id"
+  install -m 0644 "$stage/$relative_path" "$staged_path"
+  chown --reference="$lab_root/$relative_path" "$staged_path"
+done
+for relative_path in "${restored_files[@]}"; do
+  mv -f -- "$lab_root/$relative_path.next-$rollback_id" "$lab_root/$relative_path"
+done
 (
   cd "$lab_root"
-  sha256sum -c "$restore_stage/rollback.sha256"
+  sha256sum -c --quiet "$stage/rollback.sha256"
 )
 
-systemctl start "$service_name"
-for _ in $(seq 1 45); do
-  if systemctl is-active --quiet "$service_name" && ss -lunp | grep -q ':7777[[:space:]]'; then
-    printf 'Rollback restored and %s is active with UDP 7777 bound.\n' "$service_name"
-    exit 0
-  fi
-  sleep 2
-done
+if test "$mode" = 'force'; then
+  scpsl-ctl console restart
+  printf 'Restored; an immediate restart was requested.\n'
+  exit 0
+fi
 
-printf 'Rollback files were restored, but the service did not pass its 90-second health gate.\n' >&2
-exit 1
+# A deployment's pending restart loads the restored files just as well.
+if ! scpsl-ctl localadmin restartwhen status | grep -q 'empty-now'; then
+  scpsl-ctl localadmin restartwhen empty-now
+fi
+scpsl-ctl localadmin restartwhen status | grep -q 'empty-now' || fail 'Files are restored but the restart intent did not arm.'
+printf 'Queued: files are restored and the restart fires once %s is empty.\n' "$expected_host"

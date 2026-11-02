@@ -51,10 +51,10 @@ a game update or Steam validation restored the originals (re-run `patch`), 1 on 
 puts the originals back. Client installs are never touched.
 
 For the Linux production host publish the self-contained patcher with
-`tools\Publish-NavMeshAssetPatcher.ps1` and ship `tools/NavMeshAssetPatcher/` inside the deployment
-package; `tools/Deploy-BotProduction7777.sh` runs `verify` against `SCPSL_SERVER_ROOT`
-(default `/home/scpsl/scpsl`) and refuses to activate an unpatched server. Apply the patch on the host
-with the service stopped:
+`tools\Publish-NavMeshAssetPatcher.ps1` and copy `tools/NavMeshAssetPatcher/` to the host. With
+`navigation.backend: Runtime`, `tools/Deploy-BotProduction7777.sh` refuses to deploy unless the server
+at `BOT_SERVER_ROOT` (default `/home/scpsl/scpsl-server`) has the patch manifest. Apply the patch on
+the host with the service stopped:
 
 ```bash
 sudo -u scpsl /path/to/NavMeshAssetPatcher patch --server "$SCPSL_SERVER_ROOT"

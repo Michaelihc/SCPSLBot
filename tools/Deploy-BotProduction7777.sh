@@ -1,189 +1,141 @@
 #!/usr/bin/env bash
+# Installs a published SCPSLBot release on the bot server and queues its one-shot restart.
+# Files are swapped while the game runs, which keeps the old build in memory until the armed
+# restart fires. Create the snapshot with Create-BotProductionBackup.py first.
 set -euo pipefail
 
-lab_root='/home/scpsl/.config/SCP Secret Laboratory/LabAPI'
-service_name='scpsl-warmup.service'
-expected_host='scpsl-warmup-hk'
+lab_root=${BOT_LAB_ROOT:-'/home/scpsl/.config/SCP Secret Laboratory/LabAPI'}
+server_root=${BOT_SERVER_ROOT:-/home/scpsl/scpsl-server}
+package_root=${BOT_PACKAGE_ROOT:-/tmp}
 backup_root="$lab_root/backups/7777"
+expected_host='scpsl-warmup-hk'
+
+# Release path -> live path. Harmony ships under dependencies/ but this host loads it from plugins.
+release_files=(
+  'plugins/SCPSLBot.dll:plugins/7777/SCPSLBot.dll'
+  'plugins/SCPSLBot.Components.dll:plugins/7777/SCPSLBot.Components.dll'
+  'plugins/HsmAdapter.dll:plugins/7777/HsmAdapter.dll'
+  'dependencies/0Harmony.dll:plugins/7777/0Harmony.dll'
+  'optional/plugins/BotRoundControl.dll:plugins/7777/BotRoundControl.dll'
+  'optional/plugins/ServerKeybinds.dll:plugins/7777/ServerKeybinds.dll'
+  'optional/plugins/WarmupSafezone.dll:plugins/7777/WarmupSafezone.dll'
+  'optional/plugins/StatsBots.dll:plugins/7777/StatsBots.dll'
+)
 
 usage() {
-  printf 'Usage: %s <package.zip> <package-sha256> <snapshot.zip.bak> <rollback-script>\n' "$0" >&2
+  printf 'Usage: %s <SCPSLBot-release.zip> <zip-sha256> <snapshot.zip.bak> [--check]\n' "$0" >&2
   exit 64
 }
 
-test "$#" -eq 4 || usage
-package="$1"
-expected_package_hash="$2"
-snapshot="$3"
-rollback_script="$4"
+fail() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
 
-test "$(hostname)" = "$expected_host" || {
-  printf 'Refusing deployment on unexpected host %s.\n' "$(hostname)" >&2
-  exit 1
-}
-[[ "$expected_package_hash" =~ ^[0-9a-f]{64}$ ]] || {
-  printf 'Expected package hash must be a lowercase SHA-256 digest.\n' >&2
-  exit 1
-}
+test "$#" -ge 3 && test "$#" -le 4 || usage
+package="$1"
+expected_hash="$2"
+snapshot="$3"
+check_only='false'
+if test "$#" -eq 4; then
+  test "$4" = '--check' || usage
+  check_only='true'
+fi
+
+test "$(hostname)" = "$expected_host" || fail "Refusing deployment on unexpected host $(hostname)."
+[[ "$expected_hash" =~ ^[0-9a-f]{64}$ ]] || fail 'Expected package hash must be a lowercase SHA-256 digest.'
 
 package_real=$(readlink -f -- "$package")
 case "$package_real" in
-  /tmp/bot-prod-*.zip) ;;
-  *)
-    printf 'Package must be a bot-prod-*.zip file directly under /tmp.\n' >&2
-    exit 1
-    ;;
+  "$(readlink -f -- "$package_root")"/SCPSLBot-*.zip) ;;
+  *) fail "Package must be an SCPSLBot-*.zip file directly under $package_root." ;;
 esac
-test -f "$package_real" || {
-  printf 'Package not found: %s\n' "$package_real" >&2
-  exit 1
-}
-printf '%s  %s\n' "$expected_package_hash" "$package_real" | sha256sum -c -
+test -f "$package_real" || fail "Package not found: $package_real"
+printf '%s  %s\n' "$expected_hash" "$package_real" | sha256sum -c -
 unzip -tqq "$package_real"
 
-backup_real=$(readlink -f -- "$snapshot")
-backup_root_real=$(readlink -f -- "$backup_root")
-case "$backup_real" in
-  "$backup_root_real"/*.zip.bak) ;;
-  *)
-    printf 'Snapshot must be a .zip.bak file under %s.\n' "$backup_root_real" >&2
-    exit 1
-    ;;
-esac
-test -f "$backup_real" && unzip -tqq "$backup_real"
-test -x "$rollback_script" || {
-  printf 'Rollback script is missing or not executable: %s\n' "$rollback_script" >&2
-  exit 1
-}
-bash -n "$rollback_script"
-
-archive_entries=$(unzip -Z1 "$package_real")
 while IFS= read -r entry; do
   case "$entry" in
-    /*|*'..'*|*'\\'*)
-      printf 'Unsafe package entry: %s\n' "$entry" >&2
-      exit 1
-      ;;
+    /*|*'..'*|*'\'*) fail "Unsafe package entry: $entry" ;;
   esac
-done <<<"$archive_entries"
+done < <(unzip -Z1 "$package_real")
 
-stage=$(mktemp -d /tmp/bot-prod-deploy.XXXXXX)
+snapshot_real=$(readlink -f -- "$snapshot")
+case "$snapshot_real" in
+  "$(readlink -f -- "$backup_root")"/*.zip.bak) ;;
+  *) fail "Snapshot must be a .zip.bak file under $backup_root." ;;
+esac
+test -f "$snapshot_real" || fail "Snapshot not found: $snapshot_real"
+unzip -tqq "$snapshot_real"
+
+stage=$(mktemp -d "${TMPDIR:-/tmp}/bot-prod-deploy.XXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
-unzip -oq "$package_real" -d "$stage"
-test -f "$stage/deploy.sha256" && test -f "$stage/manifest.txt"
-grep -Fqx 'host=scpsl-warmup-hk' "$stage/manifest.txt"
-grep -Fqx 'port=7777/udp' "$stage/manifest.txt"
+unzip -oq "$package_real" -d "$stage/release"
 (
-  cd "$stage"
-  sha256sum -c deploy.sha256
+  cd "$stage/release"
+  sha256sum -c --quiet SHA256SUMS.txt
 )
 
-expected_entries=$(mktemp)
-actual_entries=$(mktemp)
-awk '{print $2}' "$stage/deploy.sha256" >"$expected_entries"
-printf '%s\n' deploy.sha256 manifest.txt >>"$expected_entries"
-find "$stage" -type f -printf '%P\n' | sort >"$actual_entries"
-sort -o "$expected_entries" "$expected_entries"
-diff -u "$expected_entries" "$actual_entries"
-rm -f -- "$expected_entries" "$actual_entries"
-
-snapshot_checksums=$(mktemp)
-unzip -p "$backup_real" rollback.sha256 >"$snapshot_checksums"
+# A snapshot only protects this deployment if it still describes the live files.
+unzip -p "$snapshot_real" rollback.sha256 >"$stage/rollback.sha256"
 (
   cd "$lab_root"
-  sha256sum -c "$snapshot_checksums"
-)
-rm -f -- "$snapshot_checksums"
+  sha256sum -c --quiet "$stage/rollback.sha256"
+) || fail 'Live files no longer match the snapshot; create a fresh one.'
 
-# The runtime navmesh needs the patched dedicated-server assets (readable, inlined collider
-# meshes). The package ships the linux-x64 patcher under tools/; verify before touching anything and
-# refuse to activate an unpatched server (a game update or Steam validation restores the originals).
-server_root=${SCPSL_SERVER_ROOT:-/home/scpsl/scpsl}
-patcher="$stage/tools/NavMeshAssetPatcher/NavMeshAssetPatcher"
-if test -x "$patcher"; then
-  if ! "$patcher" verify --server "$server_root"; then
-    printf 'Refusing deployment: dedicated server assets at %s are not patched for the runtime navmesh. Apply with: %s patch --server "%s"\n' "$server_root" "$patcher" "$server_root" >&2
-    exit 1
-  fi
-else
-  printf 'Package carries no NavMeshAssetPatcher; set SCPSL_SERVER_ROOT and verify the asset patch manually before deploying.\n' >&2
-  exit 1
+for mapping in "${release_files[@]}"; do
+  live_path=${mapping#*:}
+  test -f "$stage/release/${mapping%%:*}" || fail "Package is missing ${mapping%%:*}."
+  grep -Fq "  $live_path" "$stage/rollback.sha256" || fail "Snapshot does not cover $live_path."
+done
+
+# Only Runtime navigation depends on the patched assets; a game update silently restores them.
+backend=$(awk '/^[[:space:]]*#/ { next } /^navigation:/ { inside = 1; next } inside && /^[^ ]/ { inside = 0 } inside && $1 == "backend:" { print tolower($2) }' \
+  "$lab_root/configs/7777/SCPSLBot/config.yml")
+test -n "$backend" || fail 'Could not read navigation.backend from the SCPSLBot config.'
+if test "$backend" = 'runtime' && ! test -f "$server_root/SCPSL_Data/navmesh-asset-patch.json"; then
+  fail "Refusing deployment: navigation.backend is Runtime but $server_root has no asset patch manifest."
 fi
 
-systemctl is-active --quiet "$service_name"
-ss -lunp | grep -q ':7777[[:space:]]'
-players_output=$(scpsl-ctl console players)
-printf '%s\n' "$players_output"
-player_count=$(sed -n 's/^List of players (\([0-9][0-9]*\)):.*/\1/p' <<<"$players_output" | head -n 1)
-test "$player_count" = 0 || {
-  printf 'Refusing deployment while %s player(s) are connected.\n' "$player_count" >&2
-  exit 1
+restart_state=$(scpsl-ctl localadmin restartwhen status)
+grep -Fq 'No restart intent is armed.' <<<"$restart_state" || {
+  printf '%s\n' "$restart_state" >&2
+  fail 'Another restart intent is already armed; resolve it before deploying.'
 }
 
-deployment_id=${package_real##*/}
-deployment_id=${deployment_id%.zip}
-declare -a staged_targets=()
-while IFS= read -r relative_path; do
-  source_path="$stage/$relative_path"
-  target_path="$lab_root/$relative_path"
-  staged_path="$target_path.next-$deployment_id"
-  install -d -o scpsl -g scpsl -m 0755 "$(dirname "$target_path")"
-  install -o scpsl -g scpsl -m 0644 "$source_path" "$staged_path"
-  staged_targets+=("$relative_path")
-done < <(awk '{print $2}' "$stage/deploy.sha256")
+printf 'Backend: %s\n' "$backend"
+scpsl-ctl console players | tail -n 1
+if test "$check_only" = 'true'; then
+  printf 'Check passed; nothing was changed.\n'
+  exit 0
+fi
 
-cleanup_staged_targets() {
-  local relative_path
-  for relative_path in "${staged_targets[@]}"; do
-    rm -f -- "$lab_root/$relative_path.next-$deployment_id"
+deployment_id=$(date +%Y%m%d-%H%M%S)
+cleanup_staged() {
+  local mapping
+  for mapping in "${release_files[@]}"; do
+    rm -f -- "$lab_root/${mapping#*:}.next-$deployment_id"
   done
 }
+trap 'cleanup_staged; rm -rf -- "$stage"' EXIT
 
-players_output=$(scpsl-ctl console players)
-player_count=$(sed -n 's/^List of players (\([0-9][0-9]*\)):.*/\1/p' <<<"$players_output" | head -n 1)
-if test "$player_count" != 0; then
-  cleanup_staged_targets
-  printf 'A player connected during staging; deployment was not activated.\n' >&2
-  exit 1
-fi
-
-systemctl stop "$service_name"
-for relative_path in "${staged_targets[@]}"; do
-  mv -f -- "$lab_root/$relative_path.next-$deployment_id" "$lab_root/$relative_path"
+for mapping in "${release_files[@]}"; do
+  source_path="$stage/release/${mapping%%:*}"
+  staged_path="$lab_root/${mapping#*:}.next-$deployment_id"
+  install -m 0644 "$source_path" "$staged_path"
+  chown --reference="$lab_root/${mapping#*:}" "$staged_path"
+  cmp -s "$source_path" "$staged_path" || fail "Staged copy differs for ${mapping#*:}."
 done
-rm -f -- "$lab_root/plugins/7777/WarmupPlayerPanel.dll"
 
-(
-  cd "$lab_root"
-  sha256sum -c "$stage/deploy.sha256"
-)
-test ! -e "$lab_root/plugins/7777/WarmupPlayerPanel.dll"
-
-systemctl start "$service_name"
-for _ in $(seq 1 75); do
-  if systemctl is-active --quiet "$service_name" && ss -lunp | grep -q ':7777[[:space:]]'; then
-    break
-  fi
-  sleep 2
+for mapping in "${release_files[@]}"; do
+  mv -f -- "$lab_root/${mapping#*:}.next-$deployment_id" "$lab_root/${mapping#*:}"
 done
-systemctl is-active --quiet "$service_name"
-ss -lunp | grep -q ':7777[[:space:]]'
-# LabAPI normalizes YAML on load, so only immutable runtime artifacts retain byte-for-byte package
-# hashes after startup. Configs are checked for existence, ownership, and non-empty content here and
-# their critical parsed values are checked by the caller's post-deployment health gate.
-awk '$2 !~ /^configs\// { print }' "$stage/deploy.sha256" >"$stage/runtime.sha256"
-(
-  cd "$lab_root"
-  sha256sum -c "$stage/runtime.sha256"
-)
-while IFS= read -r relative_path; do
-  config_path="$lab_root/$relative_path"
-  test -s "$config_path"
-  test "$(stat -c '%U:%G:%a' "$config_path")" = 'scpsl:scpsl:644'
-done < <(awk '$2 ~ /^configs\// { print $2 }' "$stage/deploy.sha256")
-test ! -e "$lab_root/plugins/7777/WarmupPlayerPanel.dll"
-rm -f -- "$package_real"
+for mapping in "${release_files[@]}"; do
+  cmp -s "$stage/release/${mapping%%:*}" "$lab_root/${mapping#*:}" || fail "Installed copy differs for ${mapping#*:}."
+done
 
-printf 'Deployment activated on %s.\n' "$expected_host"
-systemctl show "$service_name" -p MainPID -p NRestarts --no-pager
-ss -lunp | grep ':7777[[:space:]]'
+scpsl-ctl localadmin restartwhen empty-now
+scpsl-ctl localadmin restartwhen status | grep -q 'empty-now' || fail 'Files are installed but the restart intent did not arm.'
+
+printf 'Queued: files are installed and the restart fires once %s is empty.\n' "$expected_host"
+printf 'The old build keeps running until then. Rollback snapshot: %s\n' "$snapshot_real"

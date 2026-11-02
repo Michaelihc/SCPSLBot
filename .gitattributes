@@ -3,6 +3,9 @@
 ###############################################################################
 * text=auto
 
+# Shell scripts run on the Linux hosts, whichever checkout they are copied from.
+*.sh text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #
