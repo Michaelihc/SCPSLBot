@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v2026.11.02.2
+
 - Allow `navigation.reconcile_interval_seconds` up to 600. The first three passes after a map load stay
   at most 5 seconds apart, and blocked crossings expire on time at any interval.
 
