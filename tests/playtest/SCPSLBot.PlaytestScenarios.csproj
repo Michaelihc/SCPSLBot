@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(SCPSL_METAREPO)\build\scpsl-deps.props" Condition="'$(SCPSL_METAREPO)' != '' And Exists('$(SCPSL_METAREPO)\build\scpsl-deps.props')" />
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
@@ -13,7 +14,7 @@
     <PublishRepositoryUrl>false</PublishRepositoryUrl>
     <EmbedUntrackedSources>false</EmbedUntrackedSources>
     <SCP_SL_MANAGED Condition="'$(SCP_SL_MANAGED)' == ''">C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed</SCP_SL_MANAGED>
-    <PlaytestHarnessAssembly Condition="'$(PlaytestHarnessAssembly)' == ''">$(MSBuildThisFileDirectory)..\..\..\.tests\Playtest\bin\Release\PlaytestHarness.dll</PlaytestHarnessAssembly>
+    <PlaytestHarnessAssembly Condition="'$(PlaytestHarnessAssembly)' == ''">$(PlaytestHarnessDll)</PlaytestHarnessAssembly>
   </PropertyGroup>
 
   <ItemGroup>

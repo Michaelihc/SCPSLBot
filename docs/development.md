@@ -9,8 +9,9 @@ node ..\.tests\lint-scenarios.js
 
 Build notes:
 
-- `ServerKeybinds` and `HsmAdapter` are project references, resolved from sibling checkouts.
-  Override them with `-p:ServerKeybindsProject=<path>` and `-p:HsmAdapterProject=<path>`.
+- With `SCPSL_METAREPO` set to the metarepo checkout, game references, `ServerKeybinds`, `HsmAdapter` and `CustomItems` come from the metarepo's shared build props (`docs/local-test-environment.md#build-dependencies`).
+  Override them with `-p:ServerKeybindsProject=<path>`, `-p:HsmAdapterProject=<path>` and `-p:CustomItemsSource=<path>`.
+- `SL_REFERENCES` or `SCP_SL_MANAGED` points at another game `Managed` folder; the default is the Steam dedicated-server install.
 - Build deployment is opt-in. The production solution excludes the in-server test and reload plugins.
 
 Verification:

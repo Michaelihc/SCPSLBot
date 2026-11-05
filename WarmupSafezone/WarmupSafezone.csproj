@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <HsmAdapterProject Condition="'$(HsmAdapterProject)' == ''">$(MSBuildThisFileDirectory)..\..\HsmAdapter\HsmAdapter.csproj</HsmAdapterProject>
-  </PropertyGroup>
+  <Import Project="$(SCPSL_METAREPO)\build\scpsl-deps.props" Condition="'$(SCPSL_METAREPO)' != '' And Exists('$(SCPSL_METAREPO)\build\scpsl-deps.props')" />
   <ItemGroup>
     <ProjectReference Include="$(HsmAdapterProject)" Private="false" />
   </ItemGroup>
@@ -21,7 +19,8 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
     <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
     <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
-    <AssemblySearchPaths>$(SL_REFERENCES);$(AssemblySearchPaths)</AssemblySearchPaths>
+    <SCP_SL_MANAGED Condition="'$(SCP_SL_MANAGED)' == ''">C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed</SCP_SL_MANAGED>
+    <AssemblySearchPaths>$(SL_REFERENCES);$(SCP_SL_MANAGED);$(AssemblySearchPaths)</AssemblySearchPaths>
   </PropertyGroup>
 
   <ItemGroup>
@@ -66,4 +65,7 @@
     <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
     <Compile Include="..\Shared\BotsOnlySwitch.cs" Link="Shared\BotsOnlySwitch.cs" />
   </ItemGroup>
+  <Target Name="RequireHsmAdapter" BeforeTargets="BeforeBuild" Condition="!Exists('$(HsmAdapterProject)')">
+    <Error Text="HsmAdapter source not found. Set SCPSL_METAREPO to the metarepo checkout, or pass -p:HsmAdapterProject=&lt;path to HsmAdapter.csproj&gt;." />
+  </Target>
 </Project>

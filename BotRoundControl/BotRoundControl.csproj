@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(SCPSL_METAREPO)\build\scpsl-deps.props" Condition="'$(SCPSL_METAREPO)' != '' And Exists('$(SCPSL_METAREPO)\build\scpsl-deps.props')" />
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>12.0</LangVersion>
@@ -7,12 +8,8 @@
     <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
     <AssemblyName>BotRoundControl</AssemblyName>
     <DefaultItemExcludes>$(DefaultItemExcludes);tests\**</DefaultItemExcludes>
-    <AssemblySearchPaths>$(SL_REFERENCES);$(AssemblySearchPaths)</AssemblySearchPaths>
-    <ServerKeybindsProject Condition="'$(ServerKeybindsProject)' == ''">$(MSBuildThisFileDirectory)..\..\ServerKeybinds\ServerKeybinds.csproj</ServerKeybindsProject>
-    <!-- CustomItems is compiled from source. Default: the sibling metarepo checkout; a task worktree under
-         .worktrees/<task>/<repo> resolves three levels up; anything else passes -p:CustomItemsSource=<path>. -->
-    <CustomItemsSource Condition="'$(CustomItemsSource)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\CustomItems\src')">$(MSBuildThisFileDirectory)..\..\CustomItems\src</CustomItemsSource>
-    <CustomItemsSource Condition="'$(CustomItemsSource)' == '' And Exists('$(MSBuildThisFileDirectory)..\..\..\CustomItems\src')">$(MSBuildThisFileDirectory)..\..\..\CustomItems\src</CustomItemsSource>
+    <SCP_SL_MANAGED Condition="'$(SCP_SL_MANAGED)' == ''">C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed</SCP_SL_MANAGED>
+    <AssemblySearchPaths>$(SL_REFERENCES);$(SCP_SL_MANAGED);$(AssemblySearchPaths)</AssemblySearchPaths>
     <!-- The shared CustomItems sources carry nullable annotations; this project compiles with warnings-only nullability. -->
     <NoWarn>$(NoWarn);CS8632</NoWarn>
   </PropertyGroup>
@@ -40,9 +37,12 @@
     <!-- WithCulture=false: "mer" is also a culture name, which would move these into a satellite assembly. -->
     <EmbeddedResource Include="Warmup\SpecialWeapons\Assets\*.mer.json" LogicalName="SpecialWeapons.%(Filename)%(Extension)" WithCulture="false" />
     <Compile Include="..\Shared\WarmupParticipationPolicy.cs" Link="Shared\WarmupParticipationPolicy.cs" />
-    <Compile Include="$(CustomItemsSource)\**\*.cs" Link="CustomItems\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Condition="'$(CustomItemsSource)' != ''" Include="$(CustomItemsSource)\**\*.cs" Link="CustomItems\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
   <Target Name="RequireCustomItemsSource" BeforeTargets="BeforeBuild" Condition="!Exists('$(CustomItemsSource)')">
-    <Error Text="CustomItems sources not found. Pass -p:CustomItemsSource=&lt;path to CustomItems\src&gt;." />
+    <Error Text="CustomItems sources not found. Set SCPSL_METAREPO to the metarepo checkout, or pass -p:CustomItemsSource=&lt;path to CustomItems\src&gt;." />
+  </Target>
+  <Target Name="RequireServerKeybinds" BeforeTargets="BeforeBuild" Condition="!Exists('$(ServerKeybindsProject)')">
+    <Error Text="ServerKeybinds source not found. Set SCPSL_METAREPO to the metarepo checkout, or pass -p:ServerKeybindsProject=&lt;path to ServerKeybinds.csproj&gt;." />
   </Target>
 </Project>

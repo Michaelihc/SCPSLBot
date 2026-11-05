@@ -1,15 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(SCPSL_METAREPO)\build\scpsl-deps.props" Condition="'$(SCPSL_METAREPO)' != '' And Exists('$(SCPSL_METAREPO)\build\scpsl-deps.props')" />
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>12.0</LangVersion>
     <Nullable>enable</Nullable>
     <AssemblyName>WarmupSafezone.Playtests</AssemblyName>
     <RootNamespace>WarmupSafezone.Playtests</RootNamespace>
+    <PlaytestHarnessProject Condition="'$(PlaytestHarnessProject)' == '' And '$(ScpslMetarepo)' != ''">$(ScpslMetarepo).tests\Playtest\PlaytestHarness.csproj</PlaytestHarnessProject>
     <SCP_SL_MANAGED Condition="'$(SCP_SL_MANAGED)' == ''">C:\Program Files (x86)\Steam\steamapps\common\SCP Secret Laboratory Dedicated Server\SCPSL_Data\Managed</SCP_SL_MANAGED>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\.tests\Playtest\PlaytestHarness.csproj" Private="false" />
+    <ProjectReference Include="$(PlaytestHarnessProject)" Private="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,4 +26,7 @@
     <Reference Include="UnityEngine.CoreModule" HintPath="$(SCP_SL_MANAGED)\UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.PhysicsModule" HintPath="$(SCP_SL_MANAGED)\UnityEngine.PhysicsModule.dll" Private="false" />
   </ItemGroup>
+  <Target Name="RequirePlaytestHarness" BeforeTargets="BeforeBuild" Condition="'$(PlaytestHarnessProject)' == '' Or !Exists('$(PlaytestHarnessProject)')">
+    <Error Text="PlaytestHarness source not found. Set SCPSL_METAREPO to the metarepo checkout, or pass -p:PlaytestHarnessProject=&lt;path to PlaytestHarness.csproj&gt;." />
+  </Target>
 </Project>
