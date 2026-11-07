@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v2026.11.07
+
 - Add `max_bot_count` to SCPSLBot's configuration for manual and normal-round bot spawning.
   It defaults to 10, accepts higher values, and disables these spawns at 0.
 
