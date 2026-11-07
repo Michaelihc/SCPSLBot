@@ -20,7 +20,7 @@ dotnet build tests/playtest/SCPSLBot.PlaytestScenarios.csproj -c Release -p:Depl
 ## Driver
 
 `tests/playtest/tools/check_normal_round.py` is the one driver. It requires a clean `git status`,
-packages the committed candidate, verifies the navmesh asset patch on every prepared slot, and runs
+packages the committed candidate, verifies the navmesh asset patch on every prepared slot for Runtime navigation, and runs
 on a fresh disposable offline-host slot (it waits for a free one). Gameplay plugins in the baseline
 overlay are removed. Evidence lands in `scpsl-bot-plugin/tests/playtest/artifacts/normal-round-<scenario>-<timestamp>/`
 under the metarepo (`*.summary.json`, `*.jsonl`, `host.log`); the server log is under the slot's
@@ -91,9 +91,9 @@ non-keycard doors (forward direction). Each run uses a fresh map seed, which the
 Bot-cap checks observe native spectators, live `bot_add` spawns and repeated cap rejections:
 
 ```powershell
-python tests/playtest/tools/check_normal_round.py --scenario scpslbot-raised-bot-cap --max-bots 12 --round-bots 11 --auto-run-delay 2 --limit 120
-python tests/playtest/tools/check_normal_round.py --scenario scpslbot-clamped-bot-cap --max-bots 2 --round-bots 3 --auto-run-delay 2 --limit 120
-python tests/playtest/tools/check_normal_round.py --scenario scpslbot-disabled-bot-cap --max-bots 0 --round-bots 3 --auto-run-delay 2 --limit 120
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-raised-bot-cap --backend Authored --max-bots 12 --round-bots 11 --auto-run-delay 2 --limit 120
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-clamped-bot-cap --backend Authored --max-bots 2 --round-bots 3 --auto-run-delay 2 --limit 120
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-disabled-bot-cap --backend Authored --max-bots 0 --round-bots 3 --auto-run-delay 2 --limit 120
 ```
 
 These run without management on an empty `bots_only` fixture; add `--backend Authored` to

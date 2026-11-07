@@ -42,10 +42,11 @@ fixture = args.scenario or ("escape" if args.escape else "population")
 scenario = args.scenario or ("scpslbot-autonomous-escape" if args.escape else "scpslbot-normal-round")
 artifacts = workspace / "scpsl-bot-plugin/tests/playtest/artifacts" / time.strftime(f"normal-round-{fixture}-%Y%m%d-%H%M%S")
 artifacts.mkdir(parents=True)
+# Runtime navigation needs readable server meshes; Authored does not consume these assets.
 # Verify every prepared slot without mutating shared media. The runner chooses the free slot.
 patcher = workspace / "scpsl-bot-plugin/tools/NavMeshAssetPatcher/bin/Release/net8.0/NavMeshAssetPatcher.dll"
 for slot in sorted((host_repo / "runtime/slots").glob("[1-6]")):
-    if (slot / "host.json").is_file():
+    if args.backend == "Runtime" and (slot / "host.json").is_file():
         verify = subprocess.run(["dotnet", str(patcher), "verify", "--server", str(slot / "Server")],
             capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
         (artifacts / f"asset-verify-{slot.name}.log").write_text(verify.stdout + verify.stderr, encoding="utf-8")
