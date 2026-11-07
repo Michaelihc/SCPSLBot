@@ -24,6 +24,7 @@ parser.add_argument("--extensions", action="store_true",
     help="also load the test-only SCPSLPluginExtensions.dll (plugin_direload) for reload scenarios")
 parser.add_argument("--map-seed", type=int, help="map seed for a named scenario; the host otherwise fixes one seed")
 parser.add_argument("--round-bots", type=int, default=0, help="with --scenario, independent round bots to create and record with round_trace")
+parser.add_argument("--max-bots", type=int, help="with --scenario, override SCPSLBot's max_bot_count")
 parser.add_argument("--auto-run-delay", type=int, default=20, help="seconds before the harness runs a named scenario; a full lobby starts its round sooner than the default")
 parser.add_argument("--reconcile-interval", type=int, help="with --scenario, navigation.reconcile_interval_seconds")
 parser.add_argument("--native-team-queue", help="with --scenario, the native team queue that allocates those bots' roles")
@@ -84,7 +85,8 @@ remove = [name for name in baseline if name.startswith("plugins/") and name.ends
 if args.scenario:
     # Named scenarios start from an empty server: they create every bot they observe.
     bot_fixture = artifacts / "bot.yml"
-    bot_fixture.write_text(chr(10).join(["language: cn", "bots_only: true", f"normal_round_bot_count: {args.round_bots}", "navigation:",
+    bot_fixture.write_text(chr(10).join(["language: cn", "bots_only: true", f"normal_round_bot_count: {args.round_bots}",
+        *([f"max_bot_count: {args.max_bots}"] if args.max_bots is not None else []), "navigation:",
         f"  backend: {args.backend}", *([f"  reconcile_interval_seconds: {args.reconcile_interval}"] if args.reconcile_interval else []), *(["round_trace:", "  enabled: true", "  sample_interval_seconds: 1"] if args.round_bots else []), ""]), encoding="utf-8")
     harness_fixture = artifacts / "harness.yml"
     harness_fixture.write_text(chr(10).join([f"auto_run_scenario: {scenario}", f"auto_run_level: {args.level}",

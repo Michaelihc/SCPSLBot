@@ -40,7 +40,8 @@ nothing failed or skipped.
 | `--management-config <file>` | With `--management`: replaces BotRoundControl's generated config |
 | `--harness-config <file>` | Replaces the generated PlaytestHarness config |
 | `--extensions` | Also loads the test-only `SCPSLPluginExtensions.dll` (`plugin_direload`) |
-| `--round-bots <n>` | With `--scenario`: creates that many independent round bots (0-10) and records `round_trace` |
+| `--round-bots <n>` | With `--scenario`: requests that many independent round bots (clamped to `max_bot_count`) and records `round_trace` |
+| `--max-bots <n>` | With `--scenario`: sets `max_bot_count` (default 10; 0 disables manual and round spawns) |
 | `--native-team-queue <queue>` | With `--scenario`: the native team queue that allocates those bots' roles |
 | `--reconcile-interval <seconds>` | With `--scenario`: sets `navigation.reconcile_interval_seconds` |
 | `--auto-run-delay <seconds>` | With `--scenario`: seconds before the harness runs it; a full lobby starts its round sooner than the default 20 |
@@ -86,6 +87,14 @@ non-keycard doors (forward direction). Each run uses a fresh map seed, which the
 `SCPSLPluginExtensions.dll`. Production and release packages intentionally exclude that driver.
 
 ## Bots-only scenarios
+
+Bot-cap checks observe native spectators, live `bot_add` spawns and repeated cap rejections:
+
+```powershell
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-raised-bot-cap --max-bots 12 --round-bots 11 --auto-run-delay 2 --limit 120
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-clamped-bot-cap --max-bots 2 --round-bots 3 --auto-run-delay 2 --limit 120
+python tests/playtest/tools/check_normal_round.py --scenario scpslbot-disabled-bot-cap --max-bots 0 --round-bots 3 --auto-run-delay 2 --limit 120
+```
 
 These run without management on an empty `bots_only` fixture; add `--backend Authored` to
 exercise the embedded navmesh:

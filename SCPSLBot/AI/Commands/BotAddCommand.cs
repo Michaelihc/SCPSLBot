@@ -20,7 +20,12 @@ namespace SCPSLBot.AI.Commands
                 return false;
             }
 
-            if (BotManager.Instance.BotPlayers.Count >= 10) { response = "Independent bot cap reached (10)."; return false; }
+            int maxBotCount = LabApiPlugin.Instance.Config.MaxBotCount;
+            if (BotManager.Instance.BotPlayers.Count >= maxBotCount)
+            {
+                response = $"Independent bot cap reached ({maxBotCount}).";
+                return false;
+            }
             var hub = BotManager.Instance.AddUnassignedBotPlayer("SCPSL Manual Bot");
             if (hub == null) { response = "Bot creation failed."; return false; }
             hub.roleManager.ServerSetRole(RoleTypeId.ChaosRifleman, RoleChangeReason.RemoteAdmin);

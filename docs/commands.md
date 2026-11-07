@@ -4,7 +4,7 @@
 |---|---|---|
 | `bot_status` | Readiness, `bots_only`, desired/tracked/owned/independent/live bots, nav generation, faults, runner heartbeat, resources | `FacilityManagement` |
 | `bot_health` | Network registry recovery counters, last repair with object/component provenance, last scan fault; also available in the server console | `FacilityManagement` |
-| `bot_add` | Spawn an independent AI bot (maximum 10); RA role changes persist | `PlayersManagement` |
+| `bot_add` | Spawn an independent AI bot up to `max_bot_count`; RA role changes persist | `PlayersManagement` |
 | `bot_manage <player ID>` | Adopt an independent bot into a maintained population slot (Standard warmup); at full population it replaces one managed bot | `PlayersManagement` |
 | `bot_unmanage <player ID>` | Release a maintained bot without despawning it; the controller creates a replacement | `PlayersManagement` |
 | `bot_warmup [none\|standard]` | Query or change the persisted warmup mode; refused while `bots_only` is on | Query: none; change: `PlayersManagement` |

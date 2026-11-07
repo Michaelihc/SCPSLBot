@@ -66,7 +66,8 @@ See the [ServerKeybinds README](https://github.com/sl-plugins-cement/serverkeybi
 These settings belong to `LabAPI/configs/<port>/SCPSLBot/config.yml`:
 
 ```yaml
-normal_round_bot_count: 0                      # 0-10 independent normal-round spectator bots
+max_bot_count: 10                             # bot_add / normal-round budget; 0 disables these spawns
+normal_round_bot_count: 0                     # 0-max_bot_count independent normal-round spectator bots
 enable_network_registry_recovery: true
 force_standard_door_connectors: false
 navigation:
@@ -80,6 +81,11 @@ round_trace:
   sample_interval_seconds: 1
 
 ```
+
+`max_bot_count` accepts any non-negative integer and counts all tracked SCPSLBot bots, including
+spectators. It limits `bot_add` and normal-round spawning; BotRoundControl's maintained warmup
+population keeps its own settings. `normal_round_bot_count` is clamped to this cap. Restart the
+server after changing either value.
 
 `round_trace` writes one JSONL file per round with every player's position, role changes and
 deaths. Render it as a top-down map with `tools/round-map/render_round_map.py`

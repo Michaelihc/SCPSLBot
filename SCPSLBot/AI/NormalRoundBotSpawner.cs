@@ -83,7 +83,7 @@ namespace SCPSLBot.AI
             if (!BotManager.Instance.CanSpawnBot())
                 return;
 
-            while (created < config.NormalRoundBotCount)
+            while (created < config.NormalRoundBotCount && BotManager.Instance.BotPlayers.Count < config.MaxBotCount)
             {
                 // No requested-role callback: it would overwrite the game's role assignment later.
                 ReferenceHub hub = BotManager.Instance.AddUnassignedBotPlayer($"SCPSL Round Bot {created + 1}");

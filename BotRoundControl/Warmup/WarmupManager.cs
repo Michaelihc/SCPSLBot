@@ -136,9 +136,10 @@ namespace SCPSLBot.Warmup
 
             int independentCount = Math.Max(0,
                 BotManager.Instance.BotPlayers.Count - botPopulation.GetDiagnostics().OwnedCount);
-            if (independentCount >= 10)
+            int maxBotCount = LabApiPlugin.Instance.Config.MaxBotCount;
+            if (BotManager.Instance.BotPlayers.Count >= maxBotCount)
             {
-                response = "Independent bot cap reached (10).";
+                response = $"Independent bot cap reached ({maxBotCount}).";
                 return false;
             }
 

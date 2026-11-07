@@ -28,10 +28,11 @@ Restart the server after changing the switch.
 
 In bots-only mode you add the bots:
 
-- Set `normal_round_bot_count` (0–10, default 0) to create independent spectators before each normal
+- Set `normal_round_bot_count` (0–`max_bot_count`, default 0) to create independent spectators before each normal
   round. Native role allocation chooses their starting roles; warmup population control stays off.
 
-- `bot_add` spawns an AI bot (at most 10 at a time). Use native RA force-class to make it any role,
+- `bot_add` spawns an AI bot up to `max_bot_count` (default 10). Set the cap in SCPSLBot's config,
+  then restart the server. Use native RA force-class to make it any role,
   SCPs included, and the AI takes over on the new role.
 - Bots are removed on round restart.
 - Dead bots are native spectators, so native NTF/Chaos waves can bring them back.
