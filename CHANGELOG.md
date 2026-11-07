@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add `max_bot_count` to SCPSLBot's configuration for manual and normal-round bot spawning.
+  It defaults to 10, accepts higher values, and disables these spawns at 0.
+
 ## v2026.11.02.2
 
 - Allow `navigation.reconcile_interval_seconds` up to 600. The first three passes after a map load stay
