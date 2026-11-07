@@ -101,10 +101,12 @@ if args.scenario:
         if args.management_config:
             management_fixture = Path(args.management_config).resolve()
         files.append(f"configs/8910/BotRoundControl/config.yml={management_fixture}")
-    if args.map_seed or args.native_team_queue:
+    cap_fixture = scenario in {"scpslbot-raised-bot-cap", "scpslbot-clamped-bot-cap", "scpslbot-disabled-bot-cap"}
+    if args.map_seed or args.native_team_queue or cap_fixture:
         library_fixture = artifacts / "library.yml"
         library_fixture.write_text("".join([f"map_seed: {args.map_seed}\n" if args.map_seed else "",
-            f"native_team_queue: '{args.native_team_queue}'\n" if args.native_team_queue else ""]), encoding="utf-8")
+            f"native_team_queue: '{args.native_team_queue}'\n" if args.native_team_queue else "",
+            "lock_lobby: true\n" if cap_fixture else ""]), encoding="utf-8")
         files.append(f"configs/8910/SCPSLBot.PlaytestScenarios/config.yml={library_fixture}")
 else:
     files = [f"configs/8910/SCPSLBot/config.yml=tests/playtest/fixtures/normal-round-{'escape' if args.escape else 'population'}.yml",
