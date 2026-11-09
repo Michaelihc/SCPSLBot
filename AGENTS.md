@@ -1,6 +1,6 @@
 # SCPSLBot
 
-Read the [shared workspace instructions](../AGENTS.md) before working here, including
+Read the [shared workspace instructions](../AGENTS.md) ([GitHub](https://github.com/sl-plugins-cement/workspace-instructions/blob/main/AGENTS.md)) before working here, including
 language, authorization and verification policy; independent repositories may not inherit them.
 Use [plugin conventions](../docs/plugin-conventions.md) for shared settings, audio and UI.
 
