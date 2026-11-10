@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep wandering bots out of zones behind locked elevators. In warmup the Gate elevators are locked,
+  and SCPs kept walking to them to reach Surface; they now roam the zones they can still reach.
+
 ## v2026.11.07
 
 - Add `max_bot_count` to SCPSLBot's configuration for manual and normal-round bot spawning.
