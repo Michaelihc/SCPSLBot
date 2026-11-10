@@ -1,9 +1,12 @@
+using Interactables.Interobjects;
 using Interactables.Interobjects.DoorUtils;
 using LightContainmentZoneDecontamination;
 using MapGeneration;
 using PlayerRoles;
 using SCPSLBot.Infrastructure;
 using SCPSLBot.Navigation;
+using SCPSLBot.Navigation.Policy;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using LabLogger = LabApi.Features.Console.Logger;
@@ -694,6 +697,8 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
         /// Zones a role wanders through: SCPs the whole facility, humans their zone and the zones next
         /// to it. Path checks keep a human without the right keycard on this side of a border.
         /// LCZ is dropped once decontamination runs and everything but Surface after detonation.
+        /// Zones behind locked elevators are dropped too (warmup locks the Gate elevators): path
+        /// checks ignore elevator locks, so the bot would otherwise keep walking to a dead lift.
         /// </summary>
         private static int GetAllowedZones(PlayerRoleBase role, FacilityZone current)
         {
@@ -723,7 +728,68 @@ namespace SCPSLBot.AI.FirstPersonControl.Brain
                 zones &= ZoneBit(FacilityZone.Surface);
             }
 
+            if (current is not (FacilityZone.None or FacilityZone.Other))
+            {
+                zones &= ZonesReachableByElevator(current);
+            }
+
             return zones;
+        }
+
+        private static readonly List<(int A, int B)> ZoneLinks = new();
+        private static readonly ElevatorGroup[] ElevatorGroups = (ElevatorGroup[])Enum.GetValues(typeof(ElevatorGroup));
+
+        /// <summary>
+        /// Zones reachable from <paramref name="current"/> when every locked elevator is cut. The
+        /// Heavy/Entrance checkpoint is a door, which path checks already judge. A zone pair with
+        /// no elevator found at all stays linked, so a missing lift never strands the bot.
+        /// </summary>
+        private static int ZonesReachableByElevator(FacilityZone current)
+        {
+            var lczHcz = ZoneBit(FacilityZone.LightContainment) | ZoneBit(FacilityZone.HeavyContainment);
+            var ezSurface = ZoneBit(FacilityZone.Entrance) | ZoneBit(FacilityZone.Surface);
+            int seenPairs = 0, openPairs = 0;
+            foreach (var group in ElevatorGroups)
+            {
+                var doors = ElevatorDoor.GetDoorsForGroup(group);
+                if (doors.Count != 2 || !TryGetDoorZone(doors[0], out var zoneA) || !TryGetDoorZone(doors[1], out var zoneB) || zoneA == zoneB)
+                {
+                    continue;
+                }
+
+                var pair = ZoneBit(zoneA) | ZoneBit(zoneB);
+                seenPairs |= pair == lczHcz ? 1 : pair == ezSurface ? 2 : 0;
+                if (doors[0].ActiveLocks == 0 && doors[1].ActiveLocks == 0)
+                {
+                    openPairs |= pair == lczHcz ? 1 : pair == ezSurface ? 2 : 0;
+                }
+            }
+
+            ZoneLinks.Clear();
+            ZoneLinks.Add((ZoneBit(FacilityZone.HeavyContainment), ZoneBit(FacilityZone.Entrance)));
+            if ((openPairs & 1) != 0 || (seenPairs & 1) == 0)
+            {
+                ZoneLinks.Add((ZoneBit(FacilityZone.LightContainment), ZoneBit(FacilityZone.HeavyContainment)));
+            }
+
+            if ((openPairs & 2) != 0 || (seenPairs & 2) == 0)
+            {
+                ZoneLinks.Add((ZoneBit(FacilityZone.Entrance), ZoneBit(FacilityZone.Surface)));
+            }
+
+            return ZoneReachPolicy.Reachable(ZoneBit(current), ZoneLinks);
+        }
+
+        private static bool TryGetDoorZone(ElevatorDoor door, out FacilityZone zone)
+        {
+            zone = FacilityZone.None;
+            if (door == null || door.Rooms == null || door.Rooms.Length == 0 || door.Rooms[0] == null)
+            {
+                return false;
+            }
+
+            zone = door.Rooms[0].Zone;
+            return zone is FacilityZone.LightContainment or FacilityZone.HeavyContainment or FacilityZone.Entrance or FacilityZone.Surface;
         }
 
         private static int AdjacentZones(FacilityZone zone)
