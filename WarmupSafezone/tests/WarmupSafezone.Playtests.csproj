@@ -29,4 +29,7 @@
   <Target Name="RequirePlaytestHarness" BeforeTargets="BeforeBuild" Condition="'$(PlaytestHarnessProject)' == '' Or !Exists('$(PlaytestHarnessProject)')">
     <Error Text="PlaytestHarness source not found. Set SCPSL_METAREPO to the metarepo checkout, or pass -p:PlaytestHarnessProject=&lt;path to PlaytestHarness.csproj&gt;." />
   </Target>
+  <ItemGroup>
+    <Compile Include="..\..\SCPSLBot\RoleIntro.cs" Link="RoleIntro.cs" />
+  </ItemGroup>
 </Project>

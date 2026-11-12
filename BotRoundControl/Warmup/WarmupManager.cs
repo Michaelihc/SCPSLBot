@@ -158,7 +158,7 @@ namespace SCPSLBot.Warmup
                     return false;
                 }
 
-                hub.roleManager.ServerSetRole(RoleTypeId.ChaosRifleman, RoleChangeReason.RemoteAdmin);
+                hub.roleManager.ServerSetRole(RoleTypeId.ChaosRifleman, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
             }
             catch (Exception exception)
             {

@@ -36,4 +36,7 @@
                HintPath="$(PlaytestHarnessAssembly)"
                Private="false" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\SCPSLBot\RoleIntro.cs" Link="RoleIntro.cs" />
+  </ItemGroup>
 </Project>

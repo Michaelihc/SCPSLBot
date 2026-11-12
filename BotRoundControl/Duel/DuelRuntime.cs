@@ -13,6 +13,8 @@ using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using SCPSLBot.Presentation;
 using UnityEngine;
+using RoleIntro = SCPSLBot.RoleIntro;
+using IntroIntent = SCPSLBot.IntroIntent;
 
 namespace DuelArena;
 
@@ -198,7 +200,7 @@ internal sealed partial class DuelRuntime
         try
         {
             Player player = participant.Player;
-            player.SetRole(role, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.None);
+            player.SetRole(role, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.None, IntroIntent.Hidden));
             if (player.Role != role || !Valid(participant)) throw new InvalidOperationException("Role assignment rejected.");
             player.ClearInventory();
             if (!participant.Viewer)
@@ -225,10 +227,10 @@ internal sealed partial class DuelRuntime
         transitioning = true;
         try
         {
-            participant.Player.SetRole(RoleTypeId.Spectator);
+            participant.Player.SetRole(RoleTypeId.Spectator, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
             if (ReturnToSurface?.Invoke(participant.Player) != true)
             {
-                participant.Player.SetRole(RoleTypeId.NtfPrivate);
+                participant.Player.SetRole(RoleTypeId.NtfPrivate, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
                 participant.Hub.TryOverridePosition(participant.ReturnPosition);
             }
         }

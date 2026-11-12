@@ -620,7 +620,7 @@ namespace SCPSLBot.AI.Diagnostics
                 yield break;
             }
 
-            bot.roleManager?.ServerSetRole(RoleTypeId.ClassD, RoleChangeReason.RemoteAdmin);
+            bot.roleManager?.ServerSetRole(RoleTypeId.ClassD, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
             var waited = 0f;
             while (bot != null && bot.roleManager?.CurrentRole is not FpcStandardRoleBase && waited < 5f)
             {

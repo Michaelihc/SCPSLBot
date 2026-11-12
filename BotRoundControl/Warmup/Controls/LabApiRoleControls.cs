@@ -222,7 +222,7 @@ internal sealed class LabApiExactRoleChangeExecutor : IExactRoleChangeExecutor
         try
         {
             // The anchor has already been resolved. Disable native random placement but retain inventory.
-            native.SetRole(exactRole, reason, RoleSpawnFlags.AssignInventory);
+            native.SetRole(exactRole, reason, RoleIntro.Flags(RoleSpawnFlags.AssignInventory, IntroIntent.Hidden));
             if (native.IsDestroyed)
             {
                 return ExactRoleChangeExecutionResult.Failed;
@@ -266,7 +266,7 @@ internal sealed class LabApiExactRoleChangeExecutor : IExactRoleChangeExecutor
 
             if (player.Role != originalRole)
             {
-                player.SetRole(originalRole, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.AssignInventory);
+                player.SetRole(originalRole, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.AssignInventory, IntroIntent.Hidden));
             }
 
             if (player.IsDestroyed || player.Role != originalRole)

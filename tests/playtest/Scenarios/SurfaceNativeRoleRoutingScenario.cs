@@ -55,7 +55,7 @@ public sealed class SurfaceNativeRoleRoutingScenario : Scenario
         player.ReferenceHub.roleManager.ServerSetRole(
             RoleTypeId.ChaosRifleman,
             RoleChangeReason.ItemUsage,
-            RoleSpawnFlags.All);
+            RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
         yield return ctx.Wait(0.75f);
         ctx.Require(player.Role == RoleTypeId.ChaosRifleman,
             $"native item-driven role did not become ChaosRifleman (actual {player.Role})");
@@ -75,7 +75,7 @@ public sealed class SurfaceNativeRoleRoutingScenario : Scenario
         player.ReferenceHub.roleManager.ServerSetRole(
             RoleTypeId.Scp173,
             RoleChangeReason.ItemUsage,
-            RoleSpawnFlags.All);
+            RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
         yield return ctx.Wait(0.75f);
         ctx.Require(player.Role == RoleTypeId.Scp173,
             $"native item-driven SCP role did not become Scp173 (actual {player.Role})");
@@ -96,7 +96,7 @@ public sealed class SurfaceNativeRoleRoutingScenario : Scenario
         player.ReferenceHub.roleManager.ServerSetRole(
             RoleTypeId.ChaosRifleman,
             RoleChangeReason.ItemUsage,
-            RoleSpawnFlags.All);
+            RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
         yield return ctx.Wait(0.75f);
         ctx.Require(player.Role == RoleTypeId.ChaosRifleman,
             $"facility native role did not become ChaosRifleman (actual {player.Role})");

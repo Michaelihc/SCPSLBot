@@ -297,7 +297,7 @@ namespace SCPSLBot.AI
                 var currentRole = referenceHub.roleManager.CurrentRole;
                 if (currentRole?.RoleTypeId != requestedRole)
                 {
-                    referenceHub.roleManager.ServerSetRole(requestedRole, RoleChangeReason.RemoteAdmin);
+                    referenceHub.roleManager.ServerSetRole(requestedRole, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
                 }
 
                 return referenceHub.roleManager.CurrentRole?.RoleTypeId == requestedRole;
