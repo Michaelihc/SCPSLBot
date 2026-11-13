@@ -28,7 +28,7 @@ namespace SCPSLBot.AI.Commands
             }
             var hub = BotManager.Instance.AddUnassignedBotPlayer("SCPSL Manual Bot");
             if (hub == null) { response = "Bot creation failed."; return false; }
-            hub.roleManager.ServerSetRole(RoleTypeId.ChaosRifleman, RoleChangeReason.RemoteAdmin);
+            hub.roleManager.ServerSetRole(RoleTypeId.ChaosRifleman, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
             response = $"Spawned independent bot player_id={hub.PlayerId}.";
             return true;
         }

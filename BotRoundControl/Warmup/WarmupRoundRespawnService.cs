@@ -213,7 +213,7 @@ namespace SCPSLBot.Warmup
             SpectatorRespawnSource source = observation.Source;
             try
             {
-                player.SetRole(requestedRole, RoleChangeReason.Respawn, RoleSpawnFlags.All);
+                player.SetRole(requestedRole, RoleChangeReason.Respawn, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
             }
             catch (Exception exception)
             {

@@ -196,7 +196,7 @@ namespace SCPSLBot.Warmup
             pendingArenaSwitches[playerId] = new ArenaSwitchTransaction(defaultRole, arena, targetPosition);
             try
             {
-                player.SetRole(defaultRole, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.All);
+                player.SetRole(defaultRole, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
             }
             catch
             {
@@ -1023,7 +1023,7 @@ namespace SCPSLBot.Warmup
             {
                 if (player.Role != originalRole)
                 {
-                    player.SetRole(originalRole, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.All);
+                    player.SetRole(originalRole, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
                 }
 
                 pendingRoleOrigins.Remove(player.PlayerId);

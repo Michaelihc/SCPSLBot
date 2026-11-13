@@ -14,6 +14,8 @@ using System.Linq;
 using UnityEngine;
 using PrimitiveObjectToy = LabApi.Features.Wrappers.PrimitiveObjectToy;
 using TextToy = LabApi.Features.Wrappers.TextToy;
+using RoleIntro = SCPSLBot.RoleIntro;
+using IntroIntent = SCPSLBot.IntroIntent;
 
 namespace WarmupSafezone.Playtests;
 
@@ -88,7 +90,7 @@ public sealed class Scp914SafezoneScenario : Scenario
         PlayerEvents.ChangingRole += CancelRoleRequest;
         try
         {
-            attackerPlayer.SetRole(RoleTypeId.Scientist, RoleChangeReason.RemoteAdmin, RoleSpawnFlags.All);
+            attackerPlayer.SetRole(RoleTypeId.Scientist, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
         }
         finally
         {

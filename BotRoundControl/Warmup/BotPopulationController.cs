@@ -455,7 +455,7 @@ namespace SCPSLBot.Warmup
             try
             {
                 var reason = entry.Hub.IsAlive() ? RoleChangeReason.RemoteAdmin : RoleChangeReason.Respawn;
-                entry.Hub.roleManager.ServerSetRole(desiredRole, reason);
+                entry.Hub.roleManager.ServerSetRole(desiredRole, reason, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
             }
             catch (Exception exception)
             {

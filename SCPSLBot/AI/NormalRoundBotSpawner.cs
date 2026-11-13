@@ -92,7 +92,7 @@ namespace SCPSLBot.AI
 
                 try
                 {
-                    hub.roleManager.ServerSetRole(RoleTypeId.Spectator, RoleChangeReason.RemoteAdmin);
+                    hub.roleManager.ServerSetRole(RoleTypeId.Spectator, RoleChangeReason.RemoteAdmin, RoleIntro.Flags(RoleSpawnFlags.All, IntroIntent.Hidden));
                     created++;
                     Logger.Info($"[SCPSLBot] NORMAL_ROUND_BOT_CREATED player_id={hub.PlayerId} slot={created} role=Spectator");
                 }
