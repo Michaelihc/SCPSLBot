@@ -14,6 +14,9 @@ internal sealed partial class DuelRuntime
         string name = Safe(participant.Player.Nickname);
         return name.Length > 12 ? name.Substring(0, 12) + "…" : name;
     }
+
+    private static string ScoreboardName(Participant participant) => $"#{participant.PlayerId} {ShortName(participant)}";
+
     private static void RemoveScoreboard(Participant participant)
     {
         var board = participant.Scoreboard;
@@ -27,8 +30,8 @@ internal sealed partial class DuelRuntime
         if (participants.Count == 0) return;
         var left = challenger ?? residentWinner;
         var right = opponent;
-        string next = challengeQueue.Count > 0 ? ShortName(challengeQueue[0])
-            : queue.Count > 0 ? ShortName(queue[0].Left) + " / " + ShortName(queue[0].Right) : "暂无";
+        string next = challengeQueue.Count > 0 ? ScoreboardName(challengeQueue[0])
+            : queue.Count > 0 ? ScoreboardName(queue[0].Left) + " / " + ScoreboardName(queue[0].Right) : "暂无";
         string phase = !Fighting ? "决斗场  /  等待开场"
             : Now < matchStart ? $"决斗场  /  {Mathf.CeilToInt(matchStart - Now)} 秒后开始" : "决斗场  /  对决中";
         foreach (var viewer in participants.Values)
@@ -38,9 +41,9 @@ internal sealed partial class DuelRuntime
             {
                 viewer.Scoreboard ??= new DuelScoreboard(viewer.Hub);
                 viewer.Scoreboard.Update(phase, "下一场  ·  " + next,
-                    left == null ? "待入场" : ShortName(left), Mathf.CeilToInt(left?.Player.Health ?? 0),
+                    left == null ? "待入场" : ScoreboardName(left), Mathf.CeilToInt(left?.Player.Health ?? 0),
                     Mathf.CeilToInt(left?.Player.MaxHealth ?? 0), left?.Wins ?? 0,
-                    right == null ? "待入场" : ShortName(right), Mathf.CeilToInt(right?.Player.Health ?? 0),
+                    right == null ? "待入场" : ScoreboardName(right), Mathf.CeilToInt(right?.Player.Health ?? 0),
                     Mathf.CeilToInt(right?.Player.MaxHealth ?? 0), right?.Wins ?? 0);
             }
             catch (Exception ex)
