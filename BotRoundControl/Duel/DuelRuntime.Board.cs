@@ -70,31 +70,31 @@ internal sealed partial class DuelRuntime
         rosterKey = key;
         // Native StandardDistanceVerification limits client interaction to 2.42 m.
         // Keep every row within that range from the viewing-deck entry pose.
-        AddRow(new Vector3(0, 1.5f, -1.5f), "<b>观众席 · 选择对手</b>", "header", null);
+        AddRow(new Vector3(0, 1.5f, 1.5f), "<b>观众席 · 选择对手</b>", "header", null);
         int index = 0;
         foreach (Player candidate in candidates.Skip(page * 8).Take(8))
         {
             float x = index % 2 == 0 ? -1.15f : 1.15f;
             float y = 1.15f - index / 2 * 0.33f;
-            AddRow(new Vector3(x, y, -1.5f), $"{candidate.PlayerId} · {Safe(candidate.Nickname)}", "player", candidate);
+            AddRow(new Vector3(x, y, 1.5f), $"{candidate.PlayerId} · {Safe(candidate.Nickname)}", "player", candidate);
             index++;
         }
-        AddRow(new Vector3(-1.15f, -0.3f, -1.5f), "选择所有玩家", "all", null);
-        AddRow(new Vector3(1.15f, -0.3f, -1.5f), "发送邀请", "invite", null);
+        AddRow(new Vector3(-1.15f, -0.3f, 1.5f), "选择所有玩家", "all", null);
+        AddRow(new Vector3(1.15f, -0.3f, 1.5f), "发送邀请", "invite", null);
         if (pages > 1)
         {
-            AddRow(new Vector3(-1.15f, 1.95f, -1.5f), $"上一页  {page + 1}/{pages}", "previous", null);
-            AddRow(new Vector3(1.15f, 1.95f, -1.5f), "下一页", "next", null);
+            AddRow(new Vector3(-1.15f, 1.95f, 1.5f), $"上一页  {page + 1}/{pages}", "previous", null);
+            AddRow(new Vector3(1.15f, 1.95f, 1.5f), "下一页", "next", null);
         }
     }
     private void AddRow(Vector3 local, string label, string action, Player? candidate)
     {
         Vector3 position = ViewingPosition + local;
-        Quaternion rotation = Quaternion.Euler(0, 180, 0);
+        Quaternion rotation = Quaternion.identity;
         float width = action == "header" ? 4.5f : 2.2f;
         float glyphWidth = label.Sum(c => c < 128 ? 0.55f : 1f);
         float fontSize = Math.Min(2.2f, width / (0.09f * Math.Max(1f, glyphWidth)));
-        var background = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(position - new Vector3(0, 0, 0.04f), rotation,
+        var background = PrimitiveObjectToy.Get(ToyFactory.Create<AdminToys.PrimitiveObjectToy>(position + new Vector3(0, 0, 0.04f), rotation,
             new Vector3(width, 0.3f, 0.04f)));
         background.Type = PrimitiveType.Cube;
         background.Flags = AdminToys.PrimitiveFlags.Visible;

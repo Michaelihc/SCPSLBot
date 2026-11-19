@@ -24,6 +24,7 @@
     <Reference Include="CommandSystem.Core" Private="false" />
     <Reference Include="Mirror" Private="false" />
     <Reference Include="Pooling" Private="false" />
+    <Reference Include="UnityEngine.UIElementsModule" Private="false" />
     <Reference Include="UnityEngine.CoreModule" Private="false" />
     <Reference Include="UnityEngine.PhysicsModule" Private="false" />
     <Reference Include="UnityEngine.AIModule" Private="false" />

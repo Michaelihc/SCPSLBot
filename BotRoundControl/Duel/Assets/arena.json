@@ -2,715 +2,1001 @@
   "RootObjectId": 23914,
   "Blocks": [
     {
-      "Name": "Cube",
-      "ObjectId": -2050,
+      "Name": "Court deck",
+      "ObjectId": 1000,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "x": 0,
+        "y": -0.14,
+        "z": 0
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 20.0,
-        "y": 0.1,
-        "z": 30.0
+        "x": 20,
+        "y": 0.28,
+        "z": 30
       },
-      "BlockType": 1,
       "Properties": {
         "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
         "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
+        "Color": "53656BFF"
       }
     },
     {
-      "Name": "Cube (5)",
-      "ObjectId": -1906,
+      "Name": "Side bulkhead",
+      "ObjectId": 1001,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": 9.95,
-        "y": 1.41,
-        "z": 0.0
+        "x": -9.85,
+        "y": 1.22,
+        "z": 0
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 90.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 30.0,
-        "y": 3.0,
-        "z": 0.1
+        "x": 0.3,
+        "y": 2.5,
+        "z": 30
       },
-      "BlockType": 1,
       "Properties": {
         "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
         "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
+        "Color": "364854FF"
       }
     },
     {
-      "Name": "Cube (6)",
-      "ObjectId": -1622,
+      "Name": "Sideline",
+      "ObjectId": 1002,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": -9.95,
-        "y": 1.48,
-        "z": 0.0
+        "x": -8.95,
+        "y": 0.012,
+        "z": 0
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 90.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 30.0,
-        "y": 3.0,
-        "z": 0.1
+        "x": 0.11,
+        "y": 0.022,
+        "z": 28
       },
-      "BlockType": 1,
       "Properties": {
         "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
-        "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
+        "PrimitiveFlags": 2,
+        "Color": "A5B8BAFF"
       }
     },
     {
-      "Name": "Point Light (4)",
-      "ObjectId": -2100,
+      "Name": "Wall rib",
+      "ObjectId": 1003,
       "ParentId": 23914,
-      "Position": {
-        "x": -7.815151,
-        "y": 2.77485037,
-        "z": -7.702072
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "BlockType": 2,
-      "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
-      "Name": "Point Light (3)",
-      "ObjectId": -2026,
-      "ParentId": 23914,
-      "Position": {
-        "x": -7.855152,
-        "y": 2.77485037,
-        "z": 6.57
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "BlockType": 2,
-      "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
-      "Name": "Point Light (2)",
-      "ObjectId": -1604,
-      "ParentId": 23914,
-      "Position": {
-        "x": 6.91484833,
-        "y": 2.77485037,
-        "z": 6.34
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "BlockType": 2,
-      "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
-      "Name": "Point Light (1)",
-      "ObjectId": -1596,
-      "ParentId": 23914,
-      "Position": {
-        "x": 7.17485046,
-        "y": 2.77485037,
-        "z": -6.93207169
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "BlockType": 2,
-      "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
-      "Name": "Point Light",
-      "ObjectId": -1916,
-      "ParentId": 23914,
-      "Position": {
-        "x": 0.594848633,
-        "y": 2.77485037,
-        "z": 0.407928467
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
-      },
-      "BlockType": 2,
-      "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
-      }
-    },
-    {
-      "Name": "Cube (7)",
-      "ObjectId": -1724,
-      "ParentId": 23914,
-      "Position": {
-        "x": 0.0,
-        "y": 1.45,
-        "z": 14.95
-      },
-      "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
-      },
-      "Scale": {
-        "x": 20.0,
-        "y": 3.0,
-        "z": 0.1
-      },
       "BlockType": 1,
+      "Position": {
+        "x": -9.63,
+        "y": 1.23,
+        "z": -12
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
+      },
       "Properties": {
         "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
         "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
+        "Color": "789096FF"
       }
     },
     {
-      "Name": "Cube (8)",
-      "ObjectId": -1236,
+      "Name": "Wall rib",
+      "ObjectId": 1004,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": 0.0,
-        "y": 1.45,
-        "z": -14.95
+        "x": -9.63,
+        "y": 1.23,
+        "z": -6
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 20.0,
-        "y": 3.0,
-        "z": 0.1
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
       },
-      "BlockType": 1,
       "Properties": {
         "PrimitiveType": 3,
-        "Color": "FFFFFFFF",
         "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
+        "Color": "789096FF"
       }
     },
     {
-      "Name": "Point Light (5)",
-      "ObjectId": -1752,
+      "Name": "Wall rib",
+      "ObjectId": 1005,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": -8.01,
-        "y": 2.77485037,
-        "z": 0.407928467
+        "x": -9.63,
+        "y": 1.23,
+        "z": 0
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
       },
-      "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
       }
     },
     {
-      "Name": "Point Light (7)",
-      "ObjectId": -1632,
+      "Name": "Wall rib",
+      "ObjectId": 1006,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": 0.594848633,
-        "y": 2.77485037,
-        "z": 6.62
+        "x": -9.63,
+        "y": 1.23,
+        "z": 6
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
       },
-      "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
       }
     },
     {
-      "Name": "Point Light (6)",
-      "ObjectId": -1734,
+      "Name": "Wall rib",
+      "ObjectId": 1007,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": 7.02,
-        "y": 2.77485037,
-        "z": 0.407928467
+        "x": -9.63,
+        "y": 1.23,
+        "z": 12
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
       },
-      "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
       }
     },
     {
-      "Name": "Point Light (8)",
-      "ObjectId": -1362,
+      "Name": "Wall inset",
+      "ObjectId": 1008,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": 0.594848633,
-        "y": 2.77485037,
-        "z": -7.0
+        "x": -9.66,
+        "y": 1.8,
+        "z": -7.5
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 0.09,
+        "y": 0.12,
+        "z": 14.5
       },
-      "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
       }
     },
     {
-      "Name": "Text",
-      "ObjectId": -1886,
+      "Name": "Wall inset",
+      "ObjectId": 1009,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": -9.900002,
-        "y": 1.52485085,
-        "z": 0.67
+        "x": -9.66,
+        "y": 1.8,
+        "z": 7.5
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 270.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 0.09,
+        "y": 0.12,
+        "z": 14.5
       },
-      "BlockType": 8,
       "Properties": {
-        "Text": "1V1",
-        "DisplaySize": {
-          "x": 200.0,
-          "y": 50.0
-        },
-        "Static": false,
-        "MovementSmoothing": 60
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
       }
     },
     {
-      "Name": "Text (1)",
-      "ObjectId": -1560,
+      "Name": "Side bulkhead",
+      "ObjectId": 1010,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": 9.849998,
-        "y": 1.52485085,
-        "z": 0.67
+        "x": 9.85,
+        "y": 1.22,
+        "z": 0
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 90.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 1.0,
-        "y": 1.0,
-        "z": 1.0
+        "x": 0.3,
+        "y": 2.5,
+        "z": 30
       },
-      "BlockType": 8,
       "Properties": {
-        "Text": "狭路相逢\n勇者胜！",
-        "DisplaySize": {
-          "x": 200.0,
-          "y": 50.0
-        },
-        "Static": false,
-        "MovementSmoothing": 60
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
       }
     },
     {
-      "Name": "Plane",
-      "ObjectId": -1780,
+      "Name": "Sideline",
+      "ObjectId": 1011,
       "ParentId": 23914,
+      "BlockType": 1,
       "Position": {
-        "x": -0.1800003,
-        "y": 4.544851,
+        "x": 8.95,
+        "y": 0.012,
+        "z": 0
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.11,
+        "y": 0.022,
+        "z": 28
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "A5B8BAFF"
+      }
+    },
+    {
+      "Name": "Wall rib",
+      "ObjectId": 1012,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.63,
+        "y": 1.23,
+        "z": -12
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Wall rib",
+      "ObjectId": 1013,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.63,
+        "y": 1.23,
+        "z": -6
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Wall rib",
+      "ObjectId": 1014,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.63,
+        "y": 1.23,
+        "z": 0
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Wall rib",
+      "ObjectId": 1015,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.63,
+        "y": 1.23,
+        "z": 6
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Wall rib",
+      "ObjectId": 1016,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.63,
+        "y": 1.23,
+        "z": 12
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.18,
+        "y": 2.48,
+        "z": 0.22
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Wall inset",
+      "ObjectId": 1017,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.66,
+        "y": 1.8,
+        "z": -7.5
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.09,
+        "y": 0.12,
+        "z": 14.5
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "Wall inset",
+      "ObjectId": 1018,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.66,
+        "y": 1.8,
+        "z": 7.5
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.09,
+        "y": 0.12,
+        "z": 14.5
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "End bulkhead",
+      "ObjectId": 1019,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 1.05,
+        "z": -14.85
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 19.6,
+        "y": 2.15,
+        "z": 0.3
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "23323CFF"
+      }
+    },
+    {
+      "Name": "Start line",
+      "ObjectId": 1020,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 0.012,
+        "z": -9.5
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 17.8,
+        "y": 0.022,
+        "z": 0.12
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "Lane block",
+      "ObjectId": 1021,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -6,
+        "y": 0.53,
+        "z": -4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 2.4,
+        "y": 1.06,
+        "z": 1.1
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Lane block cap",
+      "ObjectId": 1022,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -6,
+        "y": 1.08,
+        "z": -4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 2.44,
+        "y": 0.06,
+        "z": 1.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "Lane block",
+      "ObjectId": 1023,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 6,
+        "y": 0.53,
+        "z": -4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 2.4,
+        "y": 1.06,
+        "z": 1.1
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Lane block cap",
+      "ObjectId": 1024,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 6,
+        "y": 1.08,
+        "z": -4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 2.44,
+        "y": 0.06,
+        "z": 1.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "End bulkhead",
+      "ObjectId": 1025,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 1.05,
+        "z": 14.85
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 19.6,
+        "y": 2.15,
+        "z": 0.3
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "23323CFF"
+      }
+    },
+    {
+      "Name": "Start line",
+      "ObjectId": 1026,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 0.012,
+        "z": 9.5
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 17.8,
+        "y": 0.022,
+        "z": 0.12
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "Lane block",
+      "ObjectId": 1027,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -6,
+        "y": 0.53,
+        "z": 4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 2.4,
+        "y": 1.06,
+        "z": 1.1
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Lane block cap",
+      "ObjectId": 1028,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -6,
+        "y": 1.08,
+        "z": 4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 2.44,
+        "y": 0.06,
+        "z": 1.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "Lane block",
+      "ObjectId": 1029,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 6,
+        "y": 0.53,
+        "z": 4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 2.4,
+        "y": 1.06,
+        "z": 1.1
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Lane block cap",
+      "ObjectId": 1030,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 6,
+        "y": 1.08,
+        "z": 4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 2.44,
+        "y": 0.06,
+        "z": 1.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "Centre line",
+      "ObjectId": 1031,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 0.014,
+        "z": 0
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 17.8,
+        "y": 0.024,
+        "z": 0.12
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "A5B8BAFF"
+      }
+    },
+    {
+      "Name": "Observation deck",
+      "ObjectId": 1032,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 4.55,
         "z": 18.82
       },
       "Rotation": {
-        "x": 0.0,
-        "y": 0.0,
-        "z": 0.0
+        "x": 0,
+        "y": 0,
+        "z": 0
       },
       "Scale": {
-        "x": 2.0,
+        "x": 2,
         "y": 0.5,
-        "z": 0.5
+        "z": 0.55
       },
-      "BlockType": 1,
       "Properties": {
         "PrimitiveType": 4,
-        "Color": "FFFFFFFF",
         "PrimitiveFlags": 3,
-        "Scp106Passable": false,
-        "Static": false,
-        "MovementSmoothing": 60
+        "Color": "23323CFF"
       }
     },
     {
-      "Name": "Point Light (9)",
-      "ObjectId": -10220,
+      "Name": "Gallery cheek",
+      "ObjectId": 1033,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -9.75,
+        "y": 5.07,
+        "z": 18.82
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.25,
+        "y": 1.04,
+        "z": 5.5
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Gallery cheek",
+      "ObjectId": 1034,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.75,
+        "y": 5.07,
+        "z": 18.82
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.25,
+        "y": 1.04,
+        "z": 5.5
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Gallery fascia",
+      "ObjectId": 1035,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 4.24,
+        "z": 16.12
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 20,
+        "y": 0.62,
+        "z": 0.22
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Gallery trim",
+      "ObjectId": 1036,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 4.48,
+        "z": 15.99
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 19.6,
+        "y": 0.09,
+        "z": 0.05
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "Gallery back wall",
+      "ObjectId": 1037,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 5.7,
+        "z": 21.5
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 20,
+        "y": 2.3,
+        "z": 0.18
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "23323CFF"
+      }
+    },
+    {
+      "Name": "Overhead light",
+      "ObjectId": 1038,
       "ParentId": 23914,
       "Position": {
-        "x": -7.855152,
-        "y": 2.77485037,
-        "z": 11.87
+        "x": -6,
+        "y": 7.8,
+        "z": -9
       },
       "Rotation": {
         "x": 0.0,
@@ -724,45 +1010,19 @@
       },
       "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "Intensity": 2.2,
+        "Range": 16,
+        "Color": "EFF8FFFF"
       }
     },
     {
-      "Name": "Point Light (10)",
-      "ObjectId": -10232,
+      "Name": "Overhead light",
+      "ObjectId": 1039,
       "ParentId": 23914,
       "Position": {
-        "x": 6.91484833,
-        "y": 2.77485037,
-        "z": 11.64
+        "x": 6,
+        "y": 7.8,
+        "z": -9
       },
       "Rotation": {
         "x": 0.0,
@@ -776,45 +1036,19 @@
       },
       "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "Intensity": 2.2,
+        "Range": 16,
+        "Color": "EFF8FFFF"
       }
     },
     {
-      "Name": "Point Light (11)",
-      "ObjectId": -10226,
+      "Name": "Overhead light",
+      "ObjectId": 1040,
       "ParentId": 23914,
       "Position": {
-        "x": 0.594848633,
-        "y": 2.77485037,
-        "z": 11.92
+        "x": -6,
+        "y": 7.8,
+        "z": 8
       },
       "Rotation": {
         "x": 0.0,
@@ -828,45 +1062,19 @@
       },
       "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "Intensity": 2.2,
+        "Range": 16,
+        "Color": "EFF8FFFF"
       }
     },
     {
-      "Name": "Point Light (12)",
-      "ObjectId": -10260,
+      "Name": "Overhead light",
+      "ObjectId": 1041,
       "ParentId": 23914,
       "Position": {
-        "x": -7.855152,
-        "y": 6.78,
-        "z": 18.92
+        "x": 6,
+        "y": 7.8,
+        "z": 8
       },
       "Rotation": {
         "x": 0.0,
@@ -880,45 +1088,19 @@
       },
       "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "Intensity": 2.2,
+        "Range": 16,
+        "Color": "EFF8FFFF"
       }
     },
     {
-      "Name": "Point Light (13)",
-      "ObjectId": -10272,
+      "Name": "Overhead light",
+      "ObjectId": 1042,
       "ParentId": 23914,
       "Position": {
-        "x": 6.91484833,
-        "y": 6.78,
-        "z": 18.69
+        "x": -5,
+        "y": 7.8,
+        "z": 19
       },
       "Rotation": {
         "x": 0.0,
@@ -932,45 +1114,19 @@
       },
       "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "Intensity": 2.2,
+        "Range": 16,
+        "Color": "EFF8FFFF"
       }
     },
     {
-      "Name": "Point Light (14)",
-      "ObjectId": -10266,
+      "Name": "Overhead light",
+      "ObjectId": 1043,
       "ParentId": 23914,
       "Position": {
-        "x": 0.594848633,
-        "y": 6.78,
-        "z": 18.97
+        "x": 5,
+        "y": 7.8,
+        "z": 19
       },
       "Rotation": {
         "x": 0.0,
@@ -984,35 +1140,919 @@
       },
       "BlockType": 2,
       "Properties": {
-        "LightType": 2,
-        "Color": "FFFFFFFF",
-        "Intensity": 1.0,
-        "Range": 10.0,
-        "Shape": 0,
-        "SpotAngle": 30.0,
-        "InnerSpotAngle": 21.80208,
-        "ShadowStrength": 1.0,
-        "ShadowType": 0,
-        "Flicker": false,
-        "FlickerZone": 0,
-        "Cycle": false,
-        "RandomInRange": false,
-        "TimeToOn": 1.0,
-        "TimeToOff": 2.0,
-        "ActionEvents": [
-          {
-            "Id": "TurnOn",
-            "DisplayName": "Turn On",
-            "Actions": []
-          },
-          {
-            "Id": "TurnOff",
-            "DisplayName": "Turn Off",
-            "Actions": []
-          }
-        ],
-        "Static": false,
-        "MovementSmoothing": 60
+        "Intensity": 2.2,
+        "Range": 16,
+        "Color": "EFF8FFFF"
+      }
+    },
+    {
+      "Name": "Overhead light",
+      "ObjectId": 1044,
+      "ParentId": 23914,
+      "Position": {
+        "x": 0,
+        "y": 7.8,
+        "z": 0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      "BlockType": 2,
+      "Properties": {
+        "Intensity": 2.2,
+        "Range": 16,
+        "Color": "EFF8FFFF"
+      }
+    },
+    {
+      "Name": "Gallery support",
+      "ObjectId": 1045,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -8.4,
+        "y": 2.1,
+        "z": 16.95
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.5,
+        "y": 4.2,
+        "z": 0.5
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Gallery support",
+      "ObjectId": 1046,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 8.4,
+        "y": 2.1,
+        "z": 16.95
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.5,
+        "y": 4.2,
+        "z": 0.5
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1047,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -6.5,
+        "y": 1.06,
+        "z": -14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1048,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -6.5,
+        "y": 1.63,
+        "z": -14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1049,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -3.3,
+        "y": 1.06,
+        "z": -14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1050,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -3.3,
+        "y": 1.63,
+        "z": -14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1051,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 1.06,
+        "z": -14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1052,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 1.63,
+        "z": -14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1053,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 3.3,
+        "y": 1.06,
+        "z": -14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1054,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 3.3,
+        "y": 1.63,
+        "z": -14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1055,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 6.5,
+        "y": 1.06,
+        "z": -14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1056,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 6.5,
+        "y": 1.63,
+        "z": -14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "Lane end mark",
+      "ObjectId": 1057,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -8.5,
+        "y": 0.035,
+        "z": -11.4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.55,
+        "y": 0.05,
+        "z": 3.6
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "Lane end mark",
+      "ObjectId": 1058,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 8.5,
+        "y": 0.035,
+        "z": -11.4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.55,
+        "y": 0.05,
+        "z": 3.6
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "63D0DFFF"
+      }
+    },
+    {
+      "Name": "Gallery support",
+      "ObjectId": 1059,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -8.4,
+        "y": 2.1,
+        "z": 20.849999999999998
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.5,
+        "y": 4.2,
+        "z": 0.5
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "Gallery support",
+      "ObjectId": 1060,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 8.4,
+        "y": 2.1,
+        "z": 20.849999999999998
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.5,
+        "y": 4.2,
+        "z": 0.5
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "364854FF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1061,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -6.5,
+        "y": 1.06,
+        "z": 14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1062,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -6.5,
+        "y": 1.63,
+        "z": 14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1063,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -3.3,
+        "y": 1.06,
+        "z": 14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1064,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -3.3,
+        "y": 1.63,
+        "z": 14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1065,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 1.06,
+        "z": 14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1066,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 1.63,
+        "z": 14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1067,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 3.3,
+        "y": 1.06,
+        "z": 14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1068,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 3.3,
+        "y": 1.63,
+        "z": 14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "End bay panel",
+      "ObjectId": 1069,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 6.5,
+        "y": 1.06,
+        "z": 14.62
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 3.07,
+        "y": 1.85,
+        "z": 0.14
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "475F6AFF"
+      }
+    },
+    {
+      "Name": "Bay indicator",
+      "ObjectId": 1070,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 6.5,
+        "y": 1.63,
+        "z": 14.53
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 1.8,
+        "y": 0.15,
+        "z": 0.08
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "Lane end mark",
+      "ObjectId": 1071,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -8.5,
+        "y": 0.035,
+        "z": 11.4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.55,
+        "y": 0.05,
+        "z": 3.6
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "Lane end mark",
+      "ObjectId": 1072,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 8.5,
+        "y": 0.035,
+        "z": 11.4
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.55,
+        "y": 0.05,
+        "z": 3.6
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 2,
+        "Color": "FFB45FFF"
+      }
+    },
+    {
+      "Name": "Gallery rail upright",
+      "ObjectId": 1073,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -9.55,
+        "y": 5.01,
+        "z": 16.2
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.13,
+        "y": 0.94,
+        "z": 0.13
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Gallery rail upright",
+      "ObjectId": 1074,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": -4.8,
+        "y": 5.01,
+        "z": 16.2
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.13,
+        "y": 0.94,
+        "z": 0.13
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Gallery rail upright",
+      "ObjectId": 1075,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 5.01,
+        "z": 16.2
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.13,
+        "y": 0.94,
+        "z": 0.13
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Gallery rail upright",
+      "ObjectId": 1076,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 4.8,
+        "y": 5.01,
+        "z": 16.2
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.13,
+        "y": 0.94,
+        "z": 0.13
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Gallery rail upright",
+      "ObjectId": 1077,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 9.55,
+        "y": 5.01,
+        "z": 16.2
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 0.13,
+        "y": 0.94,
+        "z": 0.13
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "789096FF"
+      }
+    },
+    {
+      "Name": "Gallery handrail",
+      "ObjectId": 1078,
+      "ParentId": 23914,
+      "BlockType": 1,
+      "Position": {
+        "x": 0,
+        "y": 5.5,
+        "z": 16.2
+      },
+      "Rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "Scale": {
+        "x": 19.4,
+        "y": 0.105,
+        "z": 0.105
+      },
+      "Properties": {
+        "PrimitiveType": 3,
+        "PrimitiveFlags": 3,
+        "Color": "A5B8BAFF"
       }
     }
   ]

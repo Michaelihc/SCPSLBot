@@ -220,6 +220,7 @@ internal sealed partial class DuelRuntime
         CancelCommitments(participant, reason);
         if (ReferenceEquals(residentWinner, participant)) residentWinner = null;
         bool current = Valid(participant);
+        RemoveScoreboard(participant);
         participants.Remove(participant.Hub);
         pendingDeaths.Remove(participant);
         if (!participant.Player.IsDestroyed && participant.Hub != null) display?.Remove(participant.Player, "duel.status");
@@ -248,6 +249,7 @@ internal sealed partial class DuelRuntime
         {
             if (participant == null || !Valid(participant)) continue;
             pendingDeaths.Remove(participant);
+            participant.Wins = ReferenceEquals(winner, participant) && participant.Player.IsAlive ? participant.Wins + 1 : 0;
             try
             {
                 if (config.KeepWinnerInArena && ReferenceEquals(participant, winner) && participant.Player.IsAlive)
@@ -307,6 +309,8 @@ internal sealed partial class DuelRuntime
         // Claim before native role callbacks and before another acceptance can enter.
         challenger = left;
         opponent = right;
+        RemoveScoreboard(left);
+        RemoveScoreboard(right);
         challenger.Viewer = false;
         opponent.Viewer = false;
         matchStart = Now + 3f;
@@ -366,7 +370,7 @@ internal sealed partial class DuelRuntime
                     if (!Valid(viewer)) { Release(viewer, false, "玩家连接已失效"); continue; }
                     if (!viewer.Viewer) continue;
                     Vector3 delta = viewer.Player.Position - ViewingPosition;
-                    if (Math.Abs(delta.x) > 5.5f || Math.Abs(delta.z) > 2f || Math.Abs(delta.y) > 2) viewer.Hub.TryOverridePosition(ViewerPosition(viewer));
+                    if (Math.Abs(delta.x) > 8.8f || Math.Abs(delta.z) > 2f || Math.Abs(delta.y) > 2) viewer.Hub.TryOverridePosition(ViewerPosition(viewer));
                 }
                 if (residentWinner != null && (!Valid(residentWinner) || !arena.Contains(residentWinner.Player.Position)))
                 {
@@ -375,6 +379,7 @@ internal sealed partial class DuelRuntime
                     if (Valid(resident)) PrepareViewer(resident);
                 }
                 StartNextPair();
+                RefreshScoreboards();
                 if (Now >= nextRefresh) { RefreshBoard(); RefreshHints(); nextRefresh = Now + 1f; }
             }
             catch (Exception ex) { Logger.Warn($"[DuelArena] Runtime recovery: {ex}"); Reset(true); }
@@ -426,6 +431,9 @@ internal sealed partial class DuelRuntime
         public string UserId { get; }
         public int PlayerId { get; }
         public int ViewingSlot { get; }
+        public int Wins { get; set; }
+        public DuelScoreboard? Scoreboard { get; set; }
+        public bool ScoreboardUnavailable { get; set; }
         public Vector3 ReturnPosition { get; }
         public bool Viewer { get; set; } = true;
         public float LastClick { get; set; }

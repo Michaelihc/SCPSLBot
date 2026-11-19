@@ -18,7 +18,7 @@ Administrators grant [special weapons](../docs/special-weapons.md) with RA `spec
 `special_weapons.allow_player_requests` also lists them in the item menu; the default is `false`.
 
 During Standard warmup, the zone menu lists Surface, HCZ/EZ, LCZ and **Duel / 1v1**.
-Select a zone and press Apply. `.duel` / `.1v1` also enter the protected viewing deck.
+Select a zone and press Apply. `.duel` / `.1v1` also enter the protected viewing deck. The invitation board is behind the entry position. On the 15.0 client, viewers see both fighters’ health, consecutive wins and the next pairing on a personal scoreboard.
 The bundled arena uses native toys from the supplied model and sits 180 meters above Surface;
 `duel.surface_height_offset` controls the offset (100–400 meters).
 

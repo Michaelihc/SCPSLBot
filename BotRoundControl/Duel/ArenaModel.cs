@@ -60,7 +60,7 @@ internal sealed class ArenaModel
                     toys.Add(toy);
                     toy.Type = (PrimitiveType)properties.GetProperty("PrimitiveType").GetInt32();
                     toy.Flags = (AdminToys.PrimitiveFlags)properties.GetProperty("PrimitiveFlags").GetInt32();
-                    toy.Color = Color.white;
+                    toy.Color = BlockColor(properties);
                     toy.IsStatic = true;
                     toy.Spawn();
                     if (toy.Type == PrimitiveType.Plane)
@@ -86,7 +86,7 @@ internal sealed class ArenaModel
                 {
                     var light = LightSourceToy.Get(ToyFactory.Create<AdminToys.LightSourceToy>(origin + position, Quaternion.identity, Vector3.one));
                     toys.Add(light);
-                    light.Color = Color.white;
+                    light.Color = BlockColor(properties);
                     light.Type = LightType.Point;
                     light.Intensity = properties.GetProperty("Intensity").GetSingle();
                     light.Range = properties.GetProperty("Range").GetSingle();
@@ -118,6 +118,13 @@ internal sealed class ArenaModel
         toys.Clear();
         ViewingPosition = Vector3.zero;
     }
+    private static Color BlockColor(JsonElement properties)
+    {
+        if (!ColorUtility.TryParseHtmlString("#" + properties.GetProperty("Color").GetString(), out Color color))
+            throw new InvalidOperationException("Invalid arena block color.");
+        return color;
+    }
+
     private static Vector3 Coordinates(JsonElement value) => new(
         value.GetProperty("x").GetSingle(), value.GetProperty("y").GetSingle(), value.GetProperty("z").GetSingle());
 }

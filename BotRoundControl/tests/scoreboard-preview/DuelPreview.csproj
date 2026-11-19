@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(SCPSL_METAREPO)/.tools/displaykit-preview/DisplayKitPreview.props" />
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(DisplayKitPreviewDir)/src/DisplayKit.Stub/DisplayKit.Stub.csproj" />
+    <ProjectReference Include="$(DisplayKitPreviewDir)/src/DisplayKit.Preview/DisplayKit.Preview.csproj" />
+    <Compile Include="../../Duel/DuelScoreboard.cs" Link="DuelScoreboard.cs" />
+  </ItemGroup>
+</Project>

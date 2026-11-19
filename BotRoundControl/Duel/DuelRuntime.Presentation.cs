@@ -14,6 +14,44 @@ internal sealed partial class DuelRuntime
         string name = Safe(participant.Player.Nickname);
         return name.Length > 12 ? name.Substring(0, 12) + "…" : name;
     }
+    private static void RemoveScoreboard(Participant participant)
+    {
+        var board = participant.Scoreboard;
+        participant.Scoreboard = null;
+        try { board?.Destroy(); }
+        catch (Exception ex) { LabApi.Features.Console.Logger.Warn($"[DuelArena] Scoreboard cleanup: {ex.Message}"); }
+    }
+
+    private void RefreshScoreboards()
+    {
+        if (participants.Count == 0) return;
+        var left = challenger ?? residentWinner;
+        var right = opponent;
+        string next = challengeQueue.Count > 0 ? ShortName(challengeQueue[0])
+            : queue.Count > 0 ? ShortName(queue[0].Left) + " / " + ShortName(queue[0].Right) : "暂无";
+        string phase = !Fighting ? "决斗场  /  等待开场"
+            : Now < matchStart ? $"决斗场  /  {Mathf.CeilToInt(matchStart - Now)} 秒后开始" : "决斗场  /  对决中";
+        foreach (var viewer in participants.Values)
+        {
+            if (!viewer.Viewer || viewer.ScoreboardUnavailable || !Valid(viewer)) continue;
+            try
+            {
+                viewer.Scoreboard ??= new DuelScoreboard(viewer.Hub);
+                viewer.Scoreboard.Update(phase, "下一场  ·  " + next,
+                    left == null ? "待入场" : ShortName(left), Mathf.CeilToInt(left?.Player.Health ?? 0),
+                    Mathf.CeilToInt(left?.Player.MaxHealth ?? 0), left?.Wins ?? 0,
+                    right == null ? "待入场" : ShortName(right), Mathf.CeilToInt(right?.Player.Health ?? 0),
+                    Mathf.CeilToInt(right?.Player.MaxHealth ?? 0), right?.Wins ?? 0);
+            }
+            catch (Exception ex)
+            {
+                viewer.ScoreboardUnavailable = true;
+                RemoveScoreboard(viewer);
+                LabApi.Features.Console.Logger.Warn($"[DuelArena] Spectator scoreboard unavailable: {ex.Message}");
+            }
+        }
+    }
+
     private void RefreshHints()
     {
         if (display == null) return;
@@ -52,13 +90,16 @@ internal sealed partial class DuelRuntime
                     if (incoming.Length > 0) text.AppendLine("邀请 ID：" + string.Join(",", incoming) + " · .accept ID 接受");
                 }
             }
-            text.AppendLine(Fighting ? $"擂台：{ShortName(challenger!)} vs {ShortName(opponent!)}"
-                : residentWinner != null ? $"守擂者：{ShortName(residentWinner)}" : "擂台空闲");
-            if (challengeQueue.Count > 0)
-                text.AppendLine("挑战队列：" + string.Join(" → ", challengeQueue.Take(3).Select(ShortName))
-                    + (challengeQueue.Count > 3 ? $" … 共 {challengeQueue.Count} 人" : ""));
-            foreach (QueuedMatch pair in queue.Take(2)) text.AppendLine($"排队：{ShortName(pair.Left)} vs {ShortName(pair.Right)}");
-            if (queue.Count > 2) text.AppendLine($"另有 {queue.Count - 2} 组等待");
+            if (!participant.Viewer || participant.Scoreboard == null)
+            {
+                text.AppendLine(Fighting ? $"擂台：{ShortName(challenger!)} vs {ShortName(opponent!)}"
+                    : residentWinner != null ? $"守擂者：{ShortName(residentWinner)}" : "擂台空闲");
+                if (challengeQueue.Count > 0)
+                    text.AppendLine("挑战队列：" + string.Join(" → ", challengeQueue.Take(3).Select(ShortName))
+                        + (challengeQueue.Count > 3 ? $" … 共 {challengeQueue.Count} 人" : ""));
+                foreach (QueuedMatch pair in queue.Take(2)) text.AppendLine($"排队：{ShortName(pair.Left)} vs {ShortName(pair.Right)}");
+                if (queue.Count > 2) text.AppendLine($"另有 {queue.Count - 2} 组等待");
+            }
             display.Show(participant.Player, new HintRequest("duel.status", text.ToString().TrimEnd(), 2.5f, 0f, 780f, 20));
         }
     }
