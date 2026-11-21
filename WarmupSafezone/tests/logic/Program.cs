@@ -14,6 +14,7 @@ internal static class Program
         TestActionMatrix();
         TestProjectileBlockList();
         TestConfiguredSurfaceSafezoneGeometry();
+        TestSecurityOffice();
         TestRecurringFaultIsolation();
         Console.WriteLine($"WarmupSafezone deterministic logic tests passed: {_assertions}/{_assertions}");
         return 0;
@@ -127,6 +128,26 @@ internal static class Program
 
         Require(!ActionPolicy.ShouldCancel(SafezoneActionKind.UtilityOrMovement, true, true), "utility/movement remains allowed");
         Require(!ActionPolicy.ShouldCancel(SafezoneActionKind.IndirectHazardDamage, true, true), "indirect hazards defer to final damage policy");
+    }
+
+    private static void TestSecurityOffice()
+    {
+        const float feet = 302f;
+        const float doorZ = 12.145f;
+        foreach (float inside in new[] { -43.46f, -41f, -38.90f })
+            Require(SecurityOfficeGeometry.Contains(inside, feet, doorZ), "lower office interior is protected");
+        foreach (float sill in new[] { -43.72f, -38.64f })
+        {
+            Require(!SecurityOfficeGeometry.Contains(sill, feet, doorZ), "doorframe is outside protection");
+            Require(SecurityOfficeGeometry.ContainsBlocker(sill, feet, doorZ, 9), "lower doorway is a blocker");
+            Require(!SecurityOfficeGeometry.ContainsBlocker(sill, feet, 13.6f, 9), "adjacent wall is clear");
+            Require(!SecurityOfficeGeometry.ContainsBlocker(sill, 305.6f, doorZ, 9), "upstairs doorway is clear");
+        }
+        Require(!SecurityOfficeGeometry.Contains(-41f, 305.6f, doorZ), "upstairs is outside protection");
+        Require(!SecurityOfficeGeometry.Contains(-41f, feet, 14f), "side hall is outside protection");
+        Require(!SecurityOfficeGeometry.Contains(-41f, 300f, doorZ), "space below the office is clear");
+        Require(!SecurityOfficeGeometry.ContainsBlocker(-46f, feet, doorZ, 9), "approach is clear");
+        Require(!SecurityOfficeGeometry.ContainsBlocker(-43.72f, feet, doorZ, 0), "zero depth disables blockers");
     }
 
     private static void TestConfiguredSurfaceSafezoneGeometry()

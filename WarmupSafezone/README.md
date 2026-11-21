@@ -6,7 +6,8 @@
 
 `WarmupSafezone` 1.0.0 provides three independent safezone policies for the SCPSLBot warmup server:
 
-- The configured Surface escape safezone uses `surface_escape_safezone_axis`, its threshold, and `surface_escape_safezone_min_x`, restoring the original large Surface zone and boundary wall. Current LabAPI `Map.EscapeZones` remain protected as an additional fallback.
+- On the 15.0 Surface, the downstairs security office at Gate A is protected. A cyan strip inside each door marks the threshold. Door-blocking penalties cover only the two entrances, up to one metre deep. The upstairs landing and exterior approach are open for play.
+- On the 14.x Surface, the configured escape safezone uses `surface_escape_safezone_axis`, its threshold, and `surface_escape_safezone_min_x`, restoring the original large Surface zone and boundary wall. Current LabAPI `Map.EscapeZones` remain protected as an additional fallback.
 - The SCP-914 safezone uses SCP-914's native calculated room bounds, verified again through native room resolution.
 - The Class-D cells safezone is the whole `LczClassDSpawn` room, resolved with the native `RoomUtils.TryGetRoom` (grid coordinates, then the room's own floor/ceiling raycast), because the cells extend past the room's main 15 m grid cell. Players respawning in any cell cannot be camped. A translucent non-collidable cyan boundary is drawn across each main-cell edge that holds an exit door, with one face just inside and one just outside, so it shows in front of the exit door from either side. Above each exit door, on both sides of the boundary, an opaque name plate shows the same configured panel text as the SCP-914 gate.
 
@@ -42,7 +43,7 @@ The explicit action matrix is:
 
 ## Surface-only policies
 
-Surface health drain is evaluated only against the configured/native Surface safezone union; SCP-914 occupants never enter that policy. The optional anti-blocker volume is the configured band immediately outside the restored threshold. Its progression:
+Surface health drain is evaluated only against the active Surface safezone; SCP-914 occupants never enter that policy. The optional anti-blocker volume is the configured band immediately outside the restored threshold. Its progression:
 
 - accumulates only during active time in the blocker shell;
 - pauses when the player leaves the shell;
@@ -51,7 +52,7 @@ Surface health drain is evaluated only against the configured/native Surface saf
 
 Configured Surface drain is a health drain, not a renewable-shield drain. It still enters the native damage/event pipeline, but any portion absorbed by AHP or Hume Shield is made up against health so SCP Hume regeneration cannot hold the blocker indefinitely.
 
-The transparent Surface boundary wall follows the configured axis/threshold/minimum-X geometry. Native escape bounds extend gameplay protection as a fallback but do not replace or resize that wall. All boundary and sign toys are non-collidable, and missing toys are recreated by the resilient lifecycle loop.
+On the 14.x layout the transparent Surface boundary wall follows the configured axis/threshold/minimum-X geometry. Native escape bounds extend gameplay protection as a fallback but do not replace or resize that wall. All boundary and sign toys are non-collidable, and missing toys are recreated by the resilient lifecycle loop.
 
 ## Player text and language
 
@@ -156,7 +157,8 @@ Tutorial 不参与安全区管理，不获得安全区保护、不承受阻挡�
 
 `WarmupSafezone` 1.0.0 为 SCPSLBot 热身服务器提供三套互相独立的安全区规则：
 
-- 地表逃生安全区重新使用 `surface_escape_safezone_axis`、阈值与 `surface_escape_safezone_min_x`，恢复原来的大范围地表安全区和边界墙；LabAPI `Map.EscapeZones` 当前登记的边界仍作为额外保护回退。
+- 15.0 地表的安全区位于 A 大门楼下保安室。两扇门内侧的青色地线标记保护边界，防堵范围仅覆盖两处门口，最深一米。楼上平台和室外通道可正常交战。
+- 14.x 地表逃生安全区使用 `surface_escape_safezone_axis`、阈值与 `surface_escape_safezone_min_x`，恢复原来的大范围地表安全区和边界墙；LabAPI `Map.EscapeZones` 当前登记的边界仍作为额外保护回退。
 - SCP-914 安全区使用 SCP-914 原生计算的房间边界，并再次通过原生房间解析确认玩家确实位于该房间。
 - D 级人员牢房安全区是整个 `LczClassDSpawn` 房间，使用原生 `RoomUtils.TryGetRoom`（先按网格坐标，再对房间自身地板/天花板射线检测）判定，因为牢房超出了该房间主 15 米网格单元。在任意牢房重生的玩家都不会被蹲守。半透明、无碰撞的青色边界只画在含出口门的主网格边上，内外各一面，因此从门的任一侧都能在出口门前看到。
 

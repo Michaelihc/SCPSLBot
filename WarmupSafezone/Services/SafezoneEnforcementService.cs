@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CustomPlayerEffects;
+using InventorySystem.Items;
 using InventorySystem.Items.Jailbird;
 using InventorySystem.Items.MicroHID.Modules;
 using LabApi.Events.Arguments.PlayerEvents;

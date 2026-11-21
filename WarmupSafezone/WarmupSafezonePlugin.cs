@@ -80,7 +80,7 @@ public sealed class WarmupSafezonePlugin : Plugin<WarmupSafezoneConfig>
                 _hints,
                 localization,
                 clock);
-            _visuals = new SafezoneVisualService(Config, localization);
+            _visuals = new SafezoneVisualService(Config, localization, volumes);
             _lifecycle = new SafezoneLifecycleService(clock);
             _lifecycle.Add("occupancy-recovery", 100, RecoverOccupancy);
             _lifecycle.Add("dangerous-items", 250, _enforcement.TickDangerousItems);
@@ -94,7 +94,7 @@ public sealed class WarmupSafezonePlugin : Plugin<WarmupSafezoneConfig>
             _visuals.Ensure();
             _lifecycle.Start();
             _enabled = true;
-            Logger.Info($"[{Name}] Enabled enabled={Config.Enabled}; configured Surface safezone restored with native Map.EscapeZones fallback.");
+            Logger.Info($"[{Name}] Enabled enabled={Config.Enabled}; Surface safezone selected from the loaded map.");
         }
         catch
         {

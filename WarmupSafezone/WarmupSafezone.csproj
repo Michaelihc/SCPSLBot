@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="$(SCPSL_METAREPO)\build\scpsl-deps.props" Condition="'$(SCPSL_METAREPO)' != '' And Exists('$(SCPSL_METAREPO)\build\scpsl-deps.props')" />
   <ItemGroup>
+    <Using Include="UnityEngine.PrimitiveType" Alias="PrimitiveToyType" Condition="'$(ScpslGame)' != '15.0' And '$(ScpslGame)' != '14.2.9-compat'" />
     <ProjectReference Include="$(HsmAdapterProject)" Private="false" />
   </ItemGroup>
   <PropertyGroup>

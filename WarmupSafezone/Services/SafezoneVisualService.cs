@@ -43,6 +43,7 @@ internal sealed class SafezoneVisualService
 
     private readonly WarmupSafezoneConfig _config;
     private readonly WarmupLocalization _localization;
+    private readonly SafezoneVolumeService _volumes;
     private readonly List<AdminToy> _toys = new();
     private readonly List<(string Kind, Vector3 Position)> _panelParts = new();
     private readonly List<(string Kind, Vector3 Position)> _cellsPanelParts = new();
@@ -50,10 +51,12 @@ internal sealed class SafezoneVisualService
 
     public SafezoneVisualService(
         WarmupSafezoneConfig config,
-        WarmupLocalization localization)
+        WarmupLocalization localization,
+        SafezoneVolumeService volumes)
     {
         _config = config;
         _localization = localization;
+        _volumes = volumes;
     }
 
     public int LiveToyCount => _toys.Count(toy => toy != null && !toy.IsDestroyed);
@@ -85,8 +88,9 @@ internal sealed class SafezoneVisualService
         int expected914Toys = scp914Gate != null && !scp914Gate.IsDestroyed ? 4 : 0;
         bool hasCellsTile = _config.ClassDCellsSafezoneEnabled && ClassDCellsTile.TryGet(out _, out _);
         int expectedCellsToys = hasCellsTile ? ExpectedCellsToys() : 0;
-        string surfaceSignature = SurfaceSignature() + "|" + CellsSignature(hasCellsTile);
-        int expectedSurfaceToys = SurfaceSafezoneGeometry.NormalizeAxis(_config.SurfaceEscapeSafezoneAxis) == "z" ? 3 : 4;
+        bool office = _volumes.UsesSecurityOffice;
+        string surfaceSignature = (office ? "security-office" : SurfaceSignature()) + "|" + CellsSignature(hasCellsTile);
+        int expectedSurfaceToys = office ? 10 : SurfaceSafezoneGeometry.NormalizeAxis(_config.SurfaceEscapeSafezoneAxis) == "z" ? 3 : 4;
         bool geometryChanged = !string.Equals(_renderedSurfaceSignature, surfaceSignature, StringComparison.Ordinal);
         bool toysMissing = _toys.Count != expectedSurfaceToys + expected914Toys + expectedCellsToys
             || _toys.Any(toy => toy == null || toy.IsDestroyed);
@@ -96,7 +100,8 @@ internal sealed class SafezoneVisualService
         }
 
         Destroy();
-        CreateConfiguredSurfaceBoundary();
+        if (office) CreateSecurityOfficeBoundary();
+        else CreateConfiguredSurfaceBoundary();
 
         if (scp914Gate != null && !scp914Gate.IsDestroyed)
         {
@@ -125,6 +130,23 @@ internal sealed class SafezoneVisualService
         _panelParts.Clear();
         _cellsPanelParts.Clear();
         _renderedSurfaceSignature = string.Empty;
+    }
+
+    private void CreateSecurityOfficeBoundary()
+    {
+        CreateOfficeThreshold(SecurityOfficeGeometry.WestDoorX, Vector3.left);
+        CreateOfficeThreshold(SecurityOfficeGeometry.EastDoorX, Vector3.right);
+    }
+
+    private void CreateOfficeThreshold(float doorX, Vector3 outward)
+    {
+        var sill = new Vector3(doorX, SecurityOfficeGeometry.FloorY, SecurityOfficeGeometry.DoorZ);
+        CreateWall(sill - outward * SecurityOfficeGeometry.ThresholdInset + Vector3.up * 0.035f,
+            new Vector3(0.09f, 0.035f, SecurityOfficeGeometry.DoorWidth), new Color(0.21f, 0.84f, 0.82f));
+        Vector3 lintel = sill + Vector3.up * 2.57f;
+        string text = SafezonePanelText();
+        CreateBoundaryPanelFace(lintel, outward, Quaternion.LookRotation(-outward), text);
+        CreateBoundaryPanelFace(lintel, -outward, Quaternion.LookRotation(outward), text);
     }
 
     private void CreateConfiguredSurfaceBoundary()
@@ -188,7 +210,7 @@ internal sealed class SafezoneVisualService
             Scp914PanelPlateSize,
             null,
             false);
-        backing.Type = PrimitiveType.Cube;
+        backing.Type = PrimitiveToyType.Cube;
         backing.Flags = PrimitiveFlags.Visible;
         // Fully opaque: only a depth-writing backing hides the mirrored text of the opposite face. Translucent
         // backings (alpha 0.45 and 0.75 were tried) let that text render through at nearly full strength.
@@ -245,15 +267,16 @@ internal sealed class SafezoneVisualService
             Vector3 outward = ExitNormal(exit, tile);
             // Text reads correctly when the camera looks along its forward axis: the outer label faces a player
             // walking in, the inner label a player walking out.
-            CreateCellsPanelFace(CellsPanelAnchor(exit, outward, room.Position.y), outward, Quaternion.LookRotation(-outward), text);
-            CreateCellsPanelFace(CellsPanelAnchor(exit, -outward, room.Position.y), -outward, Quaternion.LookRotation(outward), text);
+            CreateBoundaryPanelFace(CellsPanelAnchor(exit, outward, room.Position.y), outward, Quaternion.LookRotation(-outward), text, _cellsPanelParts);
+            CreateBoundaryPanelFace(CellsPanelAnchor(exit, -outward, room.Position.y), -outward, Quaternion.LookRotation(outward), text, _cellsPanelParts);
         }
     }
 
-    private void CreateCellsPanelFace(Vector3 anchor, Vector3 side, Quaternion rotation, string text)
+    private void CreateBoundaryPanelFace(Vector3 anchor, Vector3 side, Quaternion rotation, string text,
+        List<(string Kind, Vector3 Position)>? parts = null)
     {
         PrimitiveObjectToy plate = PrimitiveObjectToy.Create(anchor + side * CellsPanelPlateOffset, rotation, Scp914PanelPlateSize, null, false);
-        plate.Type = PrimitiveType.Cube;
+        plate.Type = PrimitiveToyType.Cube;
         plate.Flags = PrimitiveFlags.Visible;
         // Opaque for the same reason as the 914 plate: it hides the mirrored label on the other side.
         plate.Color = new Color(0.02f, 0.14f, 0.17f, 1f);
@@ -261,10 +284,10 @@ internal sealed class SafezoneVisualService
         plate.SyncInterval = 0f;
         plate.Spawn();
         _toys.Add(plate);
-        _cellsPanelParts.Add(("plate", plate.Position));
+        parts?.Add(("plate", plate.Position));
 
         Vector3 textPosition = anchor + side * CellsPanelTextOffset;
-        _cellsPanelParts.Add(("text", textPosition));
+        parts?.Add(("text", textPosition));
         CreateWorldLabel(
             textPosition,
             rotation,
@@ -339,7 +362,7 @@ internal sealed class SafezoneVisualService
     private void CreateWall(Vector3 position, Vector3 scale, Color color)
     {
         PrimitiveObjectToy wall = PrimitiveObjectToy.Create(position, Quaternion.identity, scale, null, false);
-        wall.Type = PrimitiveType.Cube;
+        wall.Type = PrimitiveToyType.Cube;
         wall.Flags = PrimitiveFlags.Visible;
         wall.Color = color;
         wall.IsStatic = true;

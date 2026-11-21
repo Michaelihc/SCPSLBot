@@ -22,14 +22,15 @@ internal static class ClassDCellsTile
             }
         }
 
-        if (_cached == null)
+        Vector3Int? mainCoords = _cached == null ? null : _cached.MainCoords;
+        if (!mainCoords.HasValue)
         {
             coords = default;
             room = null;
             return false;
         }
 
-        coords = _cached.MainCoords;
+        coords = mainCoords.Value;
         room = Room.Get(_cached);
         return true;
     }

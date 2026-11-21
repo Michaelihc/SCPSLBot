@@ -7,6 +7,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\Core\SecurityOfficeGeometry.cs" Link="Core\SecurityOfficeGeometry.cs" />
     <Compile Include="logic\Program.cs" />
     <Compile Include="..\Core\MonotonicClock.cs" Link="Core\MonotonicClock.cs" />
     <Compile Include="..\Core\ExitProtectionTracker.cs" Link="Core\ExitProtectionTracker.cs" />

@@ -23,6 +23,23 @@ internal sealed class SafezoneVolumeService
 
     public SafezoneVolumeService(WarmupSafezoneConfig config) => _config = config;
 
+    private RoomIdentifier? _surfaceGateA;
+    private int _layoutCheckFrame = -1;
+
+    internal bool UsesSecurityOffice
+    {
+        get
+        {
+            if (_surfaceGateA == null && _layoutCheckFrame != Time.frameCount)
+            {
+                _layoutCheckFrame = Time.frameCount;
+                // SzGateA is room 45 in the 15.0 map and its imported compatibility layout.
+                RoomUtils.TryFindRoom((RoomName)45, FacilityZone.Surface, null, out _surfaceGateA);
+            }
+            return _surfaceGateA != null;
+        }
+    }
+
     public SafezoneMembership Resolve(Player player)
     {
         if (!IsEligible(player))
@@ -58,6 +75,8 @@ internal sealed class SafezoneVolumeService
         }
 
         Vector3 position = player.Position;
+        if (UsesSecurityOffice) return SecurityOfficeGeometry.Contains(position.x, position.y, position.z);
+
         if (IsClosestRoomSurface(position)
             && SurfaceSafezoneGeometry.Contains(
                 position.x,
@@ -116,6 +135,8 @@ internal sealed class SafezoneVolumeService
 
         Vector3 position = player.Position;
         float depth = Math.Max(0f, _config.SurfaceEscapeBlockerDepth);
+        if (UsesSecurityOffice) return SecurityOfficeGeometry.ContainsBlocker(position.x, position.y, position.z, depth);
+
         if (depth <= 0f)
         {
             return false;

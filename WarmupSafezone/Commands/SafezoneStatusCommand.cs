@@ -32,7 +32,7 @@ public sealed class SafezoneStatusCommand : ICommand
             + $"classd_cells={config.ClassDCellsSafezoneEnabled} visuals={config.SafezoneVisualsEnabled} "
             + $"blocked_projectiles=[{string.Join(",", config.SafezoneBlockedProjectiles ?? new())}] "
             + $"blocked_drops=[{string.Join(",", config.SafezoneBlockedDrops ?? new())}] "
-            + $"visual_toys={plugin.VisualToyCount} scp914_gate={plugin.Scp914GateDescription} "
+            + $"surface_layout={(plugin.Volumes?.UsesSecurityOffice == true ? "gate-a-office" : "escape")} visual_toys={plugin.VisualToyCount} scp914_gate={plugin.Scp914GateDescription} "
             + $"classd_cells_tile={plugin.ClassDCellsDescription}";
         if (arguments.Count >= 2)
         {
